@@ -1,0 +1,7 @@
+@article{billot2020learning,
+  title={A Learning Strategy for Contrast-agnostic MRI Segmentation},
+  author={Dalca, Adrian V and Guttag, John and Sabuncu, Mert R},
+  author={Billot, Benjamin and Greve, Douglas and Van Leemput, Koen and Fischl, Bruce and Iglesias, Juan Eugenio and Dalca, Adrian V}
+  journal={arXiv preprint arXiv:2003.01995},
+  year={2020}
+}
