@@ -1,0 +1,10 @@
+python training.py ./atlases ./models/ \
+ --generation_label_list ./labels_classes_stats/generation_labels.npy \
+ --segmentation_label_list ./labels_classes_stats/segmentation_labels.npy \
+ --generation_classes ./labels_classes_stats/generation_classes.npy \
+ --prior_means ./labels_classes_stats/means_range.npy \
+ --prior_stds ./labels_classes_stats/std_devs_range.npy \
+ --data_res ./labels_classes_stats/blurring_res.npy \
+ --thickness ./labels_classes_stats/thickness.npy \
+ --wl2_epochs 5 --dice_epochs 1000 --steps_per_epoch 1000 --include_background \
+ --target_res 1 --output_shape 160 --blur_range 1.3 --bias_std 0.5 --nonlin_std 4
