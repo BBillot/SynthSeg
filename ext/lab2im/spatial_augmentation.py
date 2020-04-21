@@ -166,7 +166,7 @@ def restrict_tensor(tensor, axes, boundaries):
     boundaries = utils.reformat_to_n_channels_array(boundaries, n_dims=4, n_channels=len(axes))
 
     # build mask
-    mask = KL.Lambda(lambda x: tf.zeros_like(x))(tensor)
+    mask = KL.Lambda(lambda x: tf.ones_like(x))(tensor)
     for i, axis in enumerate(axes):
 
         # select restricting indices

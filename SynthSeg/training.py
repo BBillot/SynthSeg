@@ -21,7 +21,7 @@ def training(labels_dir,
              model_dir,
              path_generation_labels=None,
              path_segmentation_labels=None,
-             batch_size=1,
+             batchsize=1,
              n_channels=1,
              target_res=None,
              output_shape=None,
@@ -31,19 +31,19 @@ def training(labels_dir,
              prior_stds=None,
              use_specific_stats_for_channel=False,
              path_generation_classes=None,
-             scaling_bounds=0.07,
-             rotation_bounds=10,
-             shearing_bounds=0.01,
-             nonlin_shape_factor=0.04,
-             nonlin_std_dev=3,
+             scaling_bounds=None,
+             rotation_bounds=None,
+             shearing_bounds=None,
+             nonlin_shape_factor=.04,
+             nonlin_std_dev=3.,
              blur_background=True,
              data_res=None,
              thickness=None,
              downsample=False,
              blur_range=1.15,
              crop_channel_2=None,
-             bias_shape_factor=0.025,
-             bias_field_std_dev=0.3,
+             bias_shape_factor=.025,
+             bias_field_std_dev=.3,
              n_levels=5,
              nb_conv_per_level=2,
              conv_size=3,
@@ -68,14 +68,14 @@ def training(labels_dir,
     label maps.
     :param labels_dir: path of folder with all input label maps
     :param model_dir: path of a directory where the models will be saved during training.
-    :param path_generation_labels: path to a numpy array of all possible label values in the input label maps.
+    :param path_generation_labels: (optional) path to a numpy array of all possible label values in the input label maps
     Should be organised as follows: background label first, then non-sided labels (e.g. CSF, brainstem, etc.), then
     all the structures of the same hemisphere (can be left or right), and finally all the corresponding
     contralateral structures (in the same order).
     Default is None, where the label values are directly gotten from the provided label maps.
     :param path_segmentation_labels: (optional) path to a numpy array of all the label values to keep in the output
     label maps, in no particular order. Labels that are in generation_labels but not in output_labels are reset to zero.
-    :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
+    :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
     :param n_channels: (optional) number of channels to be synthetised. Default is 1.
     :param target_res: (optional) target resolution of the generated images and corresponding label maps.
     If None, the outputs will have the same resolution as the input label maps.
@@ -168,17 +168,16 @@ def training(labels_dir,
     assert (wl2_epochs > 0) | (dice_epochs > 0), \
         'either wl2_epochs or dice_epochs must be positive, had {0} and {1}'.format(wl2_epochs, dice_epochs)
 
-    generation_label_list, generation_neutral_labels = utils.get_list_labels(label_list=path_generation_labels,
-                                                                             labels_dir=labels_dir,
-                                                                             save_label_list=save_generation_labels,
-                                                                             FS_sort=True)
+    # get label lists
+    generation_labels, n_neutral_labels = utils.get_list_labels(label_list=path_generation_labels,
+                                                                labels_dir=labels_dir,
+                                                                save_label_list=save_generation_labels,
+                                                                FS_sort=True)
     if path_segmentation_labels is not None:
-        segmentation_label_list, _ = utils.get_list_labels(label_list=path_segmentation_labels, FS_sort=True)
+        segmentation_labels, _ = utils.get_list_labels(label_list=path_segmentation_labels, FS_sort=True)
     else:
-        segmentation_label_list = generation_label_list
-
-    # number of labels (including background)
-    n_segmentation_labels = np.size(segmentation_label_list)
+        segmentation_labels = generation_labels
+    n_segmentation_labels = np.size(segmentation_labels)
 
     # prepare model folder
     if not os.path.isdir(model_dir):
@@ -190,14 +189,17 @@ def training(labels_dir,
         os.mkdir(log_dir)
 
     # compute padding_margin
-    padding_margin = utils.get_padding_margin(output_shape, loss_cropping)
+    if loss_cropping is not None:
+        padding_margin = utils.get_padding_margin(output_shape, loss_cropping)
+    else:
+        padding_margin = None
 
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
-                                     generation_labels=generation_label_list,
-                                     output_labels=segmentation_label_list,
-                                     n_neutral_labels=generation_neutral_labels,
-                                     batch_size=batch_size,
+                                     generation_labels=generation_labels,
+                                     output_labels=segmentation_labels,
+                                     n_neutral_labels=n_neutral_labels,
+                                     batch_size=batchsize,
                                      n_channels=n_channels,
                                      target_res=target_res,
                                      output_shape=output_shape,
@@ -246,13 +248,13 @@ def training(labels_dir,
 
     # input generator
     train_example_gen = brain_generator.model_inputs_generator
-    training_generator = utils.build_training_generator(train_example_gen, batch_size)
+    training_generator = utils.build_training_generator(train_example_gen, batchsize)
 
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
     if wl2_epochs > 0:
         wl2_model = Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
         wl2_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_segmentation_labels],
-                                                segmentation_label_list=segmentation_label_list,
+                                                segmentation_label_list=segmentation_labels,
                                                 input_model=wl2_model,
                                                 loss_cropping=loss_cropping,
                                                 metrics='weighted_l2',
@@ -267,7 +269,7 @@ def training(labels_dir,
     # fine-tuning with dice metric
     if dice_epochs > 0:
         dice_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_segmentation_labels],
-                                                 segmentation_label_list=segmentation_label_list,
+                                                 segmentation_label_list=segmentation_labels,
                                                  input_model=unet_model,
                                                  loss_cropping=loss_cropping,
                                                  include_background=include_background,

@@ -494,14 +494,17 @@ def add_axis(x, axis=0):
 
 def get_padding_margin(cropping, loss_cropping):
     """Compute padding margin"""
-    cropping = reformat_to_list(cropping)
-    loss_cropping = reformat_to_list(loss_cropping)
-    n_dims = max(len(cropping), len(loss_cropping))
-    cropping = reformat_to_list(cropping, length=n_dims)
-    loss_cropping = reformat_to_list(loss_cropping, length=n_dims)
-    padding_margin = [int((cropping[i] - loss_cropping[i]) / 2) for i in range(n_dims)]
-    if len(padding_margin) == 1:
-        padding_margin = padding_margin[0]
+    if (cropping is not None) & (loss_cropping is not None):
+        cropping = reformat_to_list(cropping)
+        loss_cropping = reformat_to_list(loss_cropping)
+        n_dims = max(len(cropping), len(loss_cropping))
+        cropping = reformat_to_list(cropping, length=n_dims)
+        loss_cropping = reformat_to_list(loss_cropping, length=n_dims)
+        padding_margin = [int((cropping[i] - loss_cropping[i]) / 2) for i in range(n_dims)]
+        if len(padding_margin) == 1:
+            padding_margin = padding_margin[0]
+    else:
+        padding_margin = None
     return padding_margin
 
 

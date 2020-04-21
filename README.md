@@ -80,7 +80,7 @@ All the other requirements are listed in requirements.txt. We list here the impo
 generate images. This script uses uniform priors of wide range, thus yielding images of highly varying contrats (often 
 unrealistic).
 
-- [script_PVSeg](scripts_PVSeg) contains a script explaining how to use the `BrainGenerator` in the case of specified 
+- [script_PV-SynthSeg](scripts_PV-SynthSeg) contains a script explaining how to use the `BrainGenerator` in the case of specified 
 prior distributions for the GMM. It also contains a example of how to call the `training` function.
 
 - [ext](ext): contains external packages, especially the *lab2im* package, and a modified version of *neuron*.
@@ -91,10 +91,14 @@ prior distributions for the GMM. It also contains a example of how to call the `
 If you use this code, please cite the following paper:
 
 **A Learning Strategy for Contrast-agnostic MRI Segmentation** \
-Benjamin Billot, Douglas Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca* \
+Benjamin Billot, Douglas N. Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca* \
 *contributed equally \
 accepted for MIDL 2020 \
 [ [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.txt) ]
+
+**Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast** \
+Benjamin Billot, Eleanor D. Robinson, Adrian V. Dalca, Juan Eugenio Iglesias \
+submitted to arxiv
 
 If you have any question regarding the usage of this code, or any suggestions to improve it you can contact me at:
 benjamin.billot.18@ucl.ac.uk

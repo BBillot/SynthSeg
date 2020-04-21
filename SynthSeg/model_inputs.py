@@ -99,7 +99,7 @@ def build_model_inputs(path_label_maps,
     while True:
 
         # randomly pick as many images as batch_size
-        unique_indices = npr.randint(len(path_label_maps), size=batch_size)
+        label_map_indices = npr.randint(len(path_label_maps), size=batch_size)
 
         # initialise input tensors
         y_all = []
@@ -109,10 +109,10 @@ def build_model_inputs(path_label_maps,
         nonlinear_field_all = []
         bias_field_all = []
 
-        for idx in unique_indices:
+        for label_map_idx in label_map_indices:
 
             # add labels to inputs
-            y = utils.load_volume(path_label_maps[idx], dtype='int')
+            y = utils.load_volume(path_label_maps[label_map_idx], dtype='int')
             if background_paths is not None:
                 idx_258 = np.where(y == 258)
                 if np.any(idx_258):

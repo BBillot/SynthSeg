@@ -11,7 +11,7 @@ class ImageGenerator:
 
     def __init__(self,
                  labels_dir,
-                 generation_labels,
+                 generation_labels=None,
                  output_labels=None,
                  batch_size=1,
                  n_channels=1,
@@ -21,6 +21,7 @@ class ImageGenerator:
                  prior_distributions='uniform',
                  prior_means=None,
                  prior_stds=None,
+                 use_specific_stats_for_channel=False,
                  generation_classes=None,
                  blur_background=True,
                  blur_range=1.15):
@@ -31,6 +32,7 @@ class ImageGenerator:
         :param labels_dir: path of folder with all input label maps
         :param generation_labels: list of all possible label values in the input label maps.
         Can be a sequence or a 1d numpy array, or the path to a 1d numpy array.
+        Default is None, where the label values are directly gotten from the provided label maps.
         :param output_labels: (optional) list of all the label values to keep in the output label maps. Label values
         that are in generation_labels but not in output_labels are reset to zero.
         Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
@@ -57,12 +59,16 @@ class ImageGenerator:
         each mini_batch from U(prior_means[0,k], prior_means[1,k]) if prior_distributions is uniform, and from
         N(prior_means[0,k], prior_means[1,k]) if prior_distributions is normal.
         3) an array of shape (2*n_mod, n_labels), where each block of two rows is associated to hyperparameters derived
-        from different modalities. In this case, we first randomly select a modality from the n_mod possibilities,
-        and we sample the GMM means like in 2).
+        from different modalities. In this case, if use_specific_stats_for_channel is False, we first randomly select a
+        modality from the n_mod possibilities, and we sample the GMM means like in 2).
+        If use_specific_stats_for_channel is True, each block of two rows correspond to a different channel
+        (n_mod=n_channels), thus we select the corresponding block to each channel rather than randomly drawing it.
         4) the path to such a numpy array.
         Default is None, which corresponds to prior_means = [25, 225].
         :param prior_stds: (optional) same as prior_means but for the standard deviations of the GMM.
         Default is None, which corresponds to prior_stds = [5, 25].
+        :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
+        only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
         :param generation_classes: (optional) Indices regrouping generation labels into classes when sampling the GMM.
         Intensities of corresponding to regouped labels will thus be sampled from the same distribution. Must have the
         same length as generation_labels. Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
@@ -87,7 +93,10 @@ class ImageGenerator:
         self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
             utils.get_volume_info(self.labels_paths[0])
         self.n_channels = n_channels
-        self.generation_labels = generation_labels
+        if generation_labels is not None:
+            self.generation_labels = generation_labels
+        else:
+            self.generation_labels = utils.get_list_labels(labels_dir=labels_dir)
         if output_labels is not None:
             self.output_labels = output_labels
         else:
@@ -100,6 +109,7 @@ class ImageGenerator:
         self.prior_distributions = prior_distributions
         self.prior_means = utils.load_array_if_path(prior_means)
         self.prior_stds = utils.load_array_if_path(prior_stds)
+        self.use_specific_stats_for_channel = use_specific_stats_for_channel
         self.generation_classes = utils.load_array_if_path(generation_classes)
         # blurring parameters
         self.blur_background = blur_background
@@ -149,7 +159,7 @@ class ImageGenerator:
         while True:
 
             # randomly pick as many images as batch_size
-            unique_indices = npr.randint(len(self.labels_paths), size=batch_size)
+            label_map_indices = npr.randint(len(self.labels_paths), size=batch_size)
 
             # initialise input tensors
             y_all = []
@@ -159,10 +169,10 @@ class ImageGenerator:
             nonlinear_field_all = []
             bias_field_all = []
 
-            for idx in unique_indices:
+            for label_map_idx in label_map_indices:
 
                 # add labels to inputs
-                y = utils.load_volume(self.labels_paths[idx], dtype='int')
+                y = utils.load_volume(self.labels_paths[label_map_idx], dtype='int')
                 y_all.append(utils.add_axis(y, axis=-2))
 
                 # add means and standard deviations to inputs
@@ -172,18 +182,20 @@ class ImageGenerator:
 
                     # retrieve channel specific stats if necessary
                     if isinstance(self.prior_means, np.ndarray):
-                        if self.prior_means.shape[0] > 2:
-                            if self.prior_means.shape[0] / 2 == self.n_channels:
-                                raise ValueError("means_range does not have enough 'blocks' for all channels")
+                        if self.prior_means.shape[0] > 2 & self.use_specific_stats_for_channel:
+                            if self.prior_means.shape[0] / 2 != self.n_channels:
+                                raise ValueError("the number of blocks in prior_means does not match n_channels. This "
+                                                 "message is printed because use_specific_stats_for_channel is True.")
                             tmp_prior_means = self.prior_means[2 * channel:2 * channel + 2, :]
                         else:
                             tmp_prior_means = self.prior_means
                     else:
                         tmp_prior_means = self.prior_means
                     if isinstance(self.prior_stds, np.ndarray):
-                        if self.prior_stds.shape[0] > 2:
-                            if self.prior_stds.shape[0] / 2 == self.n_channels:
-                                raise ValueError("stds_range does not have enough 'blocks' for all channels")
+                        if self.prior_stds.shape[0] > 2 & self.use_specific_stats_for_channel:
+                            if self.prior_stds.shape[0] / 2 != self.n_channels:
+                                raise ValueError("the number of blocks in prior_stds does not match n_channels. This "
+                                                 "message is printed because use_specific_stats_for_channel is True.")
                             tmp_prior_stds = self.prior_stds[2 * channel:2 * channel + 2, :]
                         else:
                             tmp_prior_stds = self.prior_stds
@@ -197,9 +209,9 @@ class ImageGenerator:
                         tmp_prior_stds, n_labels, self.prior_distributions, 15., 10.), -1)
                     # share stats between labels of the same class
                     if self.generation_classes is not None:
-                        unique_classes, unique_indices = np.unique(self.generation_classes, return_index=True)
-                        unique_tmp_means = tmp_means[unique_indices]
-                        unique_tmp_stds = tmp_stds[unique_indices]
+                        unique_classes, label_map_indices = np.unique(self.generation_classes, return_index=True)
+                        unique_tmp_means = tmp_means[label_map_indices]
+                        unique_tmp_stds = tmp_stds[label_map_indices]
                         for idx_class, tmp_class in enumerate(unique_classes):
                             tmp_means[self.generation_classes == tmp_class] = unique_tmp_means[idx_class]
                             tmp_stds[self.generation_classes == tmp_class] = unique_tmp_stds[idx_class]
