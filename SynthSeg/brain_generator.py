@@ -30,8 +30,8 @@ class BrainGenerator:
                  rotation_bounds=None,
                  shearing_bounds=None,
                  apply_nonlin_trans=True,
+                 nonlin_std=3.,
                  nonlin_shape_factor=0.0625,
-                 nonlin_std_dev=3.,
                  blur_background=True,
                  data_res=None,
                  thickness=None,
@@ -39,8 +39,8 @@ class BrainGenerator:
                  blur_range=1.15,
                  crop_channel_2=None,
                  apply_bias_field=True,
-                 bias_shape_factor=0.025,
-                 bias_field_std_dev=0.3):
+                 bias_field_std=0.3,
+                 bias_shape_factor=0.025):
         """
         This class is wrapper around the labels_to_image_model model. It contains the GPU model that generates images
         from labels maps, and a python generator that suplies the input data for this model.
@@ -117,10 +117,10 @@ class BrainGenerator:
         :param apply_nonlin_trans: (optional) whether to apply non linear elastic deformation.
         If true, a diffeomorphic deformation field is obtained by first sampling a small tensor from the normal
         distribution, resizing it to image size, and integrationg it. Default is True.
+        :param nonlin_std: (optional) If apply_nonlin_trans is True, standard deviation of the normal distribution
+        from which we sample the first tensor for synthesising the deformation field.
         :param nonlin_shape_factor: (optional) If apply_nonlin_trans is True, ratio between the size of the input label
         maps and the size of the sampled tensor for synthesising the deformation field.
-        :param nonlin_std_dev: (optional) If apply_nonlin_trans is True, standard deviation of the normal distribution
-        from which we sample the first tensor for synthesising the deformation field.
         :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
         zero with a probability of 0.2. If False, the background is not blurred (we apply an edge blurring correction),
         and can be replaced by a low-intensity background with a probability of 0.5.
@@ -142,10 +142,10 @@ class BrainGenerator:
         :param apply_bias_field: (optional) whether to apply a bias field to the final image. Default is True.
         If True, the bias field is obtained by sampling a first tensor from normal distribution, resizing it to image
         size, and rescaling the values to positive number by taking the voxel-wise exponential. Default is True.
+        :param bias_field_std: (optional) If apply_nonlin_trans is True, standard deviation of the normal
+        distribution from which we sample the first tensor for synthesising the bias field.
         :param bias_shape_factor: (optional) If apply_bias_field is True, ratio between the size of the input
         label maps and the size of the sampled tensor for synthesising the bias field.
-        :param bias_field_std_dev: (optional) If apply_nonlin_trans is True, standard deviation of the normal
-        distribution from which we sample the first tensor for synthesising the bias field.
         """
 
         # prepare data files
@@ -190,8 +190,8 @@ class BrainGenerator:
         self.shearing_bounds = utils.load_array_if_path(shearing_bounds)
         # elastic transformation parameters
         self.apply_nonlin_trans = apply_nonlin_trans
+        self.nonlin_std = nonlin_std
         self.nonlin_shape_factor = nonlin_shape_factor
-        self.nonlin_std_dev = nonlin_std_dev
         # blurring parameters
         self.blur_background = blur_background
         self.data_res = utils.load_array_if_path(data_res)
@@ -201,8 +201,8 @@ class BrainGenerator:
         self.crop_second_channel = utils.load_array_if_path(crop_channel_2)
         # bias field parameters
         self.apply_bias_field = apply_bias_field
+        self.bias_field_std = bias_field_std
         self.bias_shape_factor = bias_shape_factor
-        self.bias_field_std_dev = bias_field_std_dev
 
         # build transformation model
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
@@ -229,15 +229,17 @@ class BrainGenerator:
                                                 aff=self.aff,
                                                 apply_linear_trans=self.apply_linear_trans,
                                                 apply_nonlin_trans=self.apply_nonlin_trans,
+                                                nonlin_std=self.nonlin_std,
                                                 nonlin_shape_factor=self.nonlin_shape_factor,
                                                 blur_background=self.blur_background,
                                                 data_res=self.data_res,
                                                 thickness=self.thickness,
                                                 downsample=self.downsample,
                                                 blur_range=self.blur_range,
+                                                crop_channel2=self.crop_second_channel,
                                                 apply_bias_field=self.apply_bias_field,
-                                                bias_shape_factor=self.bias_shape_factor,
-                                                crop_channel2=self.crop_second_channel)
+                                                bias_field_std=self.bias_field_std,
+                                                bias_shape_factor=self.bias_shape_factor)
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
 
@@ -255,14 +257,7 @@ class BrainGenerator:
                                                     apply_linear_trans=self.apply_linear_trans,
                                                     scaling_bounds=self.scaling_bounds,
                                                     rotation_bounds=self.rotation_bounds,
-                                                    shearing_bounds=self.shearing_bounds,
-                                                    apply_nonlin_trans=self.apply_nonlin_trans,
-                                                    nonlin_shape_factor=self.nonlin_shape_factor,
-                                                    nonlin_std_dev=self.nonlin_std_dev,
-                                                    apply_bias_field=self.apply_bias_field,
-                                                    bias_field_shape=self.model_output_shape,
-                                                    bias_shape_factor=self.bias_shape_factor,
-                                                    bias_field_std_dev=self.bias_field_std_dev)
+                                                    shearing_bounds=self.shearing_bounds)
         return model_inputs_generator
 
     def _build_brain_generator(self):

@@ -19,13 +19,6 @@ def build_model_inputs(path_label_maps,
                        scaling_bounds=None,
                        rotation_bounds=None,
                        shearing_bounds=None,
-                       apply_nonlin_trans=True,
-                       nonlin_shape_factor=.0625,
-                       nonlin_std_dev=3,
-                       apply_bias_field=True,
-                       bias_field_shape=None,
-                       bias_shape_factor=.025,
-                       bias_field_std_dev=.3,
                        background_paths=None):
     """
     This function builds a generator to be fed to the lab2im model. It enables to generate all the required inputs,
@@ -73,22 +66,6 @@ def build_model_inputs(path_label_maps,
     and 2, the bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
     If None (default), rotation_bounds = 15.
     :param shearing_bounds: (optional) same as scaling bounds. If None (default), shearing_bounds = 0.01.
-    :param apply_nonlin_trans: (optional) whether to apply non linear elastic deformation.
-    If true, a diffeomorphic deformation field is obtained by first sampling a small tensor from the normal
-    distribution, resizing it to image size, and integrationg it. Default is True.
-    :param nonlin_shape_factor: (optional) If apply_nonlin_trans is True, ratio between the size of the input label
-    maps and the size of the sampled tensor for synthesising the deformation field.
-    :param nonlin_std_dev: (optional) If apply_nonlin_trans is True, standard deviation of the normal distribution
-    from which we sample the first tensor for synthesising the deformation field.
-    :param apply_bias_field: (optional) whether to apply a bias field to the final image. Default is True.
-    If True, the bias field is obtained by sampling a first tensor from normal distribution, resizing it to image
-    size, and rescaling the values to positive number by taking the voxel-wise exponential. Default is True.
-    :param bias_field_shape: (optional) Shape of the final bias field that will be applied to synthesised images.
-    Must be provided if apply_bias_field is True.
-    :param bias_shape_factor: (optional) If apply_bias_field is True, ratio between the size of the input
-    label maps and the size of the sampled tensor for synthesising the bias field.
-    :param bias_field_std_dev: (optional) If apply_nonlin_trans is True, standard deviation of the normal
-    distribution from which we sample the first tensor for synthesising the deformation field.
     :param background_paths: (optional) list of paths of label maps to replace the soft brain tissues (label 258) with.
     """
 
@@ -106,8 +83,6 @@ def build_model_inputs(path_label_maps,
         means_all = []
         std_devs_all = []
         aff_all = []
-        nonlinear_field_all = []
-        bias_field_all = []
 
         for label_map_idx in label_map_indices:
 
@@ -182,24 +157,10 @@ def build_model_inputs(path_label_maps,
                 aff = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
                 aff_all.append(utils.add_axis(aff))
 
-            if apply_nonlin_trans:
-                deform_shape = utils.get_resample_shape(labels_shape[:n_dims], nonlin_shape_factor, len(labels_shape))
-                nonlinear_field = npr.normal(loc=0, scale=nonlin_std_dev * npr.rand(), size=deform_shape)
-                nonlinear_field_all.append(utils.add_axis(nonlinear_field))
-
-            if apply_bias_field:
-                bias_shape = utils.get_resample_shape(bias_field_shape[:n_dims], bias_shape_factor, n_channels=1)
-                bias_field = npr.normal(loc=0, scale=bias_field_std_dev * npr.rand(), size=bias_shape)
-                bias_field_all.append(utils.add_axis(bias_field))
-
         # build list of inputs to augmentation model
         inputs_vals = [y_all, means_all, std_devs_all]
         if apply_linear_trans:
             inputs_vals.append(aff_all)
-        if apply_nonlin_trans:
-            inputs_vals.append(nonlinear_field_all)
-        if apply_bias_field:
-            inputs_vals.append(bias_field_all)
 
         # put images and labels (concatenated if batch_size>1) into a tuple of 2 elements: (cat_images, cat_labels)
         if batch_size > 1:

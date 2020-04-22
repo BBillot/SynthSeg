@@ -42,7 +42,7 @@ thickness = None
 downsample = True
 blur_range = 1.2
 crop_channel_2 = './labels_classes_stats/cropping_stats_t2.npy'
-bias_field_std_dev = 0.5
+bias_field_std = 0.5
 
 # ---------------------------------------------------- example 2 -------------------------------------------------------
 
@@ -74,7 +74,7 @@ bias_field_std_dev = 0.5
 # downsample = True
 # blur_range = 1.5
 # crop_channel_2 = None
-# bias_field_std_dev = 0.6
+# bias_field_std = 0.6
 
 
 ########################################################################################################
@@ -105,14 +105,14 @@ brain_generator = BrainGenerator(labels_dir=paths,
                                  scaling_bounds=scaling_bounds,
                                  rotation_bounds=rotation_bounds,
                                  shearing_bounds=shearing_bounds,
-                                 nonlin_std_dev=nonlin_std,
+                                 nonlin_std=nonlin_std,
                                  blur_background=background_blur,
                                  data_res=data_res,
                                  thickness=thickness,
                                  downsample=downsample,
                                  blur_range=blur_range,
                                  crop_channel_2=crop_channel_2,
-                                 bias_field_std_dev=bias_field_std_dev)
+                                 bias_field_std=bias_field_std)
 
 if not os.path.exists(os.path.join(result_folder)):
     os.mkdir(result_folder)

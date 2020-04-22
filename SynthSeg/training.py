@@ -34,16 +34,16 @@ def training(labels_dir,
              scaling_bounds=None,
              rotation_bounds=None,
              shearing_bounds=None,
+             nonlin_std=3.,
              nonlin_shape_factor=.04,
-             nonlin_std_dev=3.,
              blur_background=True,
              data_res=None,
              thickness=None,
              downsample=False,
              blur_range=1.15,
              crop_channel_2=None,
+             bias_field_std=.3,
              bias_shape_factor=.025,
-             bias_field_std_dev=.3,
              n_levels=5,
              nb_conv_per_level=2,
              conv_size=3,
@@ -116,10 +116,10 @@ def training(labels_dir,
     bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
     If None (default), rotation_bounds = 15.
     :param shearing_bounds: (optional) same as scaling bounds. If None (default), shearing_bounds = 0.01.
+    :param nonlin_std: (optional) Standard deviation of the normal distribution from which we sample the first
+    tensor for synthesising the deformation field.
     :param nonlin_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled
     tensor for synthesising the elastic deformation field.
-    :param nonlin_std_dev: (optional) Standard deviation of the normal distribution from which we sample the first
-    tensor for synthesising the deformation field.
     :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
     zero with a probability of 0.2. If False, the background is not blurred (we apply an edge blurring correction),
     and can be replaced by a low-intensity background with a probability of 0.5.
@@ -136,9 +136,9 @@ def training(labels_dir,
     :param crop_channel_2: (optional) stats for cropping second channel along the anterior-posterior axis.
     Should be the path to a 1d numpy array of length 4, with bounds of uniform distribution for cropping the front and
     back of the image (in percentage). None is no croppping.
-    :param bias_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled
+    :param bias_field_std: (optional) Standard deviation of the normal distribution from which we sample the first
     tensor for synthesising the bias field.
-    :param bias_field_std_dev: (optional) Standard deviation of the normal distribution from which we sample the first
+    :param bias_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled
     tensor for synthesising the bias field.
     :param n_levels: (optional) number of level for the Unet
     :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
@@ -214,16 +214,16 @@ def training(labels_dir,
                                      scaling_bounds=scaling_bounds,
                                      rotation_bounds=rotation_bounds,
                                      shearing_bounds=shearing_bounds,
+                                     nonlin_std=nonlin_std,
                                      nonlin_shape_factor=nonlin_shape_factor,
-                                     nonlin_std_dev=nonlin_std_dev,
                                      blur_background=blur_background,
                                      data_res=data_res,
                                      thickness=thickness,
                                      downsample=downsample,
                                      blur_range=blur_range,
                                      crop_channel_2=crop_channel_2,
-                                     bias_shape_factor=bias_shape_factor,
-                                     bias_field_std_dev=bias_field_std_dev)
+                                     bias_field_std=bias_field_std,
+                                     bias_shape_factor=bias_shape_factor)
 
     # transformation model
     labels_to_image_model = brain_generator.labels_to_image_model
@@ -342,16 +342,16 @@ if __name__ == "__main__":
     parser.add_argument("--scaling", dest="scaling_bounds")
     parser.add_argument("--rotation", dest="rotation_bounds")
     parser.add_argument("--shearing", dest="shearing_bounds")
+    parser.add_argument("--nonlin_std", dest="nonlin_std")
     parser.add_argument("--nonlin_shape_fact", type=float, dest="nonlin_shape_factor")
-    parser.add_argument("--nonlin_std", dest="nonlin_std_dev")
     parser.add_argument("--no_background_blurring", action='store_false', dest="blur_background")
     parser.add_argument("--data_res", dest="data_res")
     parser.add_argument("--thickness", dest="thickness")
     parser.add_argument("--downsample", dest="downsample")
     parser.add_argument("--blur_range", dest="blur_range")
     parser.add_argument("--crop_channel_2", type=str, dest="crop_channel_2")
+    parser.add_argument("--bias_std", type=float, dest="bias_field_std")
     parser.add_argument("--bias_shape_factor", type=float, dest="bias_shape_factor")
-    parser.add_argument("--bias_std", type=float, dest="bias_field_std_dev")
 
     # Architecture parameters
     parser.add_argument("--n_levels", type=int, dest="n_levels")

@@ -166,8 +166,6 @@ class ImageGenerator:
             means_all = []
             std_devs_all = []
             aff_all = []
-            nonlinear_field_all = []
-            bias_field_all = []
 
             for label_map_idx in label_map_indices:
 
@@ -230,18 +228,8 @@ class ImageGenerator:
                 aff = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
                 aff_all.append(utils.add_axis(aff))
 
-                # add elastic deformation
-                deform_shape = utils.get_resample_shape(labels_shape[:n_dims], .0625, len(labels_shape))
-                nonlinear_field = npr.normal(loc=0, scale=3 * npr.rand(), size=deform_shape)
-                nonlinear_field_all.append(utils.add_axis(nonlinear_field))
-
-                # add bias field
-                bias_shape = utils.get_resample_shape(self.model_output_shape[:n_dims], .025, n_channels=1)
-                bias_field = npr.normal(loc=0, scale=.3 * npr.rand(), size=bias_shape)
-                bias_field_all.append(utils.add_axis(bias_field))
-
             # build list of inputs to augmentation model
-            inputs_vals = [y_all, means_all, std_devs_all, aff_all, nonlinear_field_all, bias_field_all]
+            inputs_vals = [y_all, means_all, std_devs_all, aff_all]
 
             # put images and labels (concatenated if batch_size>1) into a tuple of 2 elements: (cat_images, cat_labels)
             if batch_size > 1:

@@ -32,10 +32,6 @@ def lab2im_model(labels_shape,
         -a vector containing the means of the Gaussian Mixture Model for each label,
         -a vector containing the standard deviations of the Gaussian Mixture Model for each label,
         -an array of size batch*(n_dims+1)*(n_dims+1) representing a linear transformation
-        -a small non linear field of size batch*(dim_1*...*dim_n)*n_dims that will be resampled to labels size and
-        integrated, to obtain a diffeomorphic elastic deformation.
-        -a small bias field of size batch*(dim_1*...*dim_n)*1 that will be resampled to labels size and multiplied to
-        the image, to add a "bias-field" noise.
     The model returns:
         -the generated image normalised between 0 and 1.
         -the corresponding label map, with only the labels present in output_labels (the other are reset to zero).
@@ -77,8 +73,6 @@ def lab2im_model(labels_shape,
 
     # get shapes
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
-    deformation_field_size = utils.get_resample_shape(labels_shape, .0625, len(labels_shape))
-    bias_field_size = utils.get_resample_shape(output_shape, .025, n_channels=1)
 
     # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
     n_generation_labels = generation_labels.shape[0]
@@ -89,15 +83,13 @@ def lab2im_model(labels_shape,
     means_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='means_input')
     std_devs_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='std_devs_input')
     aff_in = KL.Input(shape=(n_dims + 1, n_dims + 1), name='aff_input')
-    nonlin_field_in = KL.Input(shape=deformation_field_size, name='nonlin_input')
-    bias_field_in = KL.Input(shape=bias_field_size, name='bias_input')
-    list_inputs = [labels_input, means_input, std_devs_input, aff_in, nonlin_field_in, bias_field_in]
+    list_inputs = [labels_input, means_input, std_devs_input, aff_in]
 
     # convert labels to new_label_list
     labels = convert_labels(labels_input, lut)
 
     # deform labels
-    labels = deform_tensor(labels, aff_in, nonlin_field_in, n_dims)
+    labels = deform_tensor(labels, affine_trans=aff_in, interp_method='nearest')
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'))(labels)
 
     # cropping
@@ -125,7 +117,7 @@ def lab2im_model(labels_shape,
         channel = resample_tensor(channel, output_shape, 'linear', n_dims=n_dims)
 
         # apply bias field
-        channel = bias_field_augmentation(channel, bias_field_in, n_dims=3)
+        channel = bias_field_augmentation(channel, bias_shape_factor=.025, bias_field_std=.3)
 
         # intensity augmentation
         channel = KL.Lambda(lambda x: K.clip(x, 0, 300))(channel)

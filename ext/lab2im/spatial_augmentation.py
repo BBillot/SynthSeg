@@ -12,26 +12,38 @@ from . import edit_volumes
 import ext.neuron.layers as nrn_layers
 
 
-def deform_tensor(tensor, affine_trans=None, elastic_trans=None, n_dims=3):
+def deform_tensor(tensor,
+                  affine_trans=None,
+                  apply_elastic_trans=True,
+                  interp_method='linear',
+                  nonlin_std=3.,
+                  nonlin_shape_factor=.0625):
     """This function spatially deforms a tensor with a combination of affine and elastic transformations.
-    :param tensor: input tensor to deform
-    :param affine_trans: (optional) tensor of shape [?, n_dims+1, n_dims+1] corresponding to an affine transformation.
-    Default is None, no affine transformation is applied. Should not be None if elastic_trans is None.
-    :param elastic_trans: (optional) tensor of shape [?, x, y, z, n_dims] corresponding to a small-size SVF, that is:
-    1) resized to half the shape of volume
-    2) integrated
-    3) resized to full image size
-    Default is None, no elastic transformation is applied. Should not be None if affine_trans is None.
-    :param n_dims: (optional) number of dimensions of the initial image (excluding batch and channel dimensions)
+    :param tensor: input tensor to deform. Expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
+    :param affine_trans: (optional) tensor of shape [batchsize, n_dims+1, n_dims+1] corresponding to an affine 
+    transformation. Default is None, no affine transformation is applied.
+    :param apply_elastic_trans: (optional) whether to deform the input tensor with a diffeomorphic elastic 
+    transformation. If True the following steps occur:
+    1) a small-size SVF is sampled from a centred normal distribution.
+    2) it is resized with trilinear interpolation to half the shape of the input tensor
+    3) it is integrated to obtain a diffeomorphic transformation
+    4) finally, it is resized (again with trilinear interpolation) to full image size
+    Default is None, where no elastic transformation is applied.
+    :param interp_method: (optional) interpolation method when deforming the input tensor. Can be 'linear', or 'nearest'
+    :param nonlin_std: (optional) standard deviation of the normal distribution from which we sample the small field for
+    elastic deformation.
+    :param nonlin_shape_factor: (optional) ration between the shape of the input tensor and the shape of the small field
+    for elastic deformation.
     :return: tensor of the same shape as volume
     """
 
-    assert (affine_trans is not None) | (elastic_trans is not None), 'affine_trans or elastic_trans should be provided'
+    assert (affine_trans is not None) | apply_elastic_trans, 'affine_trans or elastic_trans should be provided'
 
-    # reformat image
+    # reformat tensor and get its shape
+    tensor = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(tensor)
     tensor._keras_shape = tuple(tensor.get_shape().as_list())
-    image_shape = tensor.get_shape().as_list()[1:n_dims + 1]
-    tensor = KL.Lambda(lambda x: tf.cast(x, dtype='float'))(tensor)
+    volume_shape = tensor.get_shape().as_list()[1: -1]
+    n_dims = len(volume_shape)
     trans_inputs = [tensor]
 
     # add affine deformation to inputs list
@@ -39,16 +51,25 @@ def deform_tensor(tensor, affine_trans=None, elastic_trans=None, n_dims=3):
         trans_inputs.append(affine_trans)
 
     # prepare non-linear deformation field and add it to inputs list
-    if elastic_trans is not None:
-        elastic_trans_shape = elastic_trans.get_shape().as_list()[1:n_dims+1]
-        resize_shape = [max(int(image_shape[i]/2), elastic_trans_shape[i]) for i in range(n_dims)]
+    if apply_elastic_trans:
+
+        # sample small field from normal distribution of specified std dev
+        small_shape = utils.get_resample_shape(volume_shape, nonlin_shape_factor, n_dims)
+        tensor_shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
+        split_shape = KL.Lambda(lambda x: tf.split(x, [1, n_dims + 1]))(tensor_shape)
+        nonlin_shape = KL.Lambda(lambda x: tf.concat([x, tf.convert_to_tensor(small_shape)], axis=0))(split_shape[0])
+        elastic_trans = KL.Lambda(lambda x: tf.random.normal(x, stddev=nonlin_std))(nonlin_shape)
+        elastic_trans._keras_shape = tuple(elastic_trans.get_shape().as_list())
+
+        # reshape this field to image size and integrate it
+        resize_shape = [max(int(volume_shape[i]/2), small_shape[i]) for i in range(n_dims)]
         nonlin_field = nrn_layers.Resize(size=resize_shape, interp_method='linear')(elastic_trans)
         nonlin_field = nrn_layers.VecInt()(nonlin_field)
-        nonlin_field = nrn_layers.Resize(size=image_shape, interp_method='linear')(nonlin_field)
+        nonlin_field = nrn_layers.Resize(size=volume_shape, interp_method='linear')(nonlin_field)
         trans_inputs.append(nonlin_field)
 
     # apply deformations
-    return nrn_layers.SpatialTransformer(interp_method='nearest')(trans_inputs)
+    return nrn_layers.SpatialTransformer(interp_method=interp_method)(trans_inputs)
 
 
 def random_cropping(tensor, crop_shape, n_dims=3):
