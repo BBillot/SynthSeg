@@ -16,7 +16,7 @@ def deform_tensor(tensor,
                   affine_trans=None,
                   apply_elastic_trans=True,
                   interp_method='linear',
-                  nonlin_std=3.,
+                  nonlin_std=2.,
                   nonlin_shape_factor=.0625):
     """This function spatially deforms a tensor with a combination of affine and elastic transformations.
     :param tensor: input tensor to deform. Expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
@@ -209,3 +209,13 @@ def restrict_tensor(tensor, axes, boundaries):
     tensor = KL.multiply([tensor, mask])
 
     return tensor, mask
+
+
+def build_rotation_matrix(theta, n_dims):
+
+    if n_dims == 2:
+        rotation_matrix = tf.concat([tf.cos(theta), -tf.sin(theta), tf.zeros(1), tf.zeros(1),
+                                     tf.sin(theta), tf.cos(theta), tf.zeros(1), tf.zeros(1),
+                                     tf.zeros(1), tf.zeros(1), tf.ones(1), tf.zeros(1),
+                                     tf.zeros(1), tf.zeros(1), tf.zeros(1), tf.ones(1)], axis=0)
+        rotation_matrix = tf.reshape(rotation_matrix, (4, 4))

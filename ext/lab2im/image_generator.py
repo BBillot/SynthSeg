@@ -18,36 +18,50 @@ class ImageGenerator:
                  target_res=None,
                  output_shape=None,
                  output_div_by_n=None,
+                 generation_classes=None,
                  prior_distributions='uniform',
                  prior_means=None,
                  prior_stds=None,
                  use_specific_stats_for_channel=False,
-                 generation_classes=None,
                  blur_background=True,
                  blur_range=1.15):
         """
         This class is wrapper around the lab2im_model model. It contains the GPU model that generates images from labels
         maps, and a python generator that suplies the input data for this model.
         To generate pairs of image/labels you can just call the method generate_image() on an object of this class.
-        :param labels_dir: path of folder with all input label maps
-        :param generation_labels: list of all possible label values in the input label maps.
-        Can be a sequence or a 1d numpy array, or the path to a 1d numpy array.
+
+        :param labels_dir: path of folder with all input label maps, or to a single label map.
+
+        # label maps-related parameters
+        :param generation_labels: (optional) list of all possible label values in the input label maps.
         Default is None, where the label values are directly gotten from the provided label maps.
+        If not None, can be a sequence or a 1d numpy array, or the path to a 1d numpy array.
         :param output_labels: (optional) list of all the label values to keep in the output label maps. Label values
         that are in generation_labels but not in output_labels are reset to zero.
         Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+        :param output_labels: (optional) list of all the label values to keep in the output label maps.
+        Should be a subset of the values contained in generation_labels.
+        Label values that are in generation_labels but not in output_labels are reset to zero.
+        Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+
+        # output-related parameters
         :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
         :param n_channels: (optional) number of channels to be synthetised. Default is 1.
         :param target_res: (optional) target resolution of the generated images and corresponding label maps.
         If None, the outputs will have the same resolution as the input label maps.
         Can be a number (isotropic resolution), a sequence, a 1d numpy array, or the path to a 1d numpy array.
-        :param output_shape: (optional) desired shape of the output images.
-        If the atlas and target resolutions are the same, the output will be cropped to output_shape, and if the two
-        resolutions are different, the output will be resized with trilinear interpolation to output_shape.
+        :param output_shape: (optional) desired shape of the output images, obtained by cropping.
         Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
         :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites
         output_shape if necessary. Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or
         the path to a 1d numpy array.
+
+        # GMM-sampling parameters
+        :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
+        distribution. Regouped labels will thus share the same Gaussian when samling a new image. Can be a sequence, a
+        1d numpy array, or the path to a 1d numpy array.
+        It should have the same length as generation_labels, and contain values between 0 and K-1, where K is the total
+        number of classes. Default is all labels have different classes.
         :param prior_distributions: (optional) type of distribution from which we sample the GMM parameters.
         Can either be 'uniform', or 'normal'. Default is 'uniform'.
         :param prior_means: (optional) hyperparameters controlling the prior distributions of the GMM means. Because
@@ -55,10 +69,11 @@ class ImageGenerator:
         1) a sequence of length 2, directly defining the two hyperparameters: [min, max] if prior_distributions is
         uniform, [mean, std] if the distribution is normal. The GMM means of are independently sampled at each
         mini_batch from the same distribution.
-        2) an array of shape (2, n_labels). The mean of the Gaussian distribution associated to label k is sampled at
-        each mini_batch from U(prior_means[0,k], prior_means[1,k]) if prior_distributions is uniform, and from
+        2) an array of shape (2, K), where K is the number of classes (K=len(generation_labels) if generation_classes is
+        not given). The mean of the Gaussian distribution associated to class k in [0, ...K-1] is sampled at each
+        mini-batch from U(prior_means[0,k], prior_means[1,k]) if prior_distributions is uniform, and from
         N(prior_means[0,k], prior_means[1,k]) if prior_distributions is normal.
-        3) an array of shape (2*n_mod, n_labels), where each block of two rows is associated to hyperparameters derived
+        3) an array of shape (2*n_mod, K), where each block of two rows is associated to hyperparameters derived
         from different modalities. In this case, if use_specific_stats_for_channel is False, we first randomly select a
         modality from the n_mod possibilities, and we sample the GMM means like in 2).
         If use_specific_stats_for_channel is True, each block of two rows correspond to a different channel
@@ -69,10 +84,8 @@ class ImageGenerator:
         Default is None, which corresponds to prior_stds = [5, 25].
         :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
         only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
-        :param generation_classes: (optional) Indices regrouping generation labels into classes when sampling the GMM.
-        Intensities of corresponding to regouped labels will thus be sampled from the same distribution. Must have the
-        same length as generation_labels. Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
-        Default is all labels have different classes.
+
+        # blurring parameters
         :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
         zero with a probability of 0.2. If False, the background is not blurred (we apply an edge blurring correction),
         and can be replaced by a low-intensity background with a probability of 0.5.
@@ -94,11 +107,11 @@ class ImageGenerator:
             utils.get_volume_info(self.labels_paths[0])
         self.n_channels = n_channels
         if generation_labels is not None:
-            self.generation_labels = generation_labels
+            self.generation_labels = utils.load_array_if_path(generation_labels)
         else:
             self.generation_labels = utils.get_list_labels(labels_dir=labels_dir)
         if output_labels is not None:
-            self.output_labels = output_labels
+            self.output_labels = utils.load_array_if_path(output_labels)
         else:
             self.output_labels = self.generation_labels
         self.target_res = utils.load_array_if_path(target_res)
@@ -106,11 +119,20 @@ class ImageGenerator:
         self.output_shape = utils.load_array_if_path(output_shape)
         self.output_div_by_n = output_div_by_n
         # GMM parameters
+        if generation_classes is not None:
+            self.generation_classes = utils.load_array_if_path(generation_classes)
+            assert self.generation_classes.shape == self.generation_labels.shape, \
+                'if provided, generation labels should have the same shape as generation_labels'
+            unique_classes = np.unique(self.generation_classes)
+            assert np.array_equal(unique_classes, np.arange(np.max(unique_classes)+1)), \
+                'generation_classes should a linear range between 0 and its maximum value.'
+        else:
+            self.generation_classes = np.arange(self.generation_labels.shape[0])
         self.prior_distributions = prior_distributions
         self.prior_means = utils.load_array_if_path(prior_means)
         self.prior_stds = utils.load_array_if_path(prior_stds)
         self.use_specific_stats_for_channel = use_specific_stats_for_channel
-        self.generation_classes = utils.load_array_if_path(generation_classes)
+
         # blurring parameters
         self.blur_background = blur_background
         self.blur_range = blur_range
@@ -148,7 +170,7 @@ class ImageGenerator:
     def generate_image(self):
         """call this method when an object of this class has been instantiated to generate new brains"""
         (image, labels) = next(self.image_generator)
-        return image, labels
+        return np.squeeze(image), np.squeeze(labels)
 
     def _build_model_inputs(self, n_labels, batch_size=1):
 
@@ -201,30 +223,24 @@ class ImageGenerator:
                         tmp_prior_stds = self.prior_stds
 
                     # draw means and std devs from priors
-                    tmp_means = utils.add_axis(utils.draw_value_from_distribution(
-                        tmp_prior_means, n_labels, self.prior_distributions, 125., 100.), -1)
-                    tmp_stds = utils.add_axis(utils.draw_value_from_distribution(
-                        tmp_prior_stds, n_labels, self.prior_distributions, 15., 10.), -1)
-                    # share stats between labels of the same class
-                    if self.generation_classes is not None:
-                        unique_classes, label_map_indices = np.unique(self.generation_classes, return_index=True)
-                        unique_tmp_means = tmp_means[label_map_indices]
-                        unique_tmp_stds = tmp_stds[label_map_indices]
-                        for idx_class, tmp_class in enumerate(unique_classes):
-                            tmp_means[self.generation_classes == tmp_class] = unique_tmp_means[idx_class]
-                            tmp_stds[self.generation_classes == tmp_class] = unique_tmp_stds[idx_class]
+                    tmp_classes_means = utils.draw_value_from_distribution(tmp_prior_means, n_labels,
+                                                                           self.prior_distributions, 125., 100.)
+                    tmp_classes_stds = utils.draw_value_from_distribution(tmp_prior_stds, n_labels,
+                                                                          self.prior_distributions, 15., 10.)
+                    tmp_means = utils.add_axis(tmp_classes_means[self.generation_classes], -1)
+                    tmp_stds = utils.add_axis(tmp_classes_stds[self.generation_classes], -1)
                     means = np.concatenate([means, tmp_means], axis=1)
                     std_devs = np.concatenate([std_devs, tmp_stds], axis=1)
                 means_all.append(utils.add_axis(means))
                 std_devs_all.append(utils.add_axis(std_devs))
 
                 # get affine transformation: rotate, scale, shear (translation done during random cropping)
-                scaling = utils.draw_value_from_distribution(None, size=n_dims, centre=1, default_range=.15)
+                scaling = utils.draw_value_from_distribution(None, size=n_dims, centre=1, default_range=.07)
                 if n_dims == 2:
-                    rotation = utils.draw_value_from_distribution(None, default_range=15.0)
+                    rotation = utils.draw_value_from_distribution(None, default_range=10.0)
                 else:
-                    rotation = utils.draw_value_from_distribution(None, size=n_dims, default_range=15.0)
-                shearing = utils.draw_value_from_distribution(None, size=n_dims ** 2 - n_dims, default_range=.01)
+                    rotation = utils.draw_value_from_distribution(None, size=n_dims, default_range=10.0)
+                shearing = utils.draw_value_from_distribution(None, size=n_dims ** 2 - n_dims, default_range=.007)
                 aff = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
                 aff_all.append(utils.add_axis(aff))
 

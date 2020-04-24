@@ -55,11 +55,13 @@ def labels_to_image_model(labels_shape,
         -the corresponding label map, with only the labels present in output_labels (the other are reset to zero).
     :param labels_shape: shape of the input label maps. Can be a sequence or a 1d numpy array.
     :param n_channels: number of channels to be synthetised.
-    :param generation_labels: list of all possible label values in the input label maps. Should be organised as follows:
-    background label first, then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same
-    hemisphere (can be left or right), and finally all the corresponding contralateral structures (in the same order).
-    Can be a sequence or a 1d numpy array.
+    :param generation_labels: (optional) list of all possible label values in the input label maps.
+    Default is None, where the label values are directly gotten from the provided label maps.
+    If not None, can be a sequence or a 1d numpy array. It should be organised as follows: background label first, then
+    non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same hemisphere (can be left or right),
+    and finally all the corresponding contralateral structures (in the same order).
     :param output_labels: list of all the label values to keep in the output label maps, in no particular order.
+    Should be a subset of the values contained in generation_labels.
     Label values that are in generation_labels but not in output_labels are reset to zero.
     Can be a sequence or a 1d numpy array.
     :param n_neutral_labels: number of non-sided generation labels.
@@ -67,10 +69,8 @@ def labels_to_image_model(labels_shape,
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
     :param target_res: target resolution of the generated images and corresponding label maps.
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
-    :param output_shape: (optional) desired shape of the output images.
-    If the atlas and target resolutions are the same, the output will be cropped to output_shape, and if the two
-    resolutions are different, the output will be resized with trilinear interpolation to output_shape.
-    Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.
+    :param output_shape: (optional) desired shape of the output images, obtained by cropping.
+    Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites output_shape
     if necessary. Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.
     :param padding_margin: (optional) margin by which to pad the input labels with zeros.
@@ -90,12 +90,18 @@ def labels_to_image_model(labels_shape,
     :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
     zero with a probability of 0.2. If False, the background is not blurred (we apply an edge blurring correction), and
     can be replaced by a low-intensity background.
-    :param data_res: (optional) If provided, the generated images are blurred to mimick data that would be: 1) acquired
-    at the given lower resolution, and 2) resample and target_resolution. By default the images are isotropically
-    blurred to introduce some spatial correlation between voxels.
-    Can be an number (isotropic resolution), a sequence, or a 1d numpy array.
+    :param data_res: ((optional) acquisition resolution to mimick. If provided, the images sampled from the GMM are
+    blurred to mimick data that would be: 1) acquired at the given acquisition resolution, and 2) resample at
+    target_resolution.
+    Default is None, where images are isotropically blurred to introduce some spatial correlation between voxels.
+    If the generated images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d
+    numpy array, or the path to a 1d numy array. In the multi-modal case, it should be given as a numpy array (or a
+    path) of size (n_mod, n_dims), where each row is the acquisition resolution of the correspionding chanel.
     :param thickness: (optional) if data_res is provided, we can further specify the slice thickness of the low
-    resolution images to mimick. Can be a number (isotropic thickness), a sequence, or a 1d numpy array.
+    resolution images to mimick.
+    If the generated images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d
+    numpy array, or the path to a 1d numy array. In the multi-modal case, it should be given as a numpy array (or a
+    path) of size (n_mod, n_dims), where each row is the acquisition resolution of the correspionding chanel.
     :param downsample: (optional) whether to actually downsample the volume image to data_res. Default is False.
     :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
     or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
@@ -114,7 +120,7 @@ def labels_to_image_model(labels_shape,
     # reformat resolutions
     labels_shape = utils.reformat_to_list(labels_shape)
     n_dims, _ = utils.get_dims(labels_shape)
-    atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims=n_dims)
+    atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims=n_dims, n_channels=n_channels)
     if data_res is None:  # data_res assumed to be the same as the atlas
         data_res = atlas_res
     else:
@@ -202,7 +208,11 @@ def labels_to_image_model(labels_shape,
             channel = KL.multiply([channel, tmp_mask])
 
         # resample channel
-        channel = l2i_et.resample_tensor(channel, output_shape, 'linear', downsample_res[i], atlas_res, n_dims=n_dims)
+        if downsample_res is not None:
+            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', downsample_res[i], atlas_res,
+                                             n_dims=n_dims)
+        else:
+            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res, n_dims)
 
         # apply bias field
         if apply_bias_field:

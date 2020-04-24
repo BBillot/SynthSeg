@@ -10,11 +10,11 @@ def build_model_inputs(path_label_maps,
                        n_labels,
                        batch_size=1,
                        n_channels=1,
+                       generation_classes=None,
                        prior_distributions='uniform',
                        prior_means=None,
                        prior_stds=None,
                        use_specific_stats_for_channel=False,
-                       generation_classes=None,
                        apply_linear_trans=True,
                        scaling_bounds=None,
                        rotation_bounds=None,
@@ -27,6 +27,10 @@ def build_model_inputs(path_label_maps,
     :param n_labels: number of labels in the input label maps.
     :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
     :param n_channels: (optional) number of channels to be synthetised. Default is 1.
+    :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
+    distribution. Regouped labels will thus share the same Gaussian when samling a new image. Can be a sequence or a
+    1d numpy array. It should have the same length as generation_labels, and contain values between 0 and K-1, where K
+    is the total number of classes. Default is all labels have different classes.
     :param prior_distributions: (optional) type of distribution from which we sample the GMM parameters.
     Can either be 'uniform', or 'normal'. Default is 'uniform'.
     :param prior_means: (optional) hyperparameters controlling the prior distributions of the GMM means. Because
@@ -34,10 +38,11 @@ def build_model_inputs(path_label_maps,
     1) a sequence of length 2, directly defining the two hyperparameters: [min, max] if prior_distributions is
     uniform, [mean, std] if the distribution is normal. The GMM means of are independently sampled at each
     mini_batch from the same distribution.
-    2) an array of shape (2, n_labels). The mean of the Gaussian distribution associated to label k is sampled at
-    each mini_batch from U(prior_means[0,k], prior_means[1,k]) if prior_distributions is uniform, and from
+    2) an array of shape (2, K), where K is the number of classes (K=len(generation_labels) if generation_classes is
+    not given). The mean of the Gaussian distribution associated to class k in [0, ...K-1] is sampled at each mini-batch
+    from U(prior_means[0,k], prior_means[1,k]) if prior_distributions is uniform, or from
     N(prior_means[0,k], prior_means[1,k]) if prior_distributions is normal.
-    3) an array of shape (2*n_mod, n_labels), where each block of two rows is associated to hyperparameters derived
+    3) an array of shape (2*n_mod, K), where each block of two rows is associated to hyperparameters derived
     from different modalities. In this case, if use_specific_stats_for_channel is False, we first randomly select a
     modality from the n_mod possibilities, and we sample the GMM means like in 2).
     If use_specific_stats_for_channel is True, each block of two rows correspond to a different channel
@@ -48,10 +53,6 @@ def build_model_inputs(path_label_maps,
     Default is None, which corresponds to prior_stds = [5, 25].
     :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
     only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
-    :param generation_classes: (optional) Indices regrouping generation labels into classes when sampling the GMM.
-    Intensities of corresponding to regouped labels will thus be sampled from the same distribution. Must have the
-    same length as generation_labels. Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
-    Default is all labels have different classes.
     :param apply_linear_trans: (optional) whether to apply affine deformation. Default is True.
     :param scaling_bounds: (optional) if apply_linear_trans is True, the scaling factor for each dimension is
     sampled from a uniform distribution of predefined bounds. Can either be:
@@ -71,6 +72,10 @@ def build_model_inputs(path_label_maps,
 
     # get label info
     labels_shape, _, n_dims, _, _, _ = utils.get_volume_info(path_label_maps[0])
+
+    # allocate unique class to each label if generation classes is not given
+    if generation_classes is None:
+        generation_classes = np.arange(n_labels)
 
     # Generate!
     while True:
@@ -107,7 +112,7 @@ def build_model_inputs(path_label_maps,
 
                 # retrieve channel specific stats if necessary
                 if isinstance(prior_means, np.ndarray):
-                    if prior_means.shape[0] > 2 & use_specific_stats_for_channel:
+                    if (prior_means.shape[0] > 2) & use_specific_stats_for_channel:
                         if prior_means.shape[0] / 2 != n_channels:
                             raise ValueError("the number of blocks in prior_means does not match n_channels. This "
                                              "message is printed because use_specific_stats_for_channel is True.")
@@ -117,7 +122,7 @@ def build_model_inputs(path_label_maps,
                 else:
                     tmp_prior_means = prior_means
                 if isinstance(prior_stds, np.ndarray):
-                    if prior_stds.shape[0] > 2 & use_specific_stats_for_channel:
+                    if (prior_stds.shape[0] > 2) & use_specific_stats_for_channel:
                         if prior_stds.shape[0] / 2 != n_channels:
                             raise ValueError("the number of blocks in prior_stds does not match n_channels. This "
                                              "message is printed because use_specific_stats_for_channel is True.")
@@ -128,18 +133,12 @@ def build_model_inputs(path_label_maps,
                     tmp_prior_stds = prior_stds
 
                 # draw means and std devs from priors
-                tmp_means = utils.add_axis(utils.draw_value_from_distribution(
-                    tmp_prior_means, n_labels, prior_distributions, 125., 100.), -1)
-                tmp_stds = utils.add_axis(utils.draw_value_from_distribution(
-                    tmp_prior_stds, n_labels, prior_distributions, 15., 10.), -1)
-                # share stats between labels of the same class
-                if generation_classes is not None:
-                    unique_classes, unique_indices = np.unique(generation_classes, return_index=True)
-                    unique_tmp_means = tmp_means[unique_indices]
-                    unique_tmp_stds = tmp_stds[unique_indices]
-                    for idx_class, tmp_class in enumerate(unique_classes):
-                        tmp_means[generation_classes == tmp_class] = unique_tmp_means[idx_class]
-                        tmp_stds[generation_classes == tmp_class] = unique_tmp_stds[idx_class]
+                tmp_classes_means = utils.draw_value_from_distribution(tmp_prior_means, n_labels, prior_distributions,
+                                                                       125., 100.)
+                tmp_classes_stds = utils.draw_value_from_distribution(tmp_prior_stds, n_labels, prior_distributions,
+                                                                      15., 10.)
+                tmp_means = utils.add_axis(tmp_classes_means[generation_classes], -1)
+                tmp_stds = utils.add_axis(tmp_classes_stds[generation_classes], -1)
                 means = np.concatenate([means, tmp_means], axis=1)
                 std_devs = np.concatenate([std_devs, tmp_stds], axis=1)
             means_all.append(utils.add_axis(means))

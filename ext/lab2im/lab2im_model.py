@@ -37,11 +37,10 @@ def lab2im_model(labels_shape,
         -the corresponding label map, with only the labels present in output_labels (the other are reset to zero).
     :param labels_shape: shape of the input label maps. Can be a sequence or a 1d numpy array.
     :param n_channels: number of channels to be synthetised.
-    :param generation_labels: list of all possible label values in the input label maps. Should be organised as follows:
-    background label first, then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same
-    hemisphere (can be left or right), and finally all the corresponding contralateral structures (in the same order).
+    :param generation_labels: list of all possible label values in the input label maps.
     Can be a sequence or a 1d numpy array.
-    :param output_labels: list of all the label values to keep in the output label maps, in no particular order.
+    :param output_labels: list of all the label values to keep in the output label maps.
+    Should be a subset of the values contained in generation_labels.
     Label values that are in generation_labels but not in output_labels are reset to zero.
     Can be a sequence or a 1d numpy array.
     :param atlas_res: resolution of the input label maps.

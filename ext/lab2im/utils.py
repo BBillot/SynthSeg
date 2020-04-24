@@ -151,7 +151,7 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     :param label_list: (optional) already computed label_list. Can be a sequence, a 1d numpy array, or the path to
     a numpy 1d array.
     :param labels_dir: (optional) if path_label_list is None, the label list is computed by reading all the label maps
-    in this given folder.path of folder containing label maps.
+    in the given folder. Can also be the path to a single label map.
     :param save_label_list: (optional) path where to save the label list.
     :param FS_sort: (optional) whether to sort label values according to the FreeSurfer classification.
     If true, the label values will be ordered as follows: neutral labels first (i.e. non-sided), left-side labels,
@@ -169,7 +169,10 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     elif labels_dir is not None:
         print('Compiling list of unique labels')
         # prepare data files
-        labels_paths = list_images_in_folder(labels_dir)
+        if ('.nii.gz' in labels_dir) | ('.nii' in labels_dir) | ('.mgz' in labels_dir) | ('.npz' in labels_dir):
+            labels_paths = [labels_dir]
+        else:
+            labels_paths = list_images_in_folder(labels_dir)
         assert len(labels_paths) > 0, "Could not find any training data"
         # go through all labels files and compute unique list of labels
         label_list = np.empty(0)
