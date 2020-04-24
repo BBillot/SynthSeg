@@ -34,30 +34,35 @@ prior_stds = '../data_example/prior_stds.npy'
 # This options also enable correction for edge bluring effects.
 background_blur = False
 
+# IMPORTANT !!!
+# Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
+# these values refer to the axes of the raw label map (i.e. once it has been loaded in python).
+# Depending on the label map orientation, the axes of its raw array may or may not correspond to the RAS axes.
+
 # ---------------------------------------------------- multi_modal -----------------------------------------------------
 # Here we want to mimick multi-modal scans (double T1w, this is just an example) acquired at 1mm and subsampled to 1.5mm
 
-# # output-related parameters
-# channels = 2  # create multi-modal image with 2 channels
-# target_resolution = 1.5  # resample output to 1.5mm isotropic (input label map is at 1mm isotropic)
-# output_shape = None  # we don't impose a specific size for output...
-# output_divisible_by_n = 16  # ... but we want it to be divisible by 16 (e.g. for deep learning use)
-#
-# # spatial deformation parameters
-# scaling_bounds = np.array([[0.8, 0.95, 0.95], [1.2, 1.05, 1.05]])  # exagerated scaling in first dimension
-# rotation_bounds = 15  # the rotation angles will be drawn from the same uniform distribution [-15, 15] for all axes
-# shearing_bounds = [-.01, .012]  # same uniform distribution for all axes, slighlty biased towards positive values
-# nonlin_std = 4  # increase the effect of the elastic deformation (default value is 3)
-#
-# # blurring/resampling parameters
-# # since we already sample the synthetic scans at 1mm isotropic, we don't need to downsample them at *acquisition* res
-# data_res = None  # same as input label maps
-# thickness = None  # slice thickness is the same as spacing
-# downsample = False  # don't downsample at acquisition resolution
-# blur_range = 1.2  # introduce some randomness in blurring to make the network adaptive to small resolution variations
-#
-# # bias field parameters
-# bias_field_std = 0.4  # we increase the strength of the applied bias field (default is 0.3)
+# output-related parameters
+channels = 2  # create multi-modal image with 2 channels
+target_resolution = 1.5  # resample output to 1.5mm isotropic (input label map is at 1mm isotropic)
+output_shape = None  # we don't impose a specific size for output...
+output_divisible_by_n = 16  # ... but we want it to be divisible by 16 (e.g. for deep learning use)
+
+# spatial deformation parameters
+scaling_bounds = np.array([[0.8, 0.95, 0.95], [1.2, 1.05, 1.05]])  # exagerated scaling in first dimension
+rotation_bounds = 15  # the rotation angles will be drawn from the same uniform distribution [-15, 15] for all axes
+shearing_bounds = [-.01, .012]  # same uniform distribution for all axes, slighlty biased towards positive values
+nonlin_std = 4  # increase the effect of the elastic deformation (default value is 3)
+
+# blurring/resampling parameters
+# since we already sample the synthetic scans at 1mm isotropic, we don't need to downsample them at *acquisition* res
+data_res = None  # same as input label maps
+thickness = None  # slice thickness is the same as spacing
+downsample = False  # don't downsample at acquisition resolution
+blur_range = 1.2  # introduce some randomness in blurring to make the network adaptive to small resolution variations
+
+# bias field parameters
+bias_field_std = 0.4  # we increase the strength of the applied bias field (default is 0.3)
 
 # -------------------------------------------------- anisotropic T1w ---------------------------------------------------
 # Here we want to mimick scans acquired at 6x1x1mm resolution and upsampled at 1mm isotropic, with slice thickness
@@ -92,26 +97,26 @@ background_blur = False
 # with a slice thickness of 4mm in the acquisition direction.
 # uncomment to run this example (don't forget to comment out the first example)
 
-# output-related parameters
-channels = 2
-target_resolution = None  # same resolution as input label maps, so 1mm isotropic
-output_shape = None
-output_divisible_by_n = None
-
-# spatial deformation parameters (keep default values)
-scaling_bounds = None
-rotation_bounds = None
-shearing_bounds = None
-nonlin_std = 3
-
-# blurring/resampling parameters
-data_res = np.array([[6, 1, 1], [1, 9, 1]])  # resolution of the data we want to mimick
-thickness = np.array([[4, 1, 1], [1, 4, 1]])  # slice thickess of the data we want tot mimick
-downsample = True
-blur_range = 1.5
-
-# bias field parameters (keep default value)
-bias_field_std = .3
+# # output-related parameters
+# channels = 2
+# target_resolution = None  # same resolution as input label maps, so 1mm isotropic
+# output_shape = None
+# output_divisible_by_n = None
+#
+# # spatial deformation parameters (keep default values)
+# scaling_bounds = None
+# rotation_bounds = None
+# shearing_bounds = None
+# nonlin_std = 3
+#
+# # blurring/resampling parameters
+# data_res = np.array([[6, 1, 1], [1, 9, 1]])  # resolution of the data we want to mimick
+# thickness = np.array([[4, 1, 1], [1, 4, 1]])  # slice thickess of the data we want tot mimick
+# downsample = True
+# blur_range = 1.5
+#
+# # bias field parameters (keep default value)
+# bias_field_std = .3
 
 
 ########################################################################################################

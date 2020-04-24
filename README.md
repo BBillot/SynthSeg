@@ -95,7 +95,7 @@ parameters if you wish to generate multi-modal and/or anisotropic images.
 This code relies on several external packages (already included in `\ext`):
 
 - [lab2im](https://github.com/BBillot/lab2im): contains functions for data augmentation, and a simple version of 
- the generative model, on which we build to build `label-to_image_model`
+ the generative model, on which we build to build `label_to_image_model`
  
 - [neuron](https://github.com/adalca/neuron): contains functions for deforming, and resizing tensors, as well as 
 functions to build the segmentation network [1,2].

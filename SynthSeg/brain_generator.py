@@ -51,6 +51,11 @@ class BrainGenerator:
 
         :param labels_dir: path of folder with all input label maps, or to a single label map.
 
+        # IMPORTANT !!!
+        # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
+        # these values refer to the axes of the raw label map (i.e. once it has been loaded in python).
+        # Depending on the label map orientation, the axes of its raw array may or may not correspond to the RAS axes.
+
         # label maps-related parameters
         :param generation_labels: (optional) list of all possible label values in the input label maps.
         Default is None, where the label values are directly gotten from the provided label maps.
