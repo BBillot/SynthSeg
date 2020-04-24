@@ -69,7 +69,7 @@ def labels_to_image_model(labels_shape,
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
     :param target_res: target resolution of the generated images and corresponding label maps.
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
-    :param output_shape: (optional) desired shape of the output images, obtained by cropping.
+    :param output_shape: (optional) desired shape of the output image, obtained by randomly cropping the generated image
     Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites output_shape
     if necessary. Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.

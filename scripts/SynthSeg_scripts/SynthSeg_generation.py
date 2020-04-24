@@ -19,7 +19,7 @@ path_label_map = '../data_example/brain_label_map.nii.gz'
 # general parameters
 n_examples = 2
 result_folder = '../generated_images'
-output_shape = 160  # crop produced image to this size
+output_shape = 160  # randomly crop produced image to this size
 output_divisible_by_n = 32  # make sure the shape of the output images is divisible by 32 (overwrites output_shape)
 flipping = True  # enable right/left flipping.
 

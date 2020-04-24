@@ -18,7 +18,7 @@ path_label_map = '../data_example/brain_label_map.nii.gz'
 # general parameters
 n_examples = 5
 result_dir = '../generated_images'
-output_shape = None  # shape of the output images, obtained by randomly cropping the sampled image
+output_shape = None  # shape of the output images, obtained by randomly cropping the generated images
 
 # specify structures from which we want to generate
 generation_labels = '../data_example/generation_labels.npy'

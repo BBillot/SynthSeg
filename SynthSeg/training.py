@@ -86,7 +86,7 @@ def training(labels_dir,
     :param target_res: (optional) target resolution of the generated images and corresponding label maps.
     If None, the outputs will have the same resolution as the input label maps.
     Can be a number (isotropic resolution), or the path to a 1d numpy array.
-    :param output_shape: (optional) desired shape of the output images, obtained by cropping.
+    :param output_shape: (optional) desired shape of the output image, obtained by randomly cropping the generated image
     Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
 
     # GMM-sampling parameters

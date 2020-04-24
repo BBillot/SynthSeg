@@ -80,7 +80,7 @@ class BrainGenerator:
         :param target_res: (optional) target resolution of the generated images and corresponding label maps.
         If None, the outputs will have the same resolution as the input label maps.
         Can be a number (isotropic resolution), a sequence, a 1d numpy array, or the path to a 1d numpy array.
-        :param output_shape: (optional) desired shape of the output images, obtained by cropping.
+        :param output_shape: (optional) shape of the output image, obtained by randomly cropping the generated image
         Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
         :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites
         output_shape if necessary. Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or

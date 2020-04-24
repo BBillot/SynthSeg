@@ -55,7 +55,7 @@ shearing_bounds = [-.01, .012]  # same uniform distribution for all axes, slighl
 nonlin_std = 4  # increase the effect of the elastic deformation (default value is 3)
 
 # blurring/resampling parameters
-# since we already sample the synthetic scans at 1mm isotropic, we don't need to downsample them at *acquisition* res
+# since we already sample the synthetic scans at 1mm isotropic, we don't need to downsample them to *acquisition* res
 data_res = None  # same as input label maps
 thickness = None  # slice thickness is the same as spacing
 downsample = False  # don't downsample at acquisition resolution
@@ -72,7 +72,7 @@ bias_field_std = 0.4  # we increase the strength of the applied bias field (defa
 # # output-related parameters
 # channels = 1
 # target_resolution = None  # same resolution as input label maps, so 1mm isotropic
-# output_shape = 160  # crop produced image to this size
+# output_shape = 160  # randomly crop produced image to this size
 # output_divisible_by_n = 32  # make sure output shape is divisible by 32
 #
 # # spatial deformation parameters
