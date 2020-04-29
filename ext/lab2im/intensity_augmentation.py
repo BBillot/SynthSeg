@@ -12,14 +12,13 @@ import ext.neuron.layers as nrn_layers
 
 def bias_field_augmentation(tensor, bias_field_std=.3, bias_shape_factor=.025):
     """This function applies a bias field to the input tensor. The following steps occur:
-    1) a small-size SVF is sampled from a random centred normal distribution,
+    1) a small-size SVF is sampled from a centred normal distribution of random standard deviation,
     2) it is resized with trilinear interpolation to image size
     3) it is rescaled to postive values by taking the voxel-wise exponential
     4) it is multiplied to the input tensor.
     :param tensor: input tensor. Expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
-    :param bias_field_std: (optional) the centred normal distribution from which we sample the small-size SVF is random
-    in the sense that its standard deviation is itself drawn from a prior centered normal distribution.
-    bias_field_std simply is the standard deviation of this prior distribution.
+    :param bias_field_std: (optional) maximum value of the standard deviation of the normal distribution from which we
+    sample the small-size SVF.
     :param bias_shape_factor: (optional) ration between the shape of the input tensor and the shape of the sampled SVF.
     :return: a biased tensor
     """
@@ -34,7 +33,7 @@ def bias_field_augmentation(tensor, bias_field_std=.3, bias_shape_factor=.025):
     tensor_shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
     split_shape = KL.Lambda(lambda x: tf.split(x, [1, n_dims + 1]))(tensor_shape)
     bias_shape = KL.Lambda(lambda x: tf.concat([x, tf.convert_to_tensor(small_shape)], axis=0))(split_shape[0])
-    bias_std = KL.Lambda(lambda x: tf.random.normal((1, 1), stddev=bias_field_std))([])
+    bias_std = KL.Lambda(lambda x: tf.random.uniform((1, 1), maxval=bias_field_std))([])
     bias_field = KL.Lambda(lambda x: tf.random.normal(x[0], stddev=x[1]))([bias_shape, bias_std])
     bias_field._keras_shape = tuple(bias_field.get_shape().as_list())
 

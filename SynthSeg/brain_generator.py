@@ -80,11 +80,11 @@ class BrainGenerator:
         :param target_res: (optional) target resolution of the generated images and corresponding label maps.
         If None, the outputs will have the same resolution as the input label maps.
         Can be a number (isotropic resolution), a sequence, a 1d numpy array, or the path to a 1d numpy array.
-        :param output_shape: (optional) shape of the output image, obtained by randomly cropping the generated image
+        :param output_shape: (optional) shape of the output image, obtained by randomly cropping the generated image.
         Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
         :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites
         output_shape if necessary. Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or
-        the path to a 1d numpy array..
+        the path to a 1d numpy array.
 
         # GMM-sampling parameters
         :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
@@ -135,8 +135,8 @@ class BrainGenerator:
         :param apply_nonlin_trans: (optional) whether to apply non linear elastic deformation.
         If true, a diffeomorphic deformation field is obtained by first sampling a small tensor from the normal
         distribution, resizing it to image size, and integrationg it. Default is True.
-        :param nonlin_std: (optional) If apply_nonlin_trans is True, standard deviation of the normal distribution
-        from which we sample the first tensor for synthesising the deformation field.
+        :param nonlin_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the
+        normal distribution from which we sample the first tensor for synthesising the deformation field.
         :param nonlin_shape_factor: (optional) If apply_nonlin_trans is True, ratio between the size of the input label
         maps and the size of the sampled tensor for synthesising the deformation field.
 
@@ -172,8 +172,8 @@ class BrainGenerator:
         :param apply_bias_field: (optional) whether to apply a bias field to the final image. Default is True.
         If True, the bias field is obtained by sampling a first tensor from normal distribution, resizing it to image
         size, and rescaling the values to positive number by taking the voxel-wise exponential. Default is True.
-        :param bias_field_std: (optional) If apply_nonlin_trans is True, standard deviation of the normal
-        distribution from which we sample the first tensor for synthesising the bias field.
+        :param bias_field_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the
+        normal distribution from which we sample the first tensor for synthesising the bias field.
         :param bias_shape_factor: (optional) If apply_bias_field is True, ratio between the size of the input
         label maps and the size of the sampled tensor for synthesising the bias field.
         """

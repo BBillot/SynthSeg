@@ -83,8 +83,8 @@ def labels_to_image_model(labels_shape,
     If true, the model will take an additional input of size batch*(n_dims+1)*(n_dims+1). Default is True.
     :param apply_nonlin_trans: (optional) whether to non-linearly deform the input label maps prior to generation.
     If true, the model will take an additional input of size batch*(dim_1*...*dim_n)*n_dims. Default is True.
-    :param nonlin_std: (optional) If apply_nonlin_trans is True, standard deviation of the normal distribution
-    from which we sample the first tensor for synthesising the deformation field.
+    :param nonlin_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the normal
+    distribution from which we sample the first tensor for synthesising the deformation field.
     :param nonlin_shape_factor: (optional) if apply_non_linear_deformation is True, factor between the shapes of the
     input label maps and the shape of the input non-linear tensor.
     :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
@@ -111,8 +111,8 @@ def labels_to_image_model(labels_shape,
     (in percentage). None is no croppping.
     :param apply_bias_field: (optional) whether to apply a bias field to the generated image.
     If true, the model will take an additional input of size batch*(dim_1*...*dim_n)*1. Default is True.
-    :param bias_field_std: (optional) If apply_nonlin_trans is True, standard deviation of the normal
-    distribution from which we sample the first tensor for synthesising the deformation field.
+    :param bias_field_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the
+    normal distribution from which we sample the first tensor for synthesising the deformation field.
     :param bias_shape_factor: (optional) if apply_bias_field is True, factor between the shapes of the
     input label maps and the shape of the input bias field tensor.
     """

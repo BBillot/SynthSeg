@@ -24,15 +24,14 @@ def deform_tensor(tensor,
     transformation. Default is None, no affine transformation is applied.
     :param apply_elastic_trans: (optional) whether to deform the input tensor with a diffeomorphic elastic 
     transformation. If True the following steps occur:
-    1) a small-size SVF is sampled from a centred normal distribution.
+    1) a small-size SVF is sampled from a centred normal distribution of random standard deviation.
     2) it is resized with trilinear interpolation to half the shape of the input tensor
     3) it is integrated to obtain a diffeomorphic transformation
     4) finally, it is resized (again with trilinear interpolation) to full image size
     Default is None, where no elastic transformation is applied.
     :param interp_method: (optional) interpolation method when deforming the input tensor. Can be 'linear', or 'nearest'
-    :param nonlin_std: (optional) the centred normal distribution from which we sample the small-size SVF is random
-    in the sense that its standard deviation is itself drawn from a prior centered normal distribution.
-    nonlin_std simply is the standard deviation of this prior distribution.
+    :param nonlin_std: (optional) maximum value of the standard deviation of the normal distribution from which we
+    sample the small-size SVF.
     :param nonlin_shape_factor: (optional) ration between the shape of the input tensor and the shape of the small field
     for elastic deformation.
     :return: tensor of the same shape as volume
@@ -59,7 +58,7 @@ def deform_tensor(tensor,
         tensor_shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
         split_shape = KL.Lambda(lambda x: tf.split(x, [1, n_dims + 1]))(tensor_shape)
         nonlin_shape = KL.Lambda(lambda x: tf.concat([x, tf.convert_to_tensor(small_shape)], axis=0))(split_shape[0])
-        nonlin_std_prior = KL.Lambda(lambda x: tf.random.normal((1, 1), stddev=nonlin_std))([])
+        nonlin_std_prior = KL.Lambda(lambda x: tf.random.uniform((1, 1), maxval=nonlin_std))([])
         elastic_trans = KL.Lambda(lambda x: tf.random.normal(x[0], stddev=x[1]))([nonlin_shape, nonlin_std_prior])
         elastic_trans._keras_shape = tuple(elastic_trans.get_shape().as_list())
 
