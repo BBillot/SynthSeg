@@ -2,7 +2,7 @@
 These functions are sorted in five categories:
 1- volume editting: this can be applied to any volume (i.e. images or label maps). It contains:
         -mask_volume
-        -resacle_volume
+        -rescale_volume
         -crop_volume
         -crop_volume_around_region
         -crop_volume_with_idx

@@ -122,17 +122,3 @@ def seg_overlay(vol, seg, do_rgb=True, seg_wt=0.5, cmap=None):
         olap = seg * seg_wt + vol * (1-seg_wt)
 
     return olap
-
-
-if __name__ == '__main__':
-
-    from utils import load_volfile, save_volfile
-
-    path_seg = '/home/benjamin/PycharmProjects/brain_generator/generated_images/norule_extra_cerebral/labels_out_3.nii.gz'
-    path_overlap = '/home/benjamin/PycharmProjects/brain_generator/generated_images/norule_extra_cerebral/labels_out_3_countour.nii.gz'
-
-    seg, aff, h = load_volfile(path_seg, im_only=False)
-    countour = seg2contour(seg)
-
-    save_volfile(countour, aff, h, path_overlap)
-

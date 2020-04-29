@@ -3,8 +3,8 @@ import os
 import re
 import logging
 import numpy as np
-import tensorflow as tf
 import matplotlib.pyplot as plt
+from tensorflow.python.summary.summary_iterator import summary_iterator
 
 # project imports
 from .predict import predict
@@ -128,9 +128,9 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, fontsize=18)
         # extract loss at the end of all epochs
         list_losses = list()
         logging.getLogger('tensorflow').disabled = True
-        for e in tf.compat.v1.train.summary_iterator(path_tensorboard_file):
+        for e in summary_iterator(path_tensorboard_file):
             for v in e.summary.value:
-                if v.tag == 'loss' or v.tag == 'accuracy':
+                if v.tag == 'loss' or v.tag == 'accuracy' or v.tag == 'epoch_loss':
                     list_losses.append(v.simple_value)
         plt.plot(1-np.array(list_losses), label=name, linewidth=2)
 
