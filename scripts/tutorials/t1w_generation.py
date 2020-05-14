@@ -35,6 +35,7 @@ prior_distribution = 'normal'
 # Therefore, the numpy array pointed by prior_means is of size (2, K), where K is the nummber of classes specified in
 # generation_classes. The first row of prior_means correspond to the means of the Gaussian priors, and the second row
 # correspond to standard deviations.
+# These hyperparameters were estimated with the function SynthSeg/estimate_priors.py/build_intensity_stats
 prior_means = '../data_example/prior_means.npy'
 # same as for prior_means, but for the standard deviations of the GMM.
 prior_stds = '../data_example/prior_stds.npy'

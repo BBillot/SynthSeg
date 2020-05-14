@@ -59,17 +59,20 @@ def estimate_t2_cropping(image_dir, result_dir=None, dilation=5):
 
 def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_list=None, keep_strictly_positive=True):
     """This function takes an image and corresponding segmentation as inputs. It estimates the mean and std intensity
-    for all specified label values. Labels can share the same statistics by being regrouped into classes.
+    for all specified label values. Labels can share the same statistics by being regrouped into K classes.
     :param image: image from which to evaluate mean intensity and std deviation.
     :param segmentation: segmentation of the input image. Must have the same size as image.
     :param labels_list: list of labels for which to evaluate mean and std intensity.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param classes_list: (optional) enables to regroup structures into classes of similar intensity statistics.
-    Can be a sequence or a 1d numpy array, or the path to a 1d numpy array, of the same length as label_list.
+    Intenstites associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
+    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+    It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
+    classes. Default is all labels have different classes (K=len(labels_list)).
     :param keep_strictly_positive: (optional) whether to only keep strictly positive intensity values when
     computing stats. This doesn't apply to the first label in label_list (or class if class_list is provided), for
     which we keep positive and zero values, as we consider it to be the background label.
-    :return: a numpy array of size (2, len(label_list)), the first row being the mean intenisty for each structure,
+    :return: a numpy array of size (2, K), the first row being the mean intensity for each structure,
     and the second being the median absolute deviation (robust estimation of std).
     """
 
@@ -81,10 +84,16 @@ def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_
         classes_list = np.arange(labels_list.shape[0])
     assert len(classes_list) == len(labels_list), 'labels and classes lists should have the same length'
 
-    # compute mean/std of specified classes
-    means = np.zeros(labels_list.shape[0])
-    stds = np.zeros(labels_list.shape[0])
+    # get unique classes
     unique_classes, unique_indices = np.unique(classes_list, return_index=True)
+    n_classes = len(unique_classes)
+    if not np.array_equal(unique_classes, np.arange(n_classes)):
+        raise ValueError('classes_list should only contain values between 0 and K-1, '
+                         'where K is the total number of classes. Here K = %d' % n_classes)
+
+    # compute mean/std of specified classes
+    means = np.zeros(n_classes)
+    stds = np.zeros(n_classes)
     for idx, tmp_class in enumerate(unique_classes):
 
         # get list of all intensity values for the current class
@@ -99,29 +108,36 @@ def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_
 
         # compute stats for class and put them to the location of corresponding label values
         if len(intensities) != 0:
-            means[classes_list == tmp_class] = np.nanmedian(intensities)
-            stds[classes_list == tmp_class] = median_absolute_deviation(intensities, nan_policy='omit')
+            means[idx] = np.nanmedian(intensities)
+            stds[idx] = median_absolute_deviation(intensities, nan_policy='omit')
 
     return np.stack([means, stds])
 
 
-def sample_intensity_stats_from_dataset(image_dir, labels_dir, labels_list, classes_list=None, rescale=True):
-    """This function estimates intensity distributions on real images of the same dataset.
-    It returns a normal distribution for the mean intensity of each label, and a normal distribution for the intensity
-    standard deviation of each label. Thus each label value is associated to 4 parameters: a mean/std for the mean
-    intensity, and a mean/std for the std deviation.
-    Labels can share the same statistics by being regrouped into classes.
+def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_list, classes_list=None, rescale=True):
+    """This function aims at estimating the intensity distributions of K different structure types from a set of images.
+    The distribution of each structure type is modelled as a Gaussian, parametrised by a mean and a standard deviation.
+    Because the intensity distribution of structures can vary accross images, we additionally use Gausian priors for the
+    parameters of each Gaussian distribution. Therefore, the intensity distribution of each structure type is described
+    by 4 parameters: a mean/std for the mean intensity, and a mean/std for the std deviation.
+    This function uses a set of images along with corresponding segmentations to estimate the 4*K parameters.
+    Structures can share the same statistics by being regrouped into classes of similar structure types.
+    Images can be multi-modal (n_channels), in which case different statistics are estimated for each modality.
     :param image_dir: path of directory with images to estimate the intensity distribution
     :param labels_dir: path of directory with segmentation of input images.
     They are matched with images by sorting order.
     :param labels_list: list of labels for which to evaluate mean and std intensity.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param classes_list: (optional) enables to regroup structures into classes of similar intensity statistics.
-    Can be a sequence or a 1d numpy array, or the path to a 1d numpy array, of the same length as label_list.
+    Intenstites associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
+    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+    It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
+    classes. Default is all labels have different classes (K=len(labels_list)).
     :param rescale: (optional) whether to rescale images between 0 and 255 before intensity estimation
-    :return: 2 numpy arrays of size (2, len(label_list)), one with the evaluated means/std for the mean
+    :return: 2 numpy arrays of size (2*n_channels, K), one with the evaluated means/std for the mean
     intensity, and one for the mean/std for the standard deviation.
-    For each array, the first row represents the mean, and the second represents the std.
+    Each block of two rows correspond to a different modality (channel). For each block of two rows, the first row
+    represents the mean, and the second represents the std.
     """
 
     # list files
@@ -129,11 +145,25 @@ def sample_intensity_stats_from_dataset(image_dir, labels_dir, labels_list, clas
     path_labels = utils.list_images_in_folder(labels_dir)
     assert len(path_images) == len(path_labels), 'image and labels folders do not have the same number of files'
 
-    # initialise result arrays
+    # reformat list labels and classes
     labels_list = np.array(utils.reformat_to_list(labels_list, load_as_numpy=True, dtype='int'))
+    if classes_list is not None:
+        classes_list = np.array(utils.reformat_to_list(classes_list, load_as_numpy=True, dtype='int'))
+    else:
+        classes_list = np.arange(labels_list.shape[0])
+    assert len(classes_list) == len(labels_list), 'labels and classes lists should have the same length'
+
+    # get unique classes
+    unique_classes, unique_indices = np.unique(classes_list, return_index=True)
+    n_classes = len(unique_classes)
+    if not np.array_equal(unique_classes, np.arange(n_classes)):
+        raise ValueError('classes_list should only contain values between 0 and K-1, '
+                         'where K is the total number of classes. Here K = %d' % n_classes)
+
+    # initialise result arrays
     n_dims, n_channels = utils.get_dims(utils.load_volume(path_images[0]).shape, max_channels=3)
-    means = np.zeros((len(path_images), labels_list.shape[0], n_channels))
-    stds = np.zeros((len(path_images), labels_list.shape[0], n_channels))
+    means = np.zeros((len(path_images), n_classes, n_channels))
+    stds = np.zeros((len(path_images), n_classes, n_channels))
 
     # loop over images
     for idx, (path_im, path_la) in enumerate(zip(path_images, path_labels)):
@@ -161,107 +191,96 @@ def sample_intensity_stats_from_dataset(image_dir, labels_dir, labels_list, clas
     std_stds = np.std(stds, axis=0)
 
     # regroup prior parameters in two different arrays: one for the mean and one for the std
-    estimated_means = np.zeros((2*n_channels, len(labels_list)))
-    estimated_stds = np.zeros((2*n_channels, len(labels_list)))
+    prior_means = np.zeros((2*n_channels, n_classes))
+    prior_stds = np.zeros((2*n_channels, n_classes))
     for channel in range(n_channels):
-        estimated_means[2*channel, :] = mean_means[:, channel]
-        estimated_means[2 * channel + 1, :] = std_means[:, channel]
-        estimated_stds[2*channel, :] = mean_stds[:, channel]
-        estimated_stds[2 * channel + 1, :] = std_stds[:, channel]
+        prior_means[2*channel, :] = mean_means[:, channel]
+        prior_means[2 * channel + 1, :] = std_means[:, channel]
+        prior_stds[2*channel, :] = mean_stds[:, channel]
+        prior_stds[2 * channel + 1, :] = std_stds[:, channel]
 
-    return estimated_means, estimated_stds
+    return prior_means, prior_stds
 
 
-def build_intensity_stats_for_several_modalities(list_image_dir,
-                                                 list_labels_dir,
-                                                 estimation_labels,
-                                                 estimation_classes,
-                                                 generation_classes,
-                                                 results_dir,
-                                                 rescale=True):
-    """This function aims at estimating the intensity distributions of K different structures from a set of images.
-    The distribution of each structure is modelled as a Gaussian, thus parametrised by a mean and a standard deviation.
+def build_intensity_stats(list_image_dir,
+                          list_labels_dir,
+                          results_dir,
+                          estimation_labels,
+                          estimation_classes=None,
+                          rescale=True):
+    """This function aims at estimating the intensity distributions of K different structure types from a set of images.
+    The distribution of each structure type is modelled as a Gaussian, parametrised by a mean and a standard deviation.
     Because the intensity distribution of structures can vary accross images, we additionally use Gausian priors for the
-    parameters of each Gaussian distribution. Therefore, the intensity distribution of each structure is described by 4
-    parameters (a mean/std for the mean intensity, and a mean/std for the std deviation).
+    parameters of each Gaussian distribution. Therefore, the intensity distribution of each structure type is described
+    by 4 parameters: a mean/std for the mean intensity, and a mean/std for the std deviation.
     This function uses a set of images along with corresponding segmentations to estimate the 4*K parameters.
-    Additionally, it can estimate the 4*K parameters for several datasets of images, that we call here n_datasets.
+    Additionally, it can estimate the 4*K parameters for several image datasets, that we call here n_datasets.
     This function writes 2 numpy arrays of size (2*n_datasets, K), one with the evaluated means/std for the mean
-    intensity, and one for the mean/std for the standard deviation.
-    In these arrays, each block of two rows refer to a different modality.
+    intensities, and one for the mean/std for the standard deviations.
+    In these arrays, each block of two rows refer to a different dataset.
     Within each block of two rows, the first row represents the mean, and the second represents the std.
     :param list_image_dir: path of folders with images for intensity distribution estimation.
     Can be the path of single directory (n_datasets=1), or a list of folders, each being a separate dataset.
-    Images can also be directly multimodal, in which case each modality is treated as a different dataset, i.e. each
-    modality will have a separate block (of size (2, K)) in the result arrays.
+    Images can be multimodal, in which case each modality is treated as a different dataset, i.e. each modality will
+    have a separate block (of size (2, K)) in the result arrays.
     :param list_labels_dir: path of folders with label maps corresponding to input images.
-    If list_image_dir is a list of several folders, list_labels_dir can either be a list of folders, or the path to a
-    single folder, which will be used for all datasets.
+    If list_image_dir is a list of several folders, list_labels_dir can either be a list of folders (one for each image
+    folder), or the path to a single folder, which will be used for all datasets.
     If a dataset has multi-modal images, the same label map is applied to all modalities.
-    :param estimation_labels: labels to sample intensity from.
-    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
-    :param estimation_classes: Indices regrouping labels into classes when estimating intensity distribution parameters.
-    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array. Must have the same length as estimation_labels
-    :param generation_classes: Indices regrouping into classes the label values within the generation label maps.
-    Generation labels with the same class will share the same estimated priors when generating a new image.
-    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param results_dir: path of directory where estimated priors will be writen.
+    :param estimation_labels: labels to estimate intensity statistics from.
+    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+    :param estimation_classes: (optional) enables to regroup structures into classes of similar intensity statistics.
+    Intenstites associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
+    Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+    It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
+    classes. Default is all labels have different classes (K=len(estimation_labels)).
     :param rescale: (optional) whether to rescale images between 0 and 255 before intensity estimation
     """
-
-    # reformat variables into lists
-    list_image_dir = utils.reformat_to_list(list_image_dir)
-    list_labels_dir = utils.reformat_to_list(list_labels_dir, length=len(list_image_dir))
 
     # handle results directories
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
 
+    # reformat image/labels dir into lists
+    list_image_dir = utils.reformat_to_list(list_image_dir)
+    list_labels_dir = utils.reformat_to_list(list_labels_dir, length=len(list_image_dir))
+
+    # reformat list estimation labels and classes
+    estimation_labels = np.array(utils.reformat_to_list(estimation_labels, load_as_numpy=True, dtype='int'))
+    if estimation_classes is not None:
+        estimation_classes = np.array(utils.reformat_to_list(estimation_classes, load_as_numpy=True, dtype='int'))
+    else:
+        estimation_classes = np.arange(estimation_labels.shape[0])
+    assert len(estimation_classes) == len(estimation_labels), 'estimation labels and classes should be of same length'
+
+    # get unique classes
+    unique_estimation_classes, unique_indices = np.unique(estimation_classes, return_index=True)
+    n_classes = len(unique_estimation_classes)
+    if not np.array_equal(unique_estimation_classes, np.arange(n_classes)):
+        raise ValueError('estimation_classes should only contain values between 0 and N-1, '
+                         'where K is the total number of classes. Here N = %d' % n_classes)
+
     # loop over dataset
-    list_means = list()
-    list_stds = list()
+    list_datasets_prior_means = list()
+    list_datasets_prior_stds = list()
     for image_dir, labels_dir in zip(list_image_dir, list_labels_dir):
 
         # get prior stats for dataset
-        estimated_means, estimated_stds = sample_intensity_stats_from_dataset(image_dir,
-                                                                              labels_dir,
-                                                                              estimation_labels,
-                                                                              estimation_classes,
-                                                                              rescale=rescale)
+        tmp_prior_means, tmp_prior_stds = sample_intensity_stats_from_single_dataset(image_dir,
+                                                                                     labels_dir,
+                                                                                     estimation_labels,
+                                                                                     estimation_classes,
+                                                                                     rescale=rescale)
 
-        # get unique stats (only one per class)
-        estimation_labels = np.array(
-            utils.reformat_to_list(estimation_labels, load_as_numpy=True, dtype='int'))
-        if estimation_classes is not None:
-            estimation_classes = np.array(
-                utils.reformat_to_list(estimation_classes, load_as_numpy=True, dtype='int'))
-        else:
-            estimation_classes = np.arange(estimation_labels.shape[0])
-        unique_estimation_classes, unique_indices = np.unique(estimation_classes, return_index=True)
-        estimated_means = estimated_means[:, unique_indices]
-        estimated_stds = estimated_stds[:, unique_indices]
-
-        # get unique generation classes
-        generation_classes = np.array(utils.reformat_to_list(generation_classes, load_as_numpy=True, dtype='int'))
-        unique_generation_classes = np.unique(generation_classes)
-        missing = [v for v in unique_generation_classes if v not in unique_estimation_classes]
-        assert missing == [], 'stats for generation classes {} cannot be computed, because they are not in ' \
-                              'estimation classes'.format(missing)
-
-        # reorder estimated means/stds in the order specified in generation classes
-        means = np.zeros((2, len(generation_classes)))
-        stds = np.zeros((2, len(generation_classes)))
-        for idx, tmp_class in enumerate(unique_generation_classes):
-            means[:, generation_classes == tmp_class] = estimated_means[:, unique_estimation_classes == tmp_class]
-            stds[:, generation_classes == tmp_class] = estimated_stds[:, unique_estimation_classes == tmp_class]
-
-        list_means.append(means)
-        list_stds.append(stds)
+        # add stats arrays to list of datasets-wise statistics
+        list_datasets_prior_means.append(tmp_prior_means)
+        list_datasets_prior_stds.append(tmp_prior_stds)
 
     # stack all modalities together
-    means_range = np.concatenate(list_means, axis=0)
-    stds_range = np.concatenate(list_stds, axis=0)
+    prior_means = np.concatenate(list_datasets_prior_means, axis=0)
+    prior_stds = np.concatenate(list_datasets_prior_stds, axis=0)
 
     # save files
-    np.save(os.path.join(results_dir, 'means_range.npy'), means_range)
-    np.save(os.path.join(results_dir, 'std_devs_range.npy'), stds_range)
+    np.save(os.path.join(results_dir, 'prior_means.npy'), prior_means)
+    np.save(os.path.join(results_dir, 'prior_stds.npy'), prior_stds)
