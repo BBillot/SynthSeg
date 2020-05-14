@@ -159,7 +159,8 @@ class BrainGenerator:
         If the generated images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence,
         a 1d numpy array, or the path to a 1d numy array. In the multi-modal case, it should be given as a numpy array
         (or a path) of size (n_mod, n_dims), where each row is the acquisition resolution of the correspionding chanel.
-        :param downsample: (optional) whether to actually downsample the volume image to data_res. Default is False.
+        :param downsample: (optional) whether to actually downsample the volume image to data_res.
+        Default is False, except when thickness is provided, and thickness < data_res.
         :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is
         given or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a
         coefficient sampled from a uniform distribution with bounds [1/blur_range, blur_range].

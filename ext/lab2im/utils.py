@@ -609,7 +609,7 @@ def draw_value_from_distribution(hyperparameter,
                                  distribution='uniform',
                                  centre=0.,
                                  default_range=10.0,
-                                 positive_only=True):
+                                 positive_only=False):
     """Sample values from a uniform, or normal distribution of given hyper-parameters.
     These hyper-parameters are to the number of 2 in both uniform and normal cases.
     :param hyperparameter: values of the hyper-parameters. Can either be:

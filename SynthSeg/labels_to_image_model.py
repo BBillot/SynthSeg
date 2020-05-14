@@ -102,7 +102,8 @@ def labels_to_image_model(labels_shape,
     If the generated images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d
     numpy array, or the path to a 1d numy array. In the multi-modal case, it should be given as a numpy array (or a
     path) of size (n_mod, n_dims), where each row is the acquisition resolution of the correspionding chanel.
-    :param downsample: (optional) whether to actually downsample the volume image to data_res. Default is False.
+    :param downsample: (optional) whether to actually downsample the volume image to data_res.
+    Default is False, except when thickness is provided, and thickness < data_res.
     :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
     or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
     from a uniform distribution with bounds [1/blur_range, blur_range]. If None, no randomisation. Default is 1.15.
@@ -212,7 +213,13 @@ def labels_to_image_model(labels_shape,
             channel = l2i_et.resample_tensor(channel, output_shape, 'linear', downsample_res[i], atlas_res,
                                              n_dims=n_dims)
         else:
-            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res, n_dims)
+            if thickness is not None:
+                diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
+                if min(diff) < 0:
+                    channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res,
+                                                     n_dims=n_dims)
+                else:
+                    channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res, n_dims)
 
         # apply bias field
         if apply_bias_field:

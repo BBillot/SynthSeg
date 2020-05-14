@@ -134,9 +134,9 @@ def build_model_inputs(path_label_maps,
 
                 # draw means and std devs from priors
                 tmp_classes_means = utils.draw_value_from_distribution(tmp_prior_means, n_labels, prior_distributions,
-                                                                       125., 100.)
+                                                                       125., 100., positive_only=True)
                 tmp_classes_stds = utils.draw_value_from_distribution(tmp_prior_stds, n_labels, prior_distributions,
-                                                                      15., 10.)
+                                                                      15., 10., positive_only=True)
                 tmp_means = utils.add_axis(tmp_classes_means[generation_classes], -1)
                 tmp_stds = utils.add_axis(tmp_classes_stds[generation_classes], -1)
                 means = np.concatenate([means, tmp_means], axis=1)
@@ -177,7 +177,8 @@ def means_stds_fs_labels_with_relations(means_range, std_devs_range, min_diff=15
     while (abs(gm_wm_csf_means[1] - gm_wm_csf_means[0]) < min_diff) | \
           (abs(gm_wm_csf_means[1] - gm_wm_csf_means[2]) < min_diff) | \
           (abs(gm_wm_csf_means[0] - gm_wm_csf_means[2]) < min_diff):
-        gm_wm_csf_means = utils.add_axis(utils.draw_value_from_distribution(means_range, 3, 'uniform', 125., 100.), -1)
+        gm_wm_csf_means = utils.draw_value_from_distribution(means_range, 3, 'uniform', 125., 100., positive_only=True)
+        gm_wm_csf_means = utils.add_axis(gm_wm_csf_means, -1)
 
     # apply relations
     wm = gm_wm_csf_means[0]
@@ -206,7 +207,8 @@ def means_stds_fs_labels_with_relations(means_range, std_devs_range, min_diff=15
                    hippocampus, amygdala, accumbens, ventralDC, choroid]
 
     # draw std deviations
-    std = utils.add_axis(utils.draw_value_from_distribution(std_devs_range, 17, 'uniform', 15., 10.), -1)
+    std = utils.draw_value_from_distribution(std_devs_range, 17, 'uniform', 15., 10., positive_only=True)
+    std = utils.add_axis(std, -1)
     neutral_stds = [np.zeros(1), std[1], std[1], std[2], std[3]]
     sided_stds = [std[4], std[5], std[1], std[1], std[6], std[7], std[8], std[9], std[10], std[11], std[12], std[13],
                   std[14], std[15], std[16]]
@@ -214,7 +216,8 @@ def means_stds_fs_labels_with_relations(means_range, std_devs_range, min_diff=15
     # add means and variances for extra head labels if necessary
     if head:
         # means
-        extra_means = utils.add_axis(utils.draw_value_from_distribution(means_range, 2, 'uniform', 125., 100.), -1)
+        extra_means = utils.draw_value_from_distribution(means_range, 2, 'uniform', 125., 100., positive_only=True)
+        extra_means = utils.add_axis(extra_means, -1)
         skull = extra_means[0]
         soft_non_brain = extra_means[1]
         eye = csf * npr.uniform(low=0.95, high=1.05)
@@ -223,7 +226,8 @@ def means_stds_fs_labels_with_relations(means_range, std_devs_range, min_diff=15
         neutral_means += [csf_like, optic_chiasm, skull, soft_non_brain, eye]
         sided_means.insert(-1, vessel)
         # std dev
-        extra_std = utils.add_axis(utils.draw_value_from_distribution(std_devs_range, 4, 'uniform', 15., 10.), -1)
+        extra_std = utils.draw_value_from_distribution(std_devs_range, 4, 'uniform', 15., 10., positive_only=True)
+        extra_std = utils.add_axis(extra_std, -1)
         neutral_stds += [std[1], extra_std[0], extra_std[1], extra_std[2], std[1]]
         sided_stds.insert(-1, extra_std[3])
 
