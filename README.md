@@ -3,9 +3,9 @@
 This repository contains code to train a single Convolutional Neural Network to segment MRI scans of different contrasts
  and resolutions. The network is trained with synthetic scans obtained by sampling a generative model building on the 
 **[lab2im](https://github.com/BBillot/lab2im)** package, which we really encourage you to have a look at!
-
-This project is explained in details in the following video:
 \
+\
+This project is explained in details in the following video:
 \
 \
 [![Talk SynthSeg](scripts/data_example/youtube_link.png)](https://www.youtube.com/watch?v=IX8fAJccFkc&feature=emb_logo)
