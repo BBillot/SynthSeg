@@ -14,6 +14,7 @@ scripts/model_dir
 
 scripts/PV-SynthSeg_scripts/check_generative_model.py
 scripts/PV-SynthSeg_scripts/draw_boxplots.py
+scripts/PV-SynthSeg_scripts/intensity_estimation_script.py
 scripts/PV-SynthSeg_scripts/preprocess_hippo_script.py
 scripts/PV-SynthSeg_scripts/PV-SynthSeg_generation_script.py
 

@@ -1,4 +1,3 @@
-from . import boxplots
 from . import brain_generator
 from . import estimate_priors
 from . import evaluate

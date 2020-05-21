@@ -170,9 +170,9 @@ def training(labels_dir,
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 1.
     :param dropout: (optional) probability of drpout for the Unet. Deafult is 0, where no dropout is applied.
     :param no_batch_norm: (optional) wheter to remove batch normalisation. Default is False, where BN is applied.
-    :param lr: (optional) learning rate for the training. Default is 1e-4
 
     # ----------------------------------------------- Training parameters ----------------------------------------------
+    :param lr: (optional) learning rate for the training. Default is 1e-4
     :param lr_decay: (optional) learing rate decay. Default is 0, where no decay is applied.
     :param wl2_epochs: (optional) number of epohs for which the network (except the soft-max layer) is trained with L2
     norm loss function. Default is 5.

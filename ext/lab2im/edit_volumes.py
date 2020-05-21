@@ -26,6 +26,7 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -pad_images_in_dir
         -flip_images_in_dir
         -align_images_in_dir
+        -correct_nans_images_in_dir
         -blur_images_in_dir
         -create_mutlimodal_images
         -convert_images_in_dir_to_nifty
@@ -42,7 +43,7 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -compute_hard_volumes_in_dir
 5- dataset editting: functions for editting datasets (i.e. images with corresponding label maps). I contains:
         -check_images_and_labels
-        -crop_dataset_to_same_size
+        -crop_dataset_to_minimum_size
         -subdivide_dataset_to_patches"""
 
 
@@ -218,7 +219,7 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
     # find cropping indices
     indices = np.nonzero(mask)
     min_idx = np.maximum(np.array([np.min(idx) for idx in indices]) - margin, 0)
-    max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + margin, np.array(volume.shape))
+    max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(volume.shape))
     cropping = np.concatenate([min_idx, max_idx])
 
     # crop volume
@@ -515,6 +516,7 @@ def smooth_label_map(labels, kernel, print_progress=0):
         idx = n_neighbours > count
         count[idx] = n_neighbours[idx]
         labels_smoothed[idx] = label
+        labels_smoothed = labels_smoothed.astype('int32')
 
     return labels_smoothed
 
@@ -883,6 +885,29 @@ def align_images_in_dir(image_dir, result_dir, path_ref_image, recompute=True):
             utils.save_volume(im, ref_aff, h, path_result)
 
 
+def correct_nans_images_in_dir(image_dir, result_dir, recompute=True):
+    """Correct NaNs in all images in a directory.
+    :param image_dir: path of directory with images to correct
+    :param result_dir: path of directory where corrected images will be writen
+    :param recompute: (optional) whether to recompute result files even if they already exists
+    """
+    # create result dir
+    if not os.path.isdir(result_dir):
+        os.mkdir(result_dir)
+
+    # loop over images
+    path_images = utils.list_images_in_folder(image_dir)
+    for idx, path_image in enumerate(path_images):
+        utils.print_loop_info(idx, len(path_images), 10)
+
+        # flip image
+        path_result = os.path.join(result_dir, os.path.basename(path_image))
+        if (not os.path.isfile(path_result)) | recompute:
+            im, aff, h = utils.load_volume(path_image, im_only=False)
+            im[np.isnan(im)] = 0
+            utils.save_volume(im, aff, h, path_result)
+
+
 def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, recompute=True):
     """This function blurs all the images in image_dir with kernels of the specified std deviations.
     :param image_dir: path of directory with images to blur
@@ -1032,6 +1057,8 @@ def mri_convert_images_in_dir(image_dir,
     :param interpolation: (optional) interpolation type, can be 'inter' (default), 'cubic', 'nearest', 'trilinear'
     :param reference_dir: (optional) path of directory with reference images. References are matched to images by
     sorting order. If same_reference is false, references and images are matched by sorting order.
+    This can also be the path to a single image that will be used as reference for all images im image_dir (set
+    same_reference to true in that case).
     :param same_reference: (optional) whether to use a single reference for all images.
     :param voxsize: (optional) resolution at which to resample converted image. Must be a list of length n_dims.
     :param path_freesurfer: (optional) path FreeSurfer home
@@ -1236,7 +1263,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
             os.system(cmd)
 
 
-def check_images_in_dir(image_dir, check_unique_values=False):
+def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
     """Check if all volumes within the same folder share the same characteristics: shape, affine matrix, resolution.
     Also have option to check if all volumes have the same intensity values (useful for label maps).
     :return four lists, each containing the different values detected for a specific parameter among those to check."""
@@ -1245,7 +1272,7 @@ def check_images_in_dir(image_dir, check_unique_values=False):
     list_shape = list()
     list_aff = list()
     list_res = list()
-    if check_unique_values:
+    if check_values:
         list_unique_values = list()
     else:
         list_unique_values = None
@@ -1261,15 +1288,15 @@ def check_images_in_dir(image_dir, check_unique_values=False):
         data_res = np.round(np.array(data_res), 2).tolist()
 
         # add values to list if not already there
-        if im_shape not in list_shape:
+        if (im_shape not in list_shape) | (not keep_unique):
             list_shape.append(im_shape)
-        if aff not in list_aff:
+        if (aff not in list_aff) | (not keep_unique):
             list_aff.append(aff)
-        if data_res not in list_res:
+        if (data_res not in list_res) | (not keep_unique):
             list_res.append(data_res)
         if list_unique_values is not None:
             uni = np.unique(im).tolist()
-            if uni not in list_unique_values:
+            if (uni not in list_unique_values) | (not keep_unique):
                 list_unique_values.append(uni)
 
     return list_shape, list_aff, list_res, list_unique_values
@@ -1306,7 +1333,7 @@ def correct_labels_in_dir(labels_dir, list_incorrect_labels, list_correct_labels
         if (not os.path.isfile(path_result)) | recompute:
             im, vox2ras, header = utils.load_volume(path_label, im_only=False)
             im = correct_label_map(im, list_incorrect_labels, list_correct_labels, smooth=smooth)
-            utils.save_volume(im, vox2ras, header, path_result)
+            utils.save_volume(im.astype('int32'), vox2ras, header, path_result)
 
 
 def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, mask_result_dir=None, recompute=True):
@@ -1646,7 +1673,7 @@ def check_images_and_labels(image_dir, labels_dir):
 
     # loop over images and labels
     for idx, (path_image, path_label) in enumerate(zip(path_images, path_labels)):
-        utils.print_loop_info(idx, len(image_dir), 10)
+        utils.print_loop_info(idx, len(path_images), 10)
 
         # load images and labels
         im, aff_im, h_im = utils.load_volume(path_image, im_only=False)
@@ -1667,23 +1694,20 @@ def check_images_and_labels(image_dir, labels_dir):
             print(lab.shape)
 
 
-def crop_dataset_to_same_size(labels_dir,
-                              result_dir,
-                              image_dir=None,
-                              image_result_dir=None,
-                              margin=5,
-                              cropping_indices=None,
-                              recompute=True):
-    """Crop all label maps in a directory to the minimum possible size, with a margin.
-    This function assumes all the label maps have the same size.
-    If images are provided, they are cropped like their corresponding label maps.
+def crop_dataset_to_minimum_size(labels_dir,
+                                 result_dir,
+                                 image_dir=None,
+                                 image_result_dir=None,
+                                 margin=5):
+    """Crop all label maps in a directory to the minimum possible common size, with a margin.
+    This is achieved by cropping each label map individually to the minimum size, and by padding all the cropped maps to
+    the same size (taken to be the maximum size of hte cropped maps).
+    If images are provided, they undergo the same transformations as their corresponding label maps.
     :param labels_dir: path of directory with input label maps
     :param result_dir: path of directory where cropped label maps will be writen
     :param image_dir: (optional) if not None, the cropping will be applied to all images in this directory
     :param image_result_dir: (optional) path of directory where cropped images will be writen
-    :param margin: (optional) margin to apply around the cropping indices
-    :param cropping_indices: (optional) if not None, the whole dataset will be cropped around those indices
-    :param recompute: (optional) whether to recompute result files even if they already exists
+    :param margin: (optional) margin to apply around the label maps during cropping
     """
 
     # create result dir
@@ -1700,40 +1724,43 @@ def crop_dataset_to_same_size(labels_dir,
         path_images = utils.list_images_in_folder(image_dir)
     else:
         path_images = [None] * len(path_labels)
-    labels_shape, _, n_dims, _, _, _ = utils.get_volume_info(path_labels[0])
+    _, _, n_dims, _, _, _ = utils.get_volume_info(path_labels[0])
 
-    # get cropping indices if not specified
-    if cropping_indices is None:
-        min_cropping = np.array(labels_shape, dtype='int')
-        max_cropping = np.zeros(n_dims, dtype='int')
-        print('getting cropping indices')
-        for idx, path_labels in enumerate(path_labels):
-            utils.print_loop_info(idx, len(path_labels), 10)
-            label = utils.load_volume(path_labels)
-            _, cropping = crop_volume_around_region(label, margin=margin)
-            min_cropping = np.minimum(min_cropping, cropping[:n_dims], dtype='int')
-            max_cropping = np.maximum(max_cropping, cropping[n_dims:], dtype='int')
-        cropping_indices = np.concatenate([min_cropping, max_cropping])
-
-    # loop over label maps
-    print('\ncropping images')
+    # loop over label maps for cropping
+    print('\ncropping labels to individual minimum size')
+    maximum_size = np.zeros(n_dims)
     for idx, (path_label, path_image) in enumerate(zip(path_labels, path_images)):
         utils.print_loop_info(idx, len(path_labels), 10)
 
-        # crop label map
-        path_result = os.path.join(result_dir, os.path.basename(path_label))
-        if (not os.path.isfile(path_result)) | recompute:
-            label, aff, h = utils.load_volume(path_label, im_only=False)
-            label, aff = crop_volume_with_idx(label, cropping_indices, aff=aff)
-            utils.save_volume(label, aff, h, path_result)
+        # crop label maps and update maximum size of cropped map
+        label, aff, h = utils.load_volume(path_label, im_only=False)
+        label, cropping, aff = crop_volume_around_region(label, aff=aff)
+        utils.save_volume(label, aff, h, os.path.join(result_dir, os.path.basename(path_label)))
+        maximum_size = np.maximum(maximum_size, np.array(label.shape) + margin*2)  # *2 to add margin on each side
 
-        # crop image if necessary
+        # crop images if required
+        if path_image is not None:
+            image, aff_im, h_im = utils.load_volume(path_image, im_only=False)
+            image, aff_im = crop_volume_with_idx(image, cropping, aff=aff_im)
+            utils.save_volume(image, aff_im, h_im, os.path.join(image_result_dir, os.path.basename(path_image)))
+
+    # loop over label maps for padding
+    print('\npadding labels to same size')
+    for idx, (path_label, path_image) in enumerate(zip(path_labels, path_images)):
+        utils.print_loop_info(idx, len(path_labels), 10)
+
+        # pad label maps to maximum size
+        path_result = os.path.join(result_dir, os.path.basename(path_label))
+        label, aff, h = utils.load_volume(path_result, im_only=False)
+        label, aff = pad_volume(label, maximum_size, aff=aff)
+        utils.save_volume(label, aff, h, path_result)
+
+        # crop images if required
         if path_image is not None:
             path_result = os.path.join(image_result_dir, os.path.basename(path_image))
-            if (not os.path.isfile(path_result)) | recompute:
-                im, aff, h = utils.load_volume(path_image, im_only=False)
-                im, aff = crop_volume_with_idx(im, cropping_indices, aff=aff)
-                utils.save_volume(im, aff, h, path_result)
+            image, aff, h = utils.load_volume(path_result, im_only=False)
+            image, aff = pad_volume(image, maximum_size, aff=aff)
+            utils.save_volume(image, aff, h, path_result)
 
 
 def subdivide_dataset_to_patches(patch_shape,

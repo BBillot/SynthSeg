@@ -28,6 +28,7 @@
     -build_training_generator
     -find_closest_number_divisible_by_m
     -build_binary_structure
+    -build_gaussian_kernel
     -get_std_blurring_mask_for_downsampling
     -draw_value_from_distribution
     -create_affine_transformation_matrix
@@ -576,6 +577,32 @@ def build_binary_structure(connectivity, n_dims):
     dist = distance_transform_edt(dist)
     struct = (dist <= connectivity) * 1
     return struct
+
+
+def build_gaussian_kernel(sigma, n_dims):
+    """This function builds a gaussian kernel of specified std deviation for a given number of dimensions.
+    :param sigma: standard deviation. Can be a number, a sequence or a 1d numpy array.
+    :param n_dims: number of dimension for the returned Gaussian kernel.
+    :return: a gaussian kernel of dimension n_dims and of specified std deviation in each direction.
+    """
+    sigma = reformat_to_list(sigma, length=n_dims, dtype='float')
+    shape = [math.ceil(2.5*s) for s in sigma]
+    shape = [s + 1 if s % 2 == 0 else s for s in shape]
+    if n_dims == 2:
+        m, n = [(ss-1.)/2. for ss in shape]
+        x, y = np.ogrid[-m:m+1, -n:n+1]
+        h = np.exp(-(x*x/(sigma[0]**2) + y*y/(sigma[1]**2)) / 2)
+    elif n_dims == 3:
+        m, n, p = [(ss-1.)/2. for ss in shape]
+        x, y, z = np.ogrid[-m:m+1, -n:n+1, -p:p+1]
+        h = np.exp(-(x*x/(sigma[0]**2) + y*y/(sigma[1])**2 + z*z/(sigma[2]**2)) / 2)
+    else:
+        raise Exception('dimension > 3 not supported')
+    h[h < np.finfo(h.dtype).eps*h.max()] = 0
+    sumh = h.sum()
+    if sumh != 0:
+        h /= sumh
+    return h
 
 
 def get_std_blurring_mask_for_downsampling(dowsample_res, current_res, thickness=None):
