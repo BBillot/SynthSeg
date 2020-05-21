@@ -97,7 +97,6 @@ def metrics_model(input_shape,
         last_tensor = KL.Lambda(lambda x: x[0] / K.maximum(x[1], 0.001), name='dice')([top, bottom])  # 1d vector
 
         # compute mean dice loss
-        n_labels = input_shape[-1]
         if include_background:
             print('including background in dice coefficient metric')
             w = np.ones([n_labels]) / n_labels

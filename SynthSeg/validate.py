@@ -49,7 +49,7 @@ def validate_training(image_dir,
         if (not os.path.isfile(dice_path)) | recompute:
             predict(path_images=image_dir,
                     path_model=path_model,
-                    path_segmentation_label_list=path_label_list,
+                    segmentation_label_list=path_label_list,
                     path_segmentations=model_val_dir,
                     path_posteriors=None,
                     path_volumes=None,

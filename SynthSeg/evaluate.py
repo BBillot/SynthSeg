@@ -1,6 +1,5 @@
 # python imports
 import os
-import warnings
 import numpy as np
 from scipy.stats import wilcoxon
 from scipy.ndimage.morphology import distance_transform_edt
@@ -87,57 +86,49 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices, alt
     return np.array(pvalues)
 
 
-def dice_evaluation(gt_folder,
-                    seg_folder,
-                    path_segmentation_label_list,
+def dice_evaluation(gt_dir,
+                    seg_dir,
+                    path_label_list,
                     path_result_dice_array):
     """Computes Dice scores for all labels contained in path_segmentation_label_list. Files in gt_folder and seg_folder
     are matched by sorting order.
-    :param gt_folder: folder containing ground truth files.
-    :param seg_folder: folder containing evaluation files.
-    :param path_segmentation_label_list: path of numpy vector containing all labels to compute the Dice for.
+    :param gt_dir: folder containing ground truth files.
+    :param seg_dir: folder containing evaluation files.
+    :param path_label_list: path of numpy vector containing all labels to compute the Dice for.
     :param path_result_dice_array: path where the resulting Dice will be writen as numpy array.
     :return: numpy array containing all dice scores (labels in rows, subjects in columns).
     """
-
-    # get list of automated and manual segmentations
-    list_path_gt_labels = utils.list_images_in_folder(gt_folder)
-    list_path_segs = utils.list_images_in_folder(seg_folder)
-    if len(list_path_gt_labels) != len(list_path_segs):
-        warnings.warn('both data folders should have the same length, had {} and {}'.format(len(list_path_gt_labels),
-                                                                                            len(list_path_segs)))
-
-    # load labels list
-    label_list, neutral_labels = utils.get_list_labels(label_list=path_segmentation_label_list, FS_sort=True,
-                                                       labels_dir=gt_folder)
 
     # create result folder
     if not os.path.exists(os.path.dirname(path_result_dice_array)):
         os.mkdir(os.path.dirname(path_result_dice_array))
 
-    # initialise result matrix
-    dice_coefs = np.zeros((label_list.shape[0], len(list_path_segs)))
+    # get list label maps to compare
+    path_gt_labels = utils.list_images_in_folder(gt_dir)
+    path_segs = utils.list_images_in_folder(seg_dir)
+    if len(path_gt_labels) != len(path_segs):
+        print('different number of files in data folders, had {} and {}'.format(len(path_gt_labels), len(path_segs)))
 
-    # start analysis
-    for im_idx, (path_gt, path_seg) in enumerate(zip(list_path_gt_labels, list_path_segs)):
-        utils.print_loop_info(im_idx, len(list_path_segs), 10)
+    # load labels list
+    label_list, neutral_labels = utils.get_list_labels(label_list=path_label_list, FS_sort=True, labels_dir=gt_dir)
+    label_list_sorted = np.sort(label_list)
+
+    # initialise result matrix
+    dice_coefs = np.zeros((label_list.shape[0], len(path_segs)))
+
+    # loop over segmentations
+    for idx, (path_gt, path_seg) in enumerate(zip(path_gt_labels, path_segs)):
+        utils.print_loop_info(idx, len(path_segs), 10)
 
         # load gt labels and segmentation
         gt_labels = utils.load_volume(path_gt, dtype='int')
         seg = utils.load_volume(path_seg, dtype='int')
-        n_dims = len(gt_labels.shape)
         # crop images
         gt_labels, cropping = edit_volumes.crop_volume_around_region(gt_labels, margin=10)
-        if n_dims == 2:
-            seg = seg[cropping[0]:cropping[2], cropping[1]:cropping[3]]
-        elif n_dims == 3:
-            seg = seg[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5]]
-        else:
-            raise Exception('cannot evaluate images with more than 3 dimensions')
-        # extract list of unique labels
-        label_list_sorted = np.sort(label_list)
+        seg = edit_volumes.crop_volume_with_idx(seg, cropping)
+        # compute dice scores
         tmp_dice = fast_dice(gt_labels, seg, label_list_sorted)
-        dice_coefs[:, im_idx] = tmp_dice[np.searchsorted(label_list_sorted, label_list)]
+        dice_coefs[:, idx] = tmp_dice[np.searchsorted(label_list_sorted, label_list)]
 
     # write dice results
     np.save(path_result_dice_array, dice_coefs)

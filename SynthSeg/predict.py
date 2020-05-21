@@ -20,7 +20,7 @@ from ext.lab2im import edit_tensors as l2i_et
 
 def predict(path_images,
             path_model,
-            path_segmentation_label_list,
+            segmentation_label_list,
             path_segmentations=None,
             path_posteriors=None,
             path_volumes=None,
@@ -43,8 +43,9 @@ def predict(path_images,
     It is crucial that the inputs match the architecture parameters of the trained model.
     :param path_images: path of the images to segment. Can be the path to a directory or the path to a single image.
     :param path_model: path ot the trained model.
-    :param path_segmentation_label_list: path of the numy array containing all labels to segment.
-    Should be the same as training.
+    :param segmentation_label_list: List of labels for which to compute Dice scores. It should contain the same values
+    as the segmentation label list used for training the network.
+    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array.
     :param path_segmentations: (optional) path where segmentations will be writen.
     Should be a dir, if path_images is a dir, and afile if path_images is a file.
     Should not be None, if path_posteriors is None.
@@ -89,7 +90,7 @@ def predict(path_images,
                                                                                                 path_volumes)
 
     # get label and classes lists
-    label_list, _ = utils.get_list_labels(label_list=path_segmentation_label_list, FS_sort=True)
+    label_list, _ = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
 
     # prepare volume file if needed
     if path_volumes is not None:
@@ -173,7 +174,7 @@ def predict(path_images,
         else:
             eval_folder = os.path.dirname(path_posteriors[0])
         path_result_dice = os.path.join(eval_folder, 'dice.npy')
-        evaluate.dice_evaluation(gt_folder, eval_folder, path_segmentation_label_list, path_result_dice)
+        evaluate.dice_evaluation(gt_folder, eval_folder, segmentation_label_list, path_result_dice)
 
 
 def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
