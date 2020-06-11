@@ -138,7 +138,7 @@ Benjamin Billot, Eleanor D. Robinson, Adrian V. Dalca, Juan Eugenio Iglesias \
 under revision \
 [ [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.txt) ]
 
-If you have any question regarding the usage of this code, or any suggestions to improve it you can contact me at:
+If you have any question regarding the usage of this code, or any suggestions to improve it you can contact us at: \
 benjamin.billot.18@ucl.ac.uk
 
 
@@ -146,8 +146,12 @@ benjamin.billot.18@ucl.ac.uk
 
 ### References
 
-[1] Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation
-Adrian V. Dalca, John Guttag, Mert R. Sabuncu, 2018
+[1] *Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation* \
+Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
+CVPR 2018 \
+[link]((http://www.mit.edu/~adalca/files/papers/cvpr2018_priors.pdf))
 
-[2] Unsupervised Data Imputation via Variational Inference of Deep Subspaces
-Adrian V. Dalca, John Guttag, Mert R. Sabuncu, 2019
+[2] *Unsupervised Data Imputation via Variational Inference of Deep Subspaces* \
+Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
+Arxiv preprint 2019 \
+[link](https://arxiv.org/abs/1903.03503)

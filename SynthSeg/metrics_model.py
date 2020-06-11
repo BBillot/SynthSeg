@@ -7,6 +7,7 @@ from keras.models import Model
 
 # third-party imports
 from ext.lab2im import utils
+from ext.lab2im import edit_tensors as l2i_et
 
 
 def metrics_model(input_shape,
@@ -48,57 +49,42 @@ def metrics_model(input_shape,
     # convert gt labels to 0...N-1 values
     n_labels = segmentation_label_list.shape[0]
     _, lut = utils.rearrange_label_list(segmentation_label_list)
-    labels_gt = KL.Lambda(lambda x: tf.gather(tf.convert_to_tensor(lut, dtype='int32'),
-                                              tf.cast(x, dtype='int32')), name='metric_convert_labels')(labels_gt)
+    labels_gt = l2i_et.convert_labels(labels_gt, lut)
 
     # convert gt labels to probabilistic values
     labels_gt = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels_gt)
     labels_gt = KL.Reshape(input_shape)(labels_gt)
-    labels_gt = KL.Lambda(lambda x: K.clip(x / K.sum(x, axis=-1, keepdims=True), K.epsilon(), 1),
-                          name='prob_target')(labels_gt)
+    labels_gt = KL.Lambda(lambda x: K.clip(x / K.sum(x, axis=-1, keepdims=True), K.epsilon(), 1))(labels_gt)
 
     # crop output to evaluate loss function in centre patch
     if loss_cropping is not None:
         # format loss_cropping
         labels_shape = labels_gt.get_shape().as_list()[1:-1]
         n_dims, _ = utils.get_dims(labels_shape)
-        if isinstance(loss_cropping, (int, float)):
-            loss_cropping = [loss_cropping] * n_dims
-        if isinstance(loss_cropping, (list, tuple)):
-            if len(loss_cropping) == 1:
-                loss_cropping = loss_cropping * n_dims
-            elif len(loss_cropping) != n_dims:
-                raise TypeError('loss_cropping should be float, list of size 1 or {0}, or None. '
-                                'Had {1}'.format(n_dims, loss_cropping))
+        loss_cropping = [-1] + utils.reformat_to_list(loss_cropping, length=n_dims) + [-1]
         # perform cropping
-        begin_idx = [int((labels_shape[i] - loss_cropping[i]) / 2) for i in range(n_dims)]
-        labels_gt = KL.Lambda(
-            lambda x: tf.slice(x, begin=tf.convert_to_tensor([0] + begin_idx + [0], dtype='int32'),
-                               size=tf.convert_to_tensor([-1] + loss_cropping + [-1], dtype='int32')),
-            name='cropping_gt')(labels_gt)
-        last_tensor = KL.Lambda(
-            lambda x: tf.slice(x, begin=tf.convert_to_tensor([0] + begin_idx + [0], dtype='int32'),
-                               size=tf.convert_to_tensor([-1] + loss_cropping + [-1], dtype='int32')),
-            name='cropping_pred')(last_tensor)
+        begin_idx = [0] + [int((labels_shape[i] - loss_cropping[i]) / 2) for i in range(n_dims)] + [0]
+        labels_gt = KL.Lambda(lambda x: tf.slice(x, begin=tf.convert_to_tensor(begin_idx, dtype='int32'),
+                              size=tf.convert_to_tensor(loss_cropping, dtype='int32')))(labels_gt)
+        last_tensor = KL.Lambda(lambda x: tf.slice(x, begin=tf.convert_to_tensor(begin_idx, dtype='int32'),
+                                size=tf.convert_to_tensor(loss_cropping, dtype='int32')))(last_tensor)
 
     # metrics is computed as part of the model
     if metrics == 'dice':
 
         # make sure predicted values are probabilistic
-        last_tensor = KL.Lambda(lambda x: K.clip(x / K.sum(x, axis=-1, keepdims=True), K.epsilon(), 1),
-                                name='prob_predictions')(last_tensor)
+        last_tensor = KL.Lambda(lambda x: K.clip(x / K.sum(x, axis=-1, keepdims=True), K.epsilon(), 1))(last_tensor)
 
         # compute dice
-        top = KL.Lambda(lambda x: 2*x[0]*x[1], name='top')([labels_gt, last_tensor])
-        bottom = KL.Lambda(lambda x: K.square(x[0]) + K.square(x[1]), name='bottom')([labels_gt, last_tensor])
+        top = KL.Lambda(lambda x: 2*x[0]*x[1])([labels_gt, last_tensor])
+        bottom = KL.Lambda(lambda x: K.square(x[0]) + K.square(x[1]))([labels_gt, last_tensor])
         for dims_to_sum in range(len(input_shape)-1):
-            top = KL.Lambda(lambda x: K.sum(x, axis=1), name='top_sum%d' % dims_to_sum)(top)
-            bottom = KL.Lambda(lambda x: K.sum(x, axis=1), name='bottom_sum%d' % dims_to_sum)(bottom)
+            top = KL.Lambda(lambda x: K.sum(x, axis=1))(top)
+            bottom = KL.Lambda(lambda x: K.sum(x, axis=1))(bottom)
         last_tensor = KL.Lambda(lambda x: x[0] / K.maximum(x[1], 0.001), name='dice')([top, bottom])  # 1d vector
 
         # compute mean dice loss
         if include_background:
-            print('including background in dice coefficient metric')
             w = np.ones([n_labels]) / n_labels
         else:
             w = np.ones([n_labels]) / (n_labels - 1)
@@ -106,18 +92,17 @@ def metrics_model(input_shape,
         last_tensor = KL.Lambda(lambda x: 1 - x, name='dice_loss')(last_tensor)
         last_tensor = KL.Lambda(lambda x: K.sum(x*tf.convert_to_tensor(w, dtype='float32'), axis=1),
                                 name='mean_dice_loss')(last_tensor)
-
         # average mean dice loss over mini batch
         last_tensor = KL.Lambda(lambda x: K.mean(x), name='average_mean_dice_loss')(last_tensor)
 
     elif metrics == 'weighted_l2':
         # compute weighted l2 loss
-        weights = KL.Lambda(lambda x: K.expand_dims(1 - x[..., 0] + weight_background), name='weights')(labels_gt)
-        normaliser = KL.Lambda(lambda x: K.sum(x[0]) * K.int_shape(x[1])[-1], name='normaliser')([weights, last_tensor])
+        weights = KL.Lambda(lambda x: K.expand_dims(1 - x[..., 0] + weight_background))(labels_gt)
+        normaliser = KL.Lambda(lambda x: K.sum(x[0]) * K.int_shape(x[1])[-1])([weights, last_tensor])
         last_tensor = KL.Lambda(
             # lambda x: K.sum(x[2] * K.square(x[1] - (x[0] * 30 - 15))) / x[3],
             lambda x: K.sum(x[2] * K.square(x[1] - (x[0] * 6 - 3))) / x[3],
-            name='weighted_l2')([labels_gt, last_tensor, weights, normaliser])
+            name='wl2')([labels_gt, last_tensor, weights, normaliser])
 
     else:
         raise Exception('metrics should either be "dice or "weighted_l2, got {}'.format(metrics))

@@ -1,9 +1,9 @@
 # python imports
-import keras
 import numpy as np
 import tensorflow as tf
 import keras.layers as KL
 import keras.backend as K
+from keras.models import Model
 
 # third-party imports
 from ext.lab2im import utils
@@ -63,7 +63,7 @@ def labels_to_image_model(labels_shape,
     :param output_labels: list of all the label values to keep in the output label maps, in no particular order.
     Should be a subset of the values contained in generation_labels.
     Label values that are in generation_labels but not in output_labels are reset to zero.
-    Can be a sequence or a 1d numpy array.
+    Can be a sequence or a 1d numpy array. By default output_labels is equal to generation_labels.
     :param n_neutral_labels: number of non-sided generation labels.
     :param atlas_res: resolution of the input label maps.
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
@@ -174,6 +174,7 @@ def labels_to_image_model(labels_shape,
     if crop_shape != labels_shape:
         labels, _ = l2i_sp.random_cropping(labels, crop_shape, n_dims)
 
+    # flipping
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
         labels, _ = l2i_sp.label_map_random_flipping(labels, new_generation_label_list, n_neutral_labels, aff, n_dims)
@@ -248,7 +249,7 @@ def labels_to_image_model(labels_shape,
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = keras.Model(inputs=list_inputs, outputs=[image, labels])
+    brain_model = Model(inputs=list_inputs, outputs=[image, labels])
 
     return brain_model
 

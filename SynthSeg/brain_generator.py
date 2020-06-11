@@ -17,7 +17,7 @@ class BrainGenerator:
                  output_labels=None,
                  n_neutral_labels=None,
                  padding_margin=None,
-                 batch_size=1,
+                 batchsize=1,
                  n_channels=1,
                  target_res=None,
                  output_shape=None,
@@ -67,6 +67,7 @@ class BrainGenerator:
         order). Should be a subset of the values contained in generation_labels.
         Label values that are in generation_labels but not in output_labels are reset to zero.
         Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+        By default output labels are equal to generation labels.
         :param n_neutral_labels: (optional) number of non-sided generation labels.
         Default is total number of label values.
         :param padding_margin: (optional) margin by which to pad the input labels with zeros.
@@ -75,7 +76,7 @@ class BrainGenerator:
         array. Default is no padding.
 
         # output-related parameters
-        :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
+        :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
         :param n_channels: (optional) number of channels to be synthetised. Default is 1.
         :param target_res: (optional) target resolution of the generated images and corresponding label maps.
         If None, the outputs will have the same resolution as the input label maps.
@@ -247,7 +248,7 @@ class BrainGenerator:
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
 
         # build generator for model inputs
-        self.model_inputs_generator = self._build_model_inputs_generator(batch_size)
+        self.model_inputs_generator = self._build_model_inputs_generator(batchsize)
 
         # build brain generator
         self.brain_generator = self._build_brain_generator()
@@ -282,11 +283,11 @@ class BrainGenerator:
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
 
-    def _build_model_inputs_generator(self, batch_size):
+    def _build_model_inputs_generator(self, batchsize):
         # build model's inputs generator
         model_inputs_generator = build_model_inputs(path_label_maps=self.labels_paths,
                                                     n_labels=len(self.generation_labels),
-                                                    batch_size=batch_size,
+                                                    batchsize=batchsize,
                                                     n_channels=self.n_channels,
                                                     generation_classes=self.generation_classes,
                                                     prior_means=self.prior_means,

@@ -8,7 +8,7 @@ from ext.lab2im import utils
 
 def build_model_inputs(path_label_maps,
                        n_labels,
-                       batch_size=1,
+                       batchsize=1,
                        n_channels=1,
                        generation_classes=None,
                        prior_distributions='uniform',
@@ -25,7 +25,7 @@ def build_model_inputs(path_label_maps,
     according to the operations performed in the model.
     :param path_label_maps: list of the paths of the input label maps.
     :param n_labels: number of labels in the input label maps.
-    :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
+    :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
     :param n_channels: (optional) number of channels to be synthetised. Default is 1.
     :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
     distribution. Regouped labels will thus share the same Gaussian when samling a new image. Can be a sequence or a
@@ -71,7 +71,7 @@ def build_model_inputs(path_label_maps,
     """
 
     # get label info
-    labels_shape, _, n_dims, _, _, _ = utils.get_volume_info(path_label_maps[0])
+    _, _, n_dims, _, _, _ = utils.get_volume_info(path_label_maps[0])
 
     # allocate unique class to each label if generation classes is not given
     if generation_classes is None:
@@ -80,19 +80,19 @@ def build_model_inputs(path_label_maps,
     # Generate!
     while True:
 
-        # randomly pick as many images as batch_size
-        label_map_indices = npr.randint(len(path_label_maps), size=batch_size)
+        # randomly pick as many images as batchsize
+        indices = npr.randint(len(path_label_maps), size=batchsize)
 
-        # initialise input tensors
-        y_all = []
-        means_all = []
-        std_devs_all = []
-        aff_all = []
+        # initialise input lists
+        list_label_maps = []
+        list_means = []
+        list_stds = []
+        list_affine_transforms = []
 
-        for label_map_idx in label_map_indices:
+        for idx in indices:
 
             # add labels to inputs
-            y = utils.load_volume(path_label_maps[label_map_idx], dtype='int')
+            y = utils.load_volume(path_label_maps[idx], dtype='int')
             if background_paths is not None:
                 idx_258 = np.where(y == 258)
                 if np.any(idx_258):
@@ -103,11 +103,11 @@ def build_model_inputs(path_label_maps,
                     assert background.shape == y.shape, 'background patches should have same shape than training ' \
                                                         'labels. Had {0} and {1}'.format(background.shape, y.shape)
                     y[idx_258] = background[idx_258]
-            y_all.append(utils.add_axis(y, axis=-2))
+            list_label_maps.append(utils.add_axis(y, axis=-2))
 
             # add means and standard deviations to inputs
             means = np.empty((n_labels, 0))
-            std_devs = np.empty((n_labels, 0))
+            stds = np.empty((n_labels, 0))
             for channel in range(n_channels):
 
                 # retrieve channel specific stats if necessary
@@ -140,11 +140,11 @@ def build_model_inputs(path_label_maps,
                 tmp_means = utils.add_axis(tmp_classes_means[generation_classes], -1)
                 tmp_stds = utils.add_axis(tmp_classes_stds[generation_classes], -1)
                 means = np.concatenate([means, tmp_means], axis=1)
-                std_devs = np.concatenate([std_devs, tmp_stds], axis=1)
-            means_all.append(utils.add_axis(means))
-            std_devs_all.append(utils.add_axis(std_devs))
+                stds = np.concatenate([stds, tmp_stds], axis=1)
+            list_means.append(utils.add_axis(means))
+            list_stds.append(utils.add_axis(stds))
 
-            # add inputs according to augmentation specification
+            # add linear transform to inputs
             if apply_linear_trans:
                 # get affine transformation: rotate, scale, shear (translation done during random cropping)
                 scaling = utils.draw_value_from_distribution(scaling_bounds, size=n_dims, centre=1, default_range=.15)
@@ -153,21 +153,21 @@ def build_model_inputs(path_label_maps,
                 else:
                     rotation = utils.draw_value_from_distribution(rotation_bounds, size=n_dims, default_range=15.0)
                 shearing = utils.draw_value_from_distribution(shearing_bounds, size=n_dims**2-n_dims, default_range=.01)
-                aff = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
-                aff_all.append(utils.add_axis(aff))
+                affine_transform = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
+                list_affine_transforms.append(utils.add_axis(affine_transform))
 
-        # build list of inputs to augmentation model
-        inputs_vals = [y_all, means_all, std_devs_all]
+        # build list of inputs of augmentation model
+        list_inputs = [list_label_maps, list_means, list_stds]
         if apply_linear_trans:
-            inputs_vals.append(aff_all)
+            list_inputs.append(list_affine_transforms)
 
-        # put images and labels (concatenated if batch_size>1) into a tuple of 2 elements: (cat_images, cat_labels)
-        if batch_size > 1:
-            inputs_vals = [np.concatenate(item, 0) for item in inputs_vals]
+        # concatenate individual input types if batchsize > 1
+        if batchsize > 1:
+            list_inputs = [np.concatenate(item, 0) for item in list_inputs]
         else:
-            inputs_vals = [item[0] for item in inputs_vals]
+            list_inputs = [item[0] for item in list_inputs]
 
-        yield inputs_vals
+        yield list_inputs
 
 
 def means_stds_fs_labels_with_relations(means_range, std_devs_range, min_diff=15, head=True):

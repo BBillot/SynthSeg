@@ -51,10 +51,7 @@ def validate_training(image_dir,
                     path_model=path_model,
                     segmentation_label_list=path_label_list,
                     path_segmentations=model_val_dir,
-                    path_posteriors=None,
-                    path_volumes=None,
-                    gt_folder=gt_dir,
-                    cropping=198)
+                    gt_folder=gt_dir)
 
 
 def plot_validation_curves(list_net_validation_dirs, fontsize=18, size_max_circle=100, skip_first_dice_row=True):
@@ -79,8 +76,7 @@ def plot_validation_curves(list_net_validation_dirs, fontsize=18, size_max_circl
         for epoch_dir in list_epochs_dir:
 
             # build names and create folders
-            epoch_dir = os.path.join(net_val_dir, epoch_dir)
-            path_epoch_dice = os.path.join(epoch_dir, 'dice.npy')
+            path_epoch_dice = os.path.join(net_val_dir, epoch_dir, 'dice.npy')
             if os.path.isfile(path_epoch_dice):
                 if skip_first_dice_row:
                     list_net_dice_scores.append(np.mean(np.load(path_epoch_dice)[1:, :]))

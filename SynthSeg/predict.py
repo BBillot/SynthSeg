@@ -24,7 +24,6 @@ def predict(path_images,
             path_segmentations=None,
             path_posteriors=None,
             path_volumes=None,
-            voxel_volume=1.,
             skip_background_volume=True,
             padding=None,
             cropping=None,
@@ -55,7 +54,6 @@ def predict(path_images,
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
-    :param voxel_volume: (optional) volume of voxel. Default is 1 (i.e. returned volumes are voxel counts).
     :param skip_background_volume: (optional) whether to skip computing the volume of the background. This assumes the
     background correspond to the first value in label list.
     :param padding: (optional) crop the images to the specified shape before predicting the segmentation maps.
@@ -106,17 +104,17 @@ def predict(path_images,
     # perform segmentation
     net = None
     previous_model_input_shape = None
-    for idx, (im_path, seg_path, posteriors_path) in enumerate(zip(images_to_segment,
-                                                                   path_segmentations,
-                                                                   path_posteriors)):
+    for idx, (path_image, path_segmentation, path_posterior) in enumerate(zip(images_to_segment,
+                                                                              path_segmentations,
+                                                                              path_posteriors)):
         utils.print_loop_info(idx, len(images_to_segment), 10)
 
         # preprocess image and get information
-        image, aff, h, n_channels, n_dims, shape, pad_shape, cropping, crop_idx = preprocess_image(im_path,
-                                                                                                   n_levels,
-                                                                                                   cropping,
-                                                                                                   padding)
-        model_input_shape = image.shape[1:]
+        image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, cropping, crop_idx = preprocess_image(path_image,
+                                                                                                           n_levels,
+                                                                                                           cropping,
+                                                                                                           padding)
+        model_input_shape = list(image.shape[1:])
 
         # prepare net for first image or if input's size has changed
         if (idx == 0) | (previous_model_input_shape != model_input_shape):
@@ -125,47 +123,42 @@ def predict(path_images,
             if (idx != 0) & (previous_model_input_shape != model_input_shape):
                 print('image of different shape as previous ones, redefining network')
             previous_model_input_shape = model_input_shape
-            net = None
 
-            if resample is not None:
-                net, resample_shape = preprocessing_model(resample, model_input_shape, h, n_channels, n_dims, n_levels)
-            else:
-                resample_shape = previous_model_input_shape
-            net = prepare_unet(resample_shape, len(label_list), conv_size, n_levels, nb_conv_per_level, unet_feat_count,
-                               feat_multiplier, no_batch_norm, path_model, input_model=net)
-            if (resample is not None) | (sigma_smoothing != 0):
-                net = postprocessing_model(net, model_input_shape, resample, sigma_smoothing, n_dims)
+            # build network
+            net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
+                              nb_conv_per_level, unet_feat_count, feat_multiplier, no_batch_norm, sigma_smoothing)
 
         # predict posteriors
         prediction_patch = net.predict(image)
 
         # get posteriors and segmentation
         seg, posteriors = postprocess(prediction_patch, cropping, pad_shape, shape, crop_idx, n_dims, label_list,
-                                      keep_biggest_component)
+                                      keep_biggest_component, aff)
 
         # compute volumes
         if path_volumes is not None:
             if skip_background_volume:
-                volumes = np.around(np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1))), 3)
+                volumes = np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1)))
             else:
-                volumes = np.around(np.sum(posteriors, axis=tuple(range(0, len(posteriors.shape) - 1))), 3)
-            volumes = voxel_volume * volumes
-            row = [os.path.basename(im_path)] + [str(vol) for vol in volumes]
+                volumes = np.sum(posteriors, axis=tuple(range(0, len(posteriors.shape) - 1)))
+            volumes = np.around(volumes * np.prod(im_res), 3)
+            row = [os.path.basename(path_image).replace('.nii.gz', '')] + [str(vol) for vol in volumes]
+            row += [np.sum(volumes[:int(len(volumes) / 2)]), np.sum(volumes[int(len(volumes) / 2):])]
             with open(path_volumes, 'a') as csvFile:
                 writer = csv.writer(csvFile)
                 writer.writerow(row)
             csvFile.close()
 
         # write results to disk
-        if seg_path is not None:
-            utils.save_volume(seg.astype('int'), aff, h, seg_path)
-        if posteriors_path is not None:
+        if path_segmentation is not None:
+            utils.save_volume(seg.astype('int'), aff, h, path_segmentation)
+        if path_posterior is not None:
             if n_channels > 1:
                 new_shape = list(posteriors.shape)
                 new_shape.insert(-1, 1)
                 new_shape = tuple(new_shape)
                 posteriors = np.reshape(posteriors, new_shape)
-            utils.save_volume(posteriors.astype('float'), aff, h, posteriors_path)
+            utils.save_volume(posteriors.astype('float'), aff, h, path_posterior)
 
     # evaluate
     if gt_folder is not None:
@@ -178,6 +171,15 @@ def predict(path_images,
 
 
 def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
+
+    # convert path to absolute paths
+    path_images = os.path.abspath(path_images)
+    if out_seg is not None:
+        out_seg = os.path.abspath(out_seg)
+    if out_posteriors is not None:
+        out_posteriors = os.path.abspath(out_posteriors)
+    if out_volumes is not None:
+        out_volumes = os.path.abspath(out_volumes)
 
     # prepare input/output volumes
     if ('nii.gz' not in path_images) & ('.mgz' not in path_images) & ('.npz' not in path_images):
@@ -203,11 +205,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
                               for posteriors_path in out_posteriors]
         else:
             out_posteriors = [out_posteriors] * len(images_to_segment)
-        if out_volumes:
-            if out_volumes[-4:] != '.csv':
-                out_volumes += '.csv'
-            if not os.path.exists(os.path.dirname(out_volumes)):
-                os.mkdir(os.path.dirname(out_volumes))
+
     else:
         assert os.path.exists(path_images), "Could not find image to segment"
         images_to_segment = [path_images]
@@ -230,13 +228,20 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
                 out_posteriors = os.path.join(out_posteriors, filename)
         out_posteriors = [out_posteriors]
 
+    if out_volumes:
+        if out_volumes[-4:] != '.csv':
+            print('out_volumes provided without csv extension. Adding csv extension to output_volumes.')
+            out_volumes += '.csv'
+        if not os.path.exists(os.path.dirname(out_volumes)):
+            os.mkdir(os.path.dirname(out_volumes))
+
     return images_to_segment, out_seg, out_posteriors, out_volumes
 
 
 def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
 
     # read image and corresponding info
-    im, shape, aff, n_dims, n_channels, header, labels_res = utils.get_volume_info(im_path, return_volume=True)
+    im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
 
     if padding:
         if n_channels == 1:
@@ -268,11 +273,11 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
     else:
         crop_idx = None
 
-    # align image
-    # ref_axes = np.array([0, 2, 1])
-    # ref_signs = np.array([-1, 1, -1])
-    # im_axes, img_signs = utils.get_ras_axis_and_signs(aff, n_dims=n_dims)
-    # im = edit_volume.align_volume_to_ref(im, ref_axes, ref_signs, im_axes, img_signs)
+    # align image to training axes and directions, change this to the affine matrix of your training data
+    if n_dims > 2:
+        # aff_ref = np.array([[0., 0., 1., 0.], [-1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 0., 1.]])
+        aff_ref = np.array([[-1., 0., 0., 0.], [0., -1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+        im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
 
     # normalise image
     m = np.min(im)
@@ -288,39 +293,28 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
     else:
         im = utils.add_axis(im, -2)
 
-    return im, aff, header, n_channels, n_dims, shape, pad_shape, crop_shape, crop_idx
+    return im, aff, header, im_res, n_channels, n_dims, shape, pad_shape, crop_shape, crop_idx
 
 
-def preprocessing_model(resample, model_input_shape, header, n_channels, n_dims, n_levels):
+def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv_size, nb_conv_per_level,
+                unet_feat_count, feat_multiplier, no_batch_norm, sigma_smoothing):
 
-    im_resolution = header['pixdim'][1:n_dims + 1]
-    if not isinstance(resample, (list, tuple)):
-        resample = [resample]
-    if len(resample) == 1:
-        resample = resample * n_dims
-    else:
-        assert len(resample) == n_dims, \
-            'new_resolution must be of length 1 or n_dims ({}): got {}'.format(n_dims, len(resample))
-    resample_factor = [im_resolution[i] / float(resample[i]) for i in range(n_dims)]
-    pre_resample_shape = [utils.find_closest_number_divisible_by_m(resample_factor[i] * model_input_shape[i],
+    # initialisation
+    net = None
+    n_dims, n_channels = utils.get_dims(input_shape, max_channels=3)
+    resample = utils.reformat_to_list(resample, length=n_dims)
+
+    # build preprocessing model
+    if resample is not None:
+        im_input = KL.Input(shape=input_shape, name='pre_resample_input')
+        resample_factor = [im_res[i] / float(resample[i]) for i in range(n_dims)]
+        resample_shape = [utils.find_closest_number_divisible_by_m(resample_factor[i] * input_shape[i],
                           2 ** n_levels, smaller_ans=False) for i in range(n_dims)]
-    resample_factor_corrected = [pre_resample_shape[i] / model_input_shape[i] for i in range(n_dims)]
+        resampled = nrn_layers.Resize(size=resample_shape, name='pre_resample')(im_input)
+        net = Model(inputs=im_input, outputs=resampled)
+        input_shape = resample_shape + [n_channels]
 
-    # add layers to model
-    im_input = KL.Input(shape=model_input_shape, name='pre_resample_input')
-    resampled = nrn_layers.Resize(zoom_factor=resample_factor_corrected, name='pre_resample')(im_input)
-
-    # build model
-    model_preprocessing = Model(inputs=im_input, outputs=resampled)
-
-    # add channel dimensions to shapes
-    pre_resample_shape = list(pre_resample_shape) + [n_channels]
-
-    return model_preprocessing, pre_resample_shape
-
-
-def prepare_unet(input_shape, n_lab, conv_size, n_levels, nb_conv_per_level, unet_feat_count, feat_multiplier,
-                 no_batch_norm, model_file=None, input_model=None):
+    # build UNet
     if no_batch_norm:
         batch_norm_dim = None
     else:
@@ -346,57 +340,40 @@ def prepare_unet(input_shape, n_lab, conv_size, n_levels, nb_conv_per_level, une
                           layer_nb_feats=None,
                           conv_dropout=0,
                           batch_norm=batch_norm_dim,
-                          input_model=input_model)
-    if model_file is not None:
-        net.load_weights(model_file, by_name=True)
+                          input_model=net)
+    net.load_weights(model_file, by_name=True)
+
+    # build postprocessing model
+    if (resample is not None) | (sigma_smoothing != 0):
+
+        # get UNet output
+        input_tensor = net.inputs
+        last_tensor = net.output
+
+        # resample to initial resolution
+        if resample is not None:
+            last_tensor = nrn_layers.Resize(size=input_shape[:-1], name='post_resample')(last_tensor)
+
+        # smooth each posteriors map separately
+        if sigma_smoothing != 0:
+            kernels_list = l2i_et.get_gaussian_1d_kernels(utils.reformat_to_list(sigma_smoothing, length=n_dims))
+            split = KL.Lambda(lambda x: tf.split(x, [1] * n_lab, axis=-1), name='resample_split')(last_tensor)
+            last_tensor = l2i_et.blur_tensor(split[0], kernels_list, n_dims)
+            for i in range(1, n_lab):
+                temp_blurred = l2i_et.blur_tensor(split[i], kernels_list, n_dims)
+                last_tensor = KL.concatenate([last_tensor, temp_blurred], axis=-1, name='cat_blurring_%s' % i)
+
+        # build model
+        net = Model(inputs=input_tensor, outputs=last_tensor)
+
     return net
 
 
-def postprocessing_model(unet, posteriors_patch_shape, resample, sigma_smoothing, n_dims):
-
-    # get output from unet
-    input_tensor = unet.inputs
-    last_tensor = unet.outputs
-    if isinstance(last_tensor, list):
-        last_tensor = last_tensor[0]
-
-    # resample to original resolution
-    if resample is not None:
-        last_tensor = nrn_layers.Resize(size=posteriors_patch_shape[:-1], name='post_resample')(last_tensor)
-
-    # smooth posteriors
-    if sigma_smoothing != 0:
-
-        # separate image channels from labels channels
-        n_labels = last_tensor.get_shape().as_list()[-1]
-        split = KL.Lambda(lambda x: tf.split(x, [1] * n_labels, axis=-1), name='resample_split')(last_tensor)
-
-        # create gaussian blurring kernel
-        sigma_smoothing = utils.reformat_to_list(sigma_smoothing, length=n_dims)
-        kernels_list = l2i_et.get_gaussian_1d_kernels(sigma_smoothing)
-
-        # blur each image channel separately
-        last_tensor = l2i_et.blur_tensor(split[0], kernels_list, n_dims)
-        for i in range(1, n_labels):
-            temp_blurred = l2i_et.blur_tensor(split[i], kernels_list, n_dims)
-            last_tensor = KL.concatenate([last_tensor, temp_blurred], axis=-1, name='cat_blurring_%s' % i)
-
-    # build model
-    model_postprocessing = Model(inputs=input_tensor, outputs=last_tensor)
-
-    return model_postprocessing
-
-
-def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, labels, keep_biggest_component):
+def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, labels, keep_biggest_component, aff):
 
     # get posteriors and segmentation
     post_patch = np.squeeze(prediction)
     seg_patch = post_patch.argmax(-1)
-
-    # align prediction back to first orientation
-    # ref_axes = np.array([0, 2, 1])
-    # ref_signs = np.array([-1, 1, -1])
-    # seg_patch = edit_volume.align_volume_to_ref(seg_patch, im_axes, im_signs, ref_axes, ref_signs, n_dims)
 
     # keep biggest connected component (use it with smoothing!)
     if keep_biggest_component:
@@ -412,6 +389,13 @@ def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, label
                     size = tmp_size
                     mask = tmp_mask
             seg_patch[np.logical_not(mask)] = 0
+
+    # align prediction back to first orientation
+    if n_dims > 2:
+        # aff_ref = np.array([[0., 0., 1., 0.], [-1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 0., 1.]])
+        aff_ref = np.array([[-1., 0., 0., 0.], [0., -1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+        seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
+        post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, return_aff=False, n_dims=n_dims)
 
     # paste patches back to matrix of original image size
     if crop_shape is not None:
