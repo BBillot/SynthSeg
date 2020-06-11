@@ -2,15 +2,17 @@
 A lot of them are used in lab2im_model, and we provide them here separately, so they can be re-used easily.
 The functions are classified in three categories:
 1- blurring functions: They contain functions to create blurring tensors and to apply the obtained kernels:
--blur_tensor
--get_gaussian_1d_kernels
--blur_channel
+    -blur_tensor
+    -get_gaussian_1d_kernels
+    -blur_channel
 2- resampling function: function to resample a tensor to a specified resolution.
--resample_tensor
-3- converting label values; these functions only apply to tensors with a limited set of integers as values (typically
+    -resample_tensor
+3- converting label values: these functions only apply to tensors with a limited set of integers as values (typically
 label map tensors). It contains:
--convert_labels
--reset_label_values_to_zero
+    -convert_labels
+    -reset_label_values_to_zero
+4- padding tensor
+    -pad_tensor
 """
 
 # python imports
@@ -199,3 +201,27 @@ def reset_label_values_to_zero(label_map, labels_to_reset):
                                                  tf.zeros_like(x, dtype='int32'),
                                                  tf.cast(x, dtype='int32')))(label_map)
     return label_map
+
+
+# ---------------------------------------------------- pad tensors -----------------------------------------------------
+
+def pad_tensor(tensor, padding_shape=None, pad_value=0):
+    """Pad tensor to specified shape.
+    :param tensor: tensor to pad
+    :param padding_shape: shape of the returned padded tensor. Can be a list or a numy 1d array, of the same length as
+    the numbe of dimensions of the tensor (including batch and channel dimensions).
+    :param pad_value: value by which to pad the tensor. Default is 0.
+    """
+
+    # get shapes and padding margins
+    tensor_shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
+    padding_shape = KL.Lambda(lambda x: tf.math.maximum(x, tf.convert_to_tensor(padding_shape, tf.int32)))(tensor_shape)
+
+    # build padding margins
+    min_margins = KL.Lambda(lambda x: tf.cast((x[0] - x[1]) / 2, tf.int32))([padding_shape, tensor_shape])
+    max_margins = KL.Lambda(lambda x: (x[0] - x[1]) - x[2])([padding_shape, tensor_shape, min_margins])
+    margins = KL.Lambda(lambda x: tf.stack([x[0], tf.cast(x[1], tf.int32)], axis=-1))([min_margins, max_margins])
+
+    # pad tensor
+    padded_tensor = KL.Lambda(lambda x: tf.pad(x[0], x[1], 'CONSTANT', constant_values=pad_value))([tensor, margins])
+    return padded_tensor

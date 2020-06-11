@@ -42,7 +42,7 @@ def lab2im_model(labels_shape,
     :param output_labels: list of all the label values to keep in the output label maps.
     Should be a subset of the values contained in generation_labels.
     Label values that are in generation_labels but not in output_labels are reset to zero.
-    Can be a sequence or a 1d numpy array.
+    Can be a sequence or a 1d numpy array. By default output_labels is equal to generation_labels.
     :param atlas_res: resolution of the input label maps.
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
     :param target_res: target resolution of the generated images and corresponding label maps.

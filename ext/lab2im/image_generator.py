@@ -45,6 +45,7 @@ class ImageGenerator:
         Should be a subset of the values contained in generation_labels.
         Label values that are in generation_labels but not in output_labels are reset to zero.
         Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
+        By default output labels are equal to generation labels.
 
         # output-related parameters
         :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
@@ -174,32 +175,32 @@ class ImageGenerator:
         (image, labels) = next(self.image_generator)
         return np.squeeze(image), np.squeeze(labels)
 
-    def _build_model_inputs(self, n_labels, batch_size=1):
+    def _build_model_inputs(self, n_labels, batchsize=1):
 
         # get label info
-        labels_shape, _, n_dims, _, _, _ = utils.get_volume_info(self.labels_paths[0])
+        _, _, n_dims, _, _, _ = utils.get_volume_info(self.labels_paths[0])
 
         # Generate!
         while True:
 
-            # randomly pick as many images as batch_size
-            label_map_indices = npr.randint(len(self.labels_paths), size=batch_size)
+            # randomly pick as many images as batchsize
+            indices = npr.randint(len(self.labels_paths), size=batchsize)
 
-            # initialise input tensors
-            y_all = []
-            means_all = []
-            std_devs_all = []
-            aff_all = []
+            # initialise input lists
+            list_label_maps = []
+            list_means = []
+            list_stds = []
+            list_affine_transforms = []
 
-            for label_map_idx in label_map_indices:
+            for idx in indices:
 
                 # add labels to inputs
-                y = utils.load_volume(self.labels_paths[label_map_idx], dtype='int')
-                y_all.append(utils.add_axis(y, axis=-2))
+                y = utils.load_volume(self.labels_paths[idx], dtype='int')
+                list_label_maps.append(utils.add_axis(y, axis=-2))
 
                 # add means and standard deviations to inputs
                 means = np.empty((n_labels, 0))
-                std_devs = np.empty((n_labels, 0))
+                stds = np.empty((n_labels, 0))
                 for channel in range(self.n_channels):
 
                     # retrieve channel specific stats if necessary
@@ -234,9 +235,9 @@ class ImageGenerator:
                     tmp_means = utils.add_axis(tmp_classes_means[self.generation_classes], -1)
                     tmp_stds = utils.add_axis(tmp_classes_stds[self.generation_classes], -1)
                     means = np.concatenate([means, tmp_means], axis=1)
-                    std_devs = np.concatenate([std_devs, tmp_stds], axis=1)
-                means_all.append(utils.add_axis(means))
-                std_devs_all.append(utils.add_axis(std_devs))
+                    stds = np.concatenate([stds, tmp_stds], axis=1)
+                list_means.append(utils.add_axis(means))
+                list_stds.append(utils.add_axis(stds))
 
                 # get affine transformation: rotate, scale, shear (translation done during random cropping)
                 scaling = utils.draw_value_from_distribution(None, size=n_dims, centre=1, default_range=.07)
@@ -245,16 +246,16 @@ class ImageGenerator:
                 else:
                     rotation = utils.draw_value_from_distribution(None, size=n_dims, default_range=10.0)
                 shearing = utils.draw_value_from_distribution(None, size=n_dims ** 2 - n_dims, default_range=.007)
-                aff = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
-                aff_all.append(utils.add_axis(aff))
+                affine_transform = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
+                list_affine_transforms.append(utils.add_axis(affine_transform))
 
-            # build list of inputs to augmentation model
-            inputs_vals = [y_all, means_all, std_devs_all, aff_all]
+            # build list of inputs of augmentation model
+            list_inputs = [list_label_maps, list_means, list_stds, list_affine_transforms]
 
-            # put images and labels (concatenated if batch_size>1) into a tuple of 2 elements: (cat_images, cat_labels)
-            if batch_size > 1:
-                inputs_vals = [np.concatenate(item, 0) for item in inputs_vals]
+            # concatenate individual input types if batchsize > 1
+            if batchsize > 1:
+                list_inputs = [np.concatenate(item, 0) for item in list_inputs]
             else:
-                inputs_vals = [item[0] for item in inputs_vals]
+                list_inputs = [item[0] for item in list_inputs]
 
-            yield inputs_vals
+            yield list_inputs

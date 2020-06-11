@@ -4,13 +4,13 @@
     -save_volume
     -get_volume_info
     -get_list_labels
+    -load_array_if_path
     -write_pickle
     -read_pickle
     -write_model_summary
 2- reformatting functions
     -reformat_to_list
     -reformat_to_n_channels_array
-    -load_array_if_path
 3- path related functions
     -list_images_in_folder
     -list_files
@@ -220,6 +220,15 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
         return label_list
 
 
+def load_array_if_path(var, load_as_numpy=True):
+    """If var is a string and load_as_numpy is True, this function loads the array writen at the path indicated by var.
+    Otherwise it simply returns var as it is."""
+    if (isinstance(var, str)) & load_as_numpy:
+        assert os.path.isfile(var), 'No such path: %s' % var
+        var = np.load(var)
+    return var
+
+
 def write_pickle(filepath, obj):
     """ write a python object with a pickle at a given path"""
     with open(filepath, 'wb') as file:
@@ -317,15 +326,6 @@ def reformat_to_n_channels_array(var, n_dims=3, n_channels=1):
     else:
         raise TypeError('var should be int, float, list, tuple or ndarray')
     return np.round(var, 3)
-
-
-def load_array_if_path(var, load_as_numpy=True):
-    """If var is a string and load_as_numpy is True, this function loads the array writen at the path indicated by var.
-    Otherwise it simply returns var as it is."""
-    if (isinstance(var, str)) & load_as_numpy:
-        assert os.path.isfile(var), 'No such path: %s' % var
-        var = np.load(var)
-    return var
 
 
 # ----------------------------------------------- path-related functions -----------------------------------------------
@@ -538,12 +538,12 @@ def rearrange_label_list(label_list):
     return new_label_list, lut
 
 
-def build_training_generator(gen, batch_size):
+def build_training_generator(gen, batchsize):
     """Build generator for training a network."""
     while True:
         inputs = next(gen)
-        if batch_size > 1:
-            target = np.concatenate([add_axis(np.zeros(1))] * batch_size, 0)
+        if batchsize > 1:
+            target = np.concatenate([add_axis(np.zeros(1))] * batchsize, 0)
         else:
             target = add_axis(np.zeros(1))
         yield inputs, target
