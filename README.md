@@ -92,7 +92,10 @@ parameters if you wish to generate multi-modal and/or anisotropic images.
   - [estimate_priors.py](SynthSeg/estimate_priors.py): contains functions to estimate the prior distributions of the GMM
   parameters.
  
- - [script](scripts): additionally to the tutorials, we also provide functions such as to launch your own trainings.
+ - [models](models): this is where you will find the trained model. You can use this model with the `predict` function
+ provided in [SynthSeg/predict.py](SynthSeg/predict.py).
+ 
+- [script](scripts): additionally to the tutorials, we also provide functions such as to launch your own trainings.
 
 - [ext](ext): contains external packages, especially the *lab2im* package, and a modified version of *neuron*.
 

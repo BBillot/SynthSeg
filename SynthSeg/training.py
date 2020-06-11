@@ -321,7 +321,7 @@ def train_model(model,
 
     # prepare callbacks
     save_file_name = os.path.join(model_dir, '%s_{epoch:03d}.h5' % metric_type)
-    temp_callbacks = ModelCheckpoint(save_file_name, verbose=1)
+    temp_callbacks = ModelCheckpoint(save_file_name, save_weights_only=True, verbose=1)
     mg_model = model
 
     # TensorBoard callback

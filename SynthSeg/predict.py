@@ -275,8 +275,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
 
     # align image to training axes and directions, change this to the affine matrix of your training data
     if n_dims > 2:
-        # aff_ref = np.array([[0., 0., 1., 0.], [-1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 0., 1.]])
-        aff_ref = np.array([[-1., 0., 0., 0.], [0., -1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+        aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
         im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
 
     # normalise image
@@ -392,8 +391,7 @@ def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, label
 
     # align prediction back to first orientation
     if n_dims > 2:
-        # aff_ref = np.array([[0., 0., 1., 0.], [-1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 0., 1.]])
-        aff_ref = np.array([[-1., 0., 0., 0.], [0., -1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+        aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
         seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
         post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, return_aff=False, n_dims=n_dims)
 
