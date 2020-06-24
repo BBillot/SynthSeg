@@ -7,9 +7,9 @@ from SynthSeg.brain_generator import BrainGenerator
 
 
 # path of the input label map
-path_label_map = '../data_example/brain_label_map.nii.gz'
+path_label_map = '../../data/training_label_maps/subject01_seg.nii.gz'
 # path where to save the generated image
-result_dir = '../generated_images'
+result_dir = '../../generated_images'
 
 # generate an image from the label map.
 # Because the image is spatially deformed, we also output the corresponding deformed label map.

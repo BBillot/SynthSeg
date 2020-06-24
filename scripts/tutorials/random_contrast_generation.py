@@ -13,29 +13,29 @@ from SynthSeg.brain_generator import BrainGenerator
 
 # label maps to generate images from.
 # If you have several label maps, BrainGenerator also accepts the path to a directory that contains them.
-path_label_map = '../data_example/brain_label_map.nii.gz'
+path_label_map = '../../data/training_label_maps/subject01_seg.nii.gz'
 
 # general parameters
 n_examples = 5
-result_dir = '../generated_images'
+result_dir = '../../generated_images'
 
 # By default, ImagGenerator compiles a list of all the labels present in the input label maps, and all these labels are
 # used in the generation process.
 # This list of labels can also be specified, either to provide the set of labels from which the image should be
 # generated, or simply to save some computation time.
 # Here we provide it as the path to a 1d numpy array, but it can also be a sequence or directly a 1d numpy array.
-generation_labels = '../data_example/generation_labels.npy'
+generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 
 # By default, the output label maps contain all the labels used for generation. We can also chose to keep only a subset
 # of those, by specifying them in output_labels. This should only contain label already present in the label maps (or in
 # generation_labels if it is provided).
-output_labels = '../data_example/segmentation_labels.npy'
+output_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # By default, each label will be associated to a Gaussian distribution when sampling a new image. We can also group
 # labels in classes, to force them to share the same Gaussian. This can be done by providing generation classes, which
 # should be a sequence, a 1d numpy array, or the path to such an array, with the *same length* as generation_labels.
 # Values in generation_classes should be between 0 and K-1, where K is the total number of classes.
-generation_classes = '../data_example/generation_classes.npy'
+generation_classes = '../../data/labels_classes_priors/generation_classes.npy'
 
 ########################################################################################################
 
@@ -52,6 +52,7 @@ if not os.path.exists(os.path.join(result_dir)):
 for n in range(n_examples):
 
     # generate new image and corresponding labels
+    print('generating example %d' % n)
     im, lab = brain_generator.generate_brain()
 
     # save output image and label map

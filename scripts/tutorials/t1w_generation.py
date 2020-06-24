@@ -13,19 +13,19 @@ from SynthSeg.brain_generator import BrainGenerator
 
 
 # label map to generate images from
-path_label_map = '../data_example/brain_label_map.nii.gz'
+path_label_map = '../../data/training_label_maps/subject01_seg.nii.gz'
 
 # general parameters
 n_examples = 5
-result_dir = '../generated_images'
+result_dir = '../../generated_images'
 output_shape = None  # shape of the output images, obtained by randomly cropping the generated images
 
 # specify structures from which we want to generate
-generation_labels = '../data_example/generation_labels.npy'
+generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 # specify structures that we want to keep in the output label maps
-output_labels = '../data_example/segmentation_labels.npy'
+output_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 # we regroup structures into K classes, so that they share the same distribution for image generation
-generation_classes = '../data_example/generation_classes.npy'
+generation_classes = '../../data/labels_classes_priors/generation_classes.npy'
 
 # We specify here that we type of prior distributions to sample the GMM parameters.
 # By default prior_distribution is set to 'uniform', and in this example we want to change it to 'normal'.
@@ -36,9 +36,9 @@ prior_distribution = 'normal'
 # generation_classes. The first row of prior_means correspond to the means of the Gaussian priors, and the second row
 # correspond to standard deviations.
 # These hyperparameters were estimated with the function SynthSeg/estimate_priors.py/build_intensity_stats
-prior_means = '../data_example/prior_means.npy'
+prior_means = '../../data/labels_classes_priors/prior_means.npy'
 # same as for prior_means, but for the standard deviations of the GMM.
-prior_stds = '../data_example/prior_stds.npy'
+prior_stds = '../../data/labels_classes_priors/prior_stds.npy'
 
 ########################################################################################################
 
@@ -59,6 +59,7 @@ if not os.path.exists(os.path.join(result_dir)):
 for n in range(n_examples):
 
     # generate new image and corresponding labels
+    print('generating example %d' % n)
     im, lab = brain_generator.generate_brain()
 
     # save output image and label map

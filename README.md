@@ -8,7 +8,7 @@ This repository contains code to train a single Convolutional Neural Network to 
 This project is explained in details in the following video:
 \
 \
-[![Talk SynthSeg](scripts/data_example/youtube_link.png)](https://www.youtube.com/watch?v=IX8fAJccFkc&feature=emb_logo)
+[![Talk SynthSeg](data/README_figures/youtube_link.png)](https://www.youtube.com/watch?v=IX8fAJccFkc&feature=emb_logo)
 \
 \
 \
@@ -19,7 +19,7 @@ of the many generation possibilities offered by SynthSeg:
 realistic/unrealistic, isotropic/anisotropic, uni-modal/multi-modal scans.
 \
 \
-![Generation examples](scripts/data_example/figure.png)
+![Generation examples](data/README_figures/figure.png)
 \
 \
 The generated images are then usd to train a CNN for image segmentation. Because the parameters of the GMM (means and 
@@ -28,7 +28,7 @@ variances) are sampled at each minibatch from prior distributions, the network i
 represented in the following figure:
 \
 \
-![Training overview](scripts/data_example/schematic.png)
+![Training overview](data/README_figures/schematic.png)
 \
 \
 Additionally to the `training` function, we provide the generative model `labels_to_image_model`, along with a wrapper 
@@ -36,16 +36,37 @@ Additionally to the `training` function, we provide the generative model `labels
  validation (which must be done offline), and prediction.
 
 ----------------
+
+### Test SynthSeg on your own data
+
+Once all the requirements are installed (see below), you can simply test SynthSeg on your own data with:
+```
+python ./scripts/launch_scripts_from_terminal/SynthSeg_predict.py <images> <segmentations> --out_posteriors <posteriors> --out_volumes <volumes>
+```
+where:
+- `<image>` is the path to an image to segment. \
+This can also be a folder, in which case all the image inside that folder will be segmented.
+- `<segmentation>` is the path where the output segmentation will be saved. \
+This must be a folder if `<path image>` designates a folder.
+- `<posteriors>` (optional) is the path where the posteriors (given as soft probability maps) will be saved. \
+This must be a folder if `<path image>` designates a folder.
+- `<volume>` (optional) is the path to an output csv file where the volumes of all subunits
+will be saved for all segmented scans (one csv file for all subjects; e.g. /path/to/volumes.csv)
+
+
+----------------
+
 ### Tutorials for Generation and Training
 
-If you wish to train your own network or try the generative model, you can familiarise yourself with the different
-parameters by trying the provided [scripts](scripts), classified in three folders:
+**This repository contains code and training label maps** if you wish to train your own network, or try the generative 
+model. You can familiarise yourself with the different training/generation parameters by trying the provided 
+[scripts](scripts), classified in three folders:
 
 - [tutorials](scripts/tutorials): We advise you to start here with the three simple examples of this folder.
 [simple_example.py](scripts/tutorials/simple_example.py) shows how to generate images in three lines with the 
-`BrainGenerator` wrapper. Then [random_contrst_generation.py](scripts/tutorials/random_contrast_generation.py) and 
+`BrainGenerator` wrapper. Then [random_contrast_generation.py](scripts/tutorials/random_contrast_generation.py) and 
 [t1w_generation.py](scripts/tutorials/t1w_generation.py) introduce some basic parameters to easily generate 
-images of random or constrained intenisty distributions.
+images of random or constrained intensity distributions.
 
 - [SynthSeg_scripts](scripts/SynthSeg_scripts): this folder contains two scripts showing how we trained 
 [SynthSeg](https://arxiv.org/abs/2003.01995), a contrast-agnostic network for segmenation of brain MRI scans. 
@@ -54,7 +75,11 @@ These scripts introduce some new parameters of the generative model.
 - [PV-SynthSeg_scripts](scripts/PV-SynthSeg_scripts): this folder contains several scripts, among which you can find 
 how we trained [PV-SynthSeg](https://arxiv.org/abs/2004.10221), a PV-aware network for segmentation of brain MRI scans.
 In particular the [PV-SynthSeg_generation](scripts/PV-SynthSeg_scripts/PV-SynthSeg_generation.py) explains some advanced
-parameters if you wish to generate multi-modal and/or anisotropic images.
+parameters if you wish to generate multi-modal and/or anisotropic images. 
+
+As opposed to SynthSeg, PV-SynthSeg needs to be retrained for new target modalities. This is done by evaluating new 
+Gaussian distribution priors on the target modality. These Gaussian distributions can be estimated as explained in 
+[intensity_estimation](scripts/PV-SynthSeg_scripts/intensity_estimation.py).
 
 ----------------
 
@@ -92,10 +117,15 @@ parameters if you wish to generate multi-modal and/or anisotropic images.
   - [estimate_priors.py](SynthSeg/estimate_priors.py): contains functions to estimate the prior distributions of the GMM
   parameters.
  
- - [models](models): this is where you will find the trained model. You can use this model with the `predict` function
- provided in [SynthSeg/predict.py](SynthSeg/predict.py).
+ - [models](models): this is where you will find the trained model for SynthSeg. You can use this model to predict the 
+ segmentation of your own scans with the `SynthSeg_predict.py` script provided in 
+ [scripts/lauch_scripts_from_terminal](scripts/launch_scripts_from_terminal).
  
-- [script](scripts): additionally to the tutorials, we also provide functions such as to launch your own trainings.
+- [data](data): this folder contains the brain label maps on which SynthSeg and PV-SynthSeg are trained. 
+We give them here, so that you can train your own models.
+ 
+- [script](scripts): additionally to the tutorials, we also provide functions to 1) predict the segmentations of scans 
+with the trained SynthSeg model, and 2) launch your own trainings from the terminal, and to then test your models.
 
 - [ext](ext): contains external packages, especially the *lab2im* package, and a modified version of *neuron*.
 

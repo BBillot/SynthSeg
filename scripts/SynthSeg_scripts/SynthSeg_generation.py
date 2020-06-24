@@ -13,12 +13,13 @@ from ext.lab2im import utils
 from SynthSeg.brain_generator import BrainGenerator
 
 
-# label map to generate images from
-path_label_map = '../data_example/brain_label_map.nii.gz'
+# Pool of label maps to generate images from.
+# Each new image is generated from a label map randomly selected among the provided label maps.
+path_label_maps = '../../data/training_label_maps'
 
 # general parameters
 n_examples = 2
-result_folder = '../generated_images'
+result_folder = '../../generated_images'
 output_shape = 160  # randomly crop produced image to this size
 output_divisible_by_n = 32  # make sure the shape of the output images is divisible by 32 (overwrites output_shape)
 flipping = True  # enable right/left flipping.
@@ -28,9 +29,10 @@ flipping = True  # enable right/left flipping.
 # range of contrasts (often unrealistic), which will make the segmentation network contrast-agnostic.
 prior_distributions = 'uniform'
 
-# set paths to generation labels, and segmentation labels
-generation_labels = '../data_example/generation_labels.npy'
-segmentation_labels = '../data_example/segmentation_labels.npy'
+# set path to generation labels (labels to generate intensities from)
+generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
+# set path to the set of labels that we want to keep in the output label maps (called here segmentation labels)
+segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # Because we enabled right/left flipping, and because our label map contains different labels for contralateral
 # structures we need to sort the generation_labels between non-sided, left and right structures.
@@ -40,7 +42,7 @@ generation_labels, n_neutral_labels = utils.get_list_labels(generation_labels, F
 ########################################################################################################
 
 # instantiate BrainGenerator object
-brain_generator = BrainGenerator(labels_dir=path_label_map,
+brain_generator = BrainGenerator(labels_dir=path_label_maps,
                                  generation_labels=generation_labels,
                                  output_labels=segmentation_labels,
                                  n_neutral_labels=n_neutral_labels,
