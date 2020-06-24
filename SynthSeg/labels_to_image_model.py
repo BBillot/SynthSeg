@@ -53,6 +53,9 @@ def labels_to_image_model(labels_shape,
     The model returns:
         -the generated image normalised between 0 and 1.
         -the corresponding label map, with only the labels present in output_labels (the other are reset to zero).
+    # IMPORTANT !!!
+    # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
+    # these values refer to the RAS axes.
     :param labels_shape: shape of the input label maps. Can be a sequence or a 1d numpy array.
     :param n_channels: number of channels to be synthetised.
     :param generation_labels: (optional) list of all possible label values in the input label maps.

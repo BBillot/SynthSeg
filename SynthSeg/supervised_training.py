@@ -6,12 +6,10 @@ import keras.layers as KL
 import keras.backend as K
 import numpy.random as npr
 from keras.models import Model
-from keras.optimizers import Adam
-from keras.callbacks import TensorBoard
-from keras.callbacks import ModelCheckpoint
 
 # project imports
 from SynthSeg import metrics_model
+from SynthSeg.training import train_model
 
 # third-party imports
 from ext.lab2im import utils
@@ -80,7 +78,7 @@ def training(image_dir,
         os.mkdir(log_dir)
 
     # create augmentation model and input generator
-    im_shape, aff, _, n_channels, _, _ = utils.get_volume_info(image_paths[0])
+    im_shape, aff, _, n_channels, _, _ = utils.get_volume_info(image_paths[0], aff_ref=np.eye(4))
     augmentation_model, unet_input_shape = labels_to_image_model(im_shape=im_shape,
                                                                  n_channels=n_channels,
                                                                  crop_shape=cropping,
@@ -207,7 +205,7 @@ def labels_to_image_model(im_shape,
     # flipping
     if flipping:
         labels, flip = l2i_sa.label_map_random_flipping(labels, label_list, n_neutral_labels, vox2ras, n_dims)
-        ras_axes, _ = edit_volumes.get_ras_axes_and_signs(vox2ras, n_dims)
+        ras_axes = edit_volumes.get_ras_axes(vox2ras, n_dims)
         flip_axis = [ras_axes[0] + 1]
         image = KL.Lambda(lambda y: K.switch(y[0],
                                              KL.Lambda(lambda x: K.reverse(x, axes=flip_axis))(y[1]),
@@ -301,14 +299,14 @@ def build_model_input_generator(images_paths,
         for idx in indices:
 
             # add image
-            image = utils.load_volume(images_paths[idx])
+            image = utils.load_volume(images_paths[idx], aff_ref=np.eye(4))
             if n_channels > 1:
                 images_all.append(utils.add_axis(image, axis=0))
             else:
                 images_all.append(utils.add_axis(image, axis=-2))
 
             # add labels
-            labels = utils.load_volume(labels_paths[idx], dtype='int')
+            labels = utils.load_volume(labels_paths[idx], dtype='int', aff_ref=np.eye(4))
             labels_all.append(utils.add_axis(labels, axis=-2))
 
             # get affine transformation: rotate, scale, shear (translation done during random cropping)
@@ -337,41 +335,3 @@ def build_model_input_generator(images_paths,
             inputs_vals = [item[0] for item in inputs_vals]
 
         yield inputs_vals
-
-
-def train_model(model,
-                generator,
-                lr,
-                lr_decay,
-                n_epochs,
-                n_steps,
-                model_dir,
-                log_dir,
-                metric_type,
-                initial_epoch=0):
-
-    # prepare callbacks
-    save_file_name = os.path.join(model_dir, '%s_{epoch:03d}.h5' % metric_type)
-    temp_callbacks = ModelCheckpoint(save_file_name, verbose=1)
-    mg_model = model
-
-    # TensorBoard callback
-    if metric_type == 'dice':
-        tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)
-        callbacks = [temp_callbacks, tensorboard]
-    else:
-        callbacks = [temp_callbacks]
-
-    # metric and loss
-    metric = metrics_model.IdentityLoss()
-    data_loss = metric.loss
-
-    # compile
-    mg_model.compile(optimizer=Adam(lr=lr, decay=lr_decay), loss=data_loss, loss_weights=[1.0])
-
-    # fit
-    if metric_type == 'dice':
-        mg_model.fit_generator(generator, epochs=n_epochs, steps_per_epoch=n_steps, callbacks=callbacks,
-                               initial_epoch=initial_epoch)
-    else:
-        mg_model.fit_generator(generator, epochs=n_epochs, steps_per_epoch=n_steps, callbacks=callbacks)

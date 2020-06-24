@@ -6,7 +6,7 @@ from .model_inputs import build_model_inputs
 from .labels_to_image_model import labels_to_image_model
 
 # third-party imports
-from ext.lab2im import utils
+from ext.lab2im import utils, edit_volumes
 
 
 class BrainGenerator:
@@ -53,8 +53,7 @@ class BrainGenerator:
 
         # IMPORTANT !!!
         # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
-        # these values refer to the axes of the raw label map (i.e. once it has been loaded in python).
-        # Depending on the label map orientation, the axes of its raw array may or may not correspond to the RAS axes.
+        # these values refer to the RAS axes.
 
         # label maps-related parameters
         :param generation_labels: (optional) list of all possible label values in the input label maps.
@@ -188,8 +187,9 @@ class BrainGenerator:
         assert len(self.labels_paths) > 0, "Could not find any training data"
 
         # generation parameters
-        self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
-            utils.get_volume_info(self.labels_paths[0])
+        _, self.aff, self.header = utils.load_volume(self.labels_paths[0], im_only=False)
+        self.labels_shape, _, self.n_dims, _, _, self.atlas_res = utils.get_volume_info(self.labels_paths[0],
+                                                                                        aff_ref=np.eye(4))
         self.n_channels = n_channels
         if generation_labels is not None:
             self.generation_labels = utils.load_array_if_path(generation_labels)
@@ -204,6 +204,7 @@ class BrainGenerator:
         else:
             self.n_neutral_labels = self.generation_labels.shape[0]
         self.target_res = utils.load_array_if_path(target_res)
+        self.batchsize = batchsize
         # preliminary operations
         self.padding_margin = utils.load_array_if_path(padding_margin)
         self.flipping = flipping
@@ -248,7 +249,7 @@ class BrainGenerator:
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
 
         # build generator for model inputs
-        self.model_inputs_generator = self._build_model_inputs_generator(batchsize)
+        self.model_inputs_generator = self._build_model_inputs_generator()
 
         # build brain generator
         self.brain_generator = self._build_brain_generator()
@@ -266,7 +267,7 @@ class BrainGenerator:
                                                 output_div_by_n=self.output_div_by_n,
                                                 padding_margin=self.padding_margin,
                                                 flipping=self.flipping,
-                                                aff=self.aff,
+                                                aff=np.eye(4),
                                                 apply_linear_trans=self.apply_linear_trans,
                                                 apply_nonlin_trans=self.apply_nonlin_trans,
                                                 nonlin_std=self.nonlin_std,
@@ -283,11 +284,11 @@ class BrainGenerator:
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
 
-    def _build_model_inputs_generator(self, batchsize):
+    def _build_model_inputs_generator(self):
         # build model's inputs generator
         model_inputs_generator = build_model_inputs(path_label_maps=self.labels_paths,
                                                     n_labels=len(self.generation_labels),
-                                                    batchsize=batchsize,
+                                                    batchsize=self.batchsize,
                                                     n_channels=self.n_channels,
                                                     generation_classes=self.generation_classes,
                                                     prior_means=self.prior_means,
@@ -309,4 +310,14 @@ class BrainGenerator:
     def generate_brain(self):
         """call this method when an object of this class has been instantiated to generate new brains"""
         (image, labels) = next(self.brain_generator)
+        # put back images in native space
+        list_images = list()
+        list_labels = list()
+        for i in range(self.batchsize):
+            list_images.append(edit_volumes.align_volume_to_ref(image[i], np.eye(4),
+                                                                aff_ref=self.aff, n_dims=self.n_dims))
+            list_labels.append(edit_volumes.align_volume_to_ref(labels[i], np.eye(4),
+                                                                aff_ref=self.aff, n_dims=self.n_dims))
+        image = np.stack(list_images, axis=0)
+        labels = np.stack(list_labels, axis=0)
         return image, labels
