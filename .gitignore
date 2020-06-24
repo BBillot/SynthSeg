@@ -2,15 +2,14 @@ venv
 **/__pycache__/
 .idea
 
+generated_images
+
 SynthSeg/__pycache__/
 SynthSeg/boxplots.py
 SynthSeg/check_brain_generator.py
 SynthSeg/check_generative_model.py
 SynthSeg/check_model.py
 SynthSeg/check_training_supervised.py
-
-scripts/generated_images/
-scripts/model_dir
 
 scripts/PV-SynthSeg_scripts/check_generative_model.py
 scripts/PV-SynthSeg_scripts/draw_boxplots.py

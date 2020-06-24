@@ -16,18 +16,21 @@ from SynthSeg.brain_generator import BrainGenerator
 from ext.lab2im import utils
 
 
-# common parameters to both examples
+# common parameters to all examples
 n_examples = 3
-result_folder = '../generated_images/'
-path_label_map = '../data_example/brain_label_map.nii.gz'
-generation_labels = '../data_example/generation_labels.npy'
-segmentation_labels = '../data_example/segmentation_labels.npy'
+result_folder = '../../generated_images'
+path_label_maps = '../../data/training_label_maps'
+
+# set path to generation labels (labels to generate intensities from)
+generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
+# set path to the set of labels that we want to keep in the output label maps (called here segmentation labels)
+segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # GMM-sampling parameters
-generation_classes = '../data_example/generation_classes.npy'
+generation_classes = '../../data/labels_classes_priors/generation_classes.npy'
 prior_distribution = 'normal'
-prior_means = '../data_example/prior_means.npy'  # the same prior will be used for all channels
-prior_stds = '../data_example/prior_stds.npy'
+prior_means = '../../data/labels_classes_priors/prior_means.npy'  # the same prior will be used for all channels
+prior_stds = '../../data/labels_classes_priors/prior_stds.npy'
 
 # blurring parameter
 # Here we keep want to obtain images with realistic background, either full-zero or low-intenisty Gaussian.
@@ -125,7 +128,7 @@ bias_field_std = 0.4  # we increase the strength of the applied bias field (defa
 generation_labels, n_neutral_labels = utils.get_list_labels(generation_labels, FS_sort=True)
 
 # instantiate BrainGenerator object
-brain_generator = BrainGenerator(labels_dir=path_label_map,
+brain_generator = BrainGenerator(labels_dir=path_label_maps,
                                  generation_labels=generation_labels,
                                  output_labels=segmentation_labels,
                                  n_neutral_labels=n_neutral_labels,

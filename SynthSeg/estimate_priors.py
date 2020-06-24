@@ -284,3 +284,5 @@ def build_intensity_stats(list_image_dir,
     # save files
     np.save(os.path.join(results_dir, 'prior_means.npy'), prior_means)
     np.save(os.path.join(results_dir, 'prior_stds.npy'), prior_stds)
+
+    return prior_means, prior_stds

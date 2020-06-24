@@ -9,16 +9,18 @@ from SynthSeg.training import training
 
 
 # path training label maps
-path_label_map = '../data_example/brain_label_map.nii.gz'
-path_model_dir = '../models_dir'
+path_training_label_maps = '../../data/training_label_maps'
+# path of directory where to save the models during training
+path_model_dir = '../../models/SynthSeg_training'
 
-# set paths to generation labels and segmentation labels
-generation_labels = '../data_example/generation_labels.npy'
-segmentation_labels = '../data_example/segmentation_labels.npy'
+# set path to generation labels
+generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
+# set path to segmentation labels (i.e. the ROI to segment and to compute the loss on)
+segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # generation parameters
-target_res = 1
-output_shape = 160
+target_res = 1  # resolution of the output segmentation
+output_shape = 160  # tune this to the size of your GPU
 
 # training parameters
 wl2_epochs = 5
@@ -26,7 +28,7 @@ dice_epochs = 100
 steps_per_epoch = 1000
 include_background = True
 
-training(labels_dir=path_label_map,
+training(labels_dir=path_training_label_maps,
          model_dir=path_model_dir,
          path_generation_labels=generation_labels,
          path_segmentation_labels=segmentation_labels,
