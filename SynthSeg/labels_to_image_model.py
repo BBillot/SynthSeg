@@ -256,7 +256,10 @@ def labels_to_image_model(labels_shape,
 
 def get_shapes(labels_shape, output_shape, atlas_res, target_res, padding_margin, output_div_by_n):
 
+    # reformat resolutions to lists
+    atlas_res = utils.reformat_to_list(atlas_res)
     n_dims = len(atlas_res)
+    target_res = utils.reformat_to_list(target_res)
 
     # get new labels shape if padding
     if padding_margin is not None:
@@ -264,7 +267,7 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, padding_margin
         labels_shape = [labels_shape[i] + 2 * padding_margin[i] for i in range(n_dims)]
 
     # get resampling factor
-    if atlas_res.tolist() != target_res.tolist():
+    if atlas_res != target_res:
         resample_factor = [atlas_res[i] / float(target_res[i]) for i in range(n_dims)]
     else:
         resample_factor = None
@@ -296,14 +299,28 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, padding_margin
 
     # no output shape specified, so no cropping unless label_shape is not divisible by output_div_by_n
     else:
-        cropping_shape = labels_shape
-        if resample_factor is not None:
-            output_shape = [int(np.around(cropping_shape[i]*resample_factor[i], 0)) for i in range(n_dims)]
-        else:
-            output_shape = cropping_shape
+
         # make sure output shape is divisible by output_div_by_n
         if output_div_by_n is not None:
-            output_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=False)
-                            for s in output_shape]
+
+            # if resampling, get the potential output_shape and check if it is divisible by n
+            if resample_factor is not None:
+                output_shape = [int(labels_shape[i] * resample_factor[i]) for i in range(n_dims)]
+                output_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
+                                for s in output_shape]
+                cropping_shape = [int(np.around(output_shape[i] / resample_factor[i], 0)) for i in range(n_dims)]
+            # if no resampling, simply check if image_shape is divisible by n
+            else:
+                cropping_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
+                                  for s in labels_shape]
+                output_shape = cropping_shape
+
+        # if no need to be divisible by n, simply take cropping_shape as image_shape, and build output_shape
+        else:
+            cropping_shape = labels_shape
+            if resample_factor is not None:
+                output_shape = [int(cropping_shape[i] * resample_factor[i]) for i in range(n_dims)]
+            else:
+                output_shape = cropping_shape
 
     return cropping_shape, output_shape, padding_margin

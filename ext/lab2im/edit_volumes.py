@@ -834,7 +834,7 @@ def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, re
         # pad map
         path_result = os.path.join(result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_result)) | recompute:
-            im, aff, h = utils.load_volume(path_image, im_only=True)
+            im, aff, h = utils.load_volume(path_image, im_only=False)
             im, aff = pad_volume(im, max_shape, padding_value, aff)
             utils.save_volume(im, aff, h, path_result)
 
@@ -1066,7 +1066,7 @@ def mri_convert_images_in_dir(image_dir,
                               same_reference=False,
                               voxsize=None,
                               path_freesurfer='/usr/local/freesurfer',
-                              mri_convert_path='/usr/local/freesurfer/bin/mri_convert.bin',
+                              mri_convert_path='/usr/local/freesurfer/bin/mri_convert',
                               recompute=True):
     """This function launches mri_convert on all images contained in image_dir, and writes the results in result_dir.
     The interpolation type can be specified (i.e. 'nearest'), as well as a folder containing references for resampling.

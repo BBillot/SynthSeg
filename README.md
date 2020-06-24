@@ -152,7 +152,7 @@ benjamin.billot.18@ucl.ac.uk
 [1] *Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation* \
 Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
 CVPR 2018 \
-[link]((http://www.mit.edu/~adalca/files/papers/cvpr2018_priors.pdf))
+[link](http://www.mit.edu/~adalca/files/papers/cvpr2018_priors.pdf)
 
 [2] *Unsupervised Data Imputation via Variational Inference of Deep Subspaces* \
 Adrian V. Dalca, John Guttag, Mert R. Sabuncu \

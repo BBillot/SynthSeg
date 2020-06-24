@@ -36,6 +36,7 @@ def predict(path_images,
             unet_feat_count=24,
             feat_multiplier=2,
             no_batch_norm=False,
+            activation='elu',
             gt_folder=None):
     """
     This function uses trained models to segment images.
@@ -73,6 +74,7 @@ def predict(path_images,
     :param unet_feat_count: (optional) number of features for the first layer of the unet. Default is 24.
     :param feat_multiplier: (optional) multiplicative factor for the number of feature for each new level. Default is 2.
     :param no_batch_norm: (optional) whether to deactivate batch norm. Default is False.
+    :param activation: (optional) activation function. Can be 'elu', 'relu'.
     :param gt_folder: (optional) folder containing ground truth files for evaluation.
     A numpy array containing all dice scores (labels in rows, subjects in columns) will be writen either at
     segmentations_dir (if not None), or posteriors_dir.
@@ -126,7 +128,8 @@ def predict(path_images,
 
             # build network
             net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
-                              nb_conv_per_level, unet_feat_count, feat_multiplier, no_batch_norm, sigma_smoothing)
+                              nb_conv_per_level, unet_feat_count, feat_multiplier, no_batch_norm, activation,
+                              sigma_smoothing)
 
         # predict posteriors
         prediction_patch = net.predict(image)
@@ -284,7 +287,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
     if M == m:
         im = np.zeros(im.shape)
     else:
-        im = (im-m)/(M-m)
+        im = (im - m) / (M - m)
 
     # add batch and channel axes
     if n_channels > 1:
@@ -296,7 +299,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
 
 
 def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv_size, nb_conv_per_level,
-                unet_feat_count, feat_multiplier, no_batch_norm, sigma_smoothing):
+                unet_feat_count, feat_multiplier, no_batch_norm, activation, sigma_smoothing):
 
     # initialisation
     net = None
@@ -330,7 +333,7 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
                           use_logp=True,
                           padding='same',
                           dilation_rate_mult=1,
-                          activation='elu',
+                          activation=activation,
                           use_residuals=False,
                           final_pred_activation='softmax',
                           nb_conv_per_level=nb_conv_per_level,
