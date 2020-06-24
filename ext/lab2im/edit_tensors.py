@@ -159,11 +159,15 @@ def resample_tensor(tensor,
     :return: resampled volume
     """
 
+    # reformat resolutions to lists
+    subsample_res = utils.reformat_to_list(subsample_res)
+    volume_res = utils.reformat_to_list(volume_res)
+
     # downsample image
     downsample_shape = None
     tensor_shape = tensor.get_shape().as_list()[1:-1]
     if subsample_res is not None:
-        if subsample_res.tolist() != volume_res.tolist():
+        if subsample_res != volume_res:
 
             # get shape at which we downsample
             assert volume_res is not None, 'if subsanple_res is specified, so should atlas_res be.'

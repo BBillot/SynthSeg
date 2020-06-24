@@ -39,6 +39,7 @@ def training(image_dir,
              dropout=0,
              unet_feat_count=24,
              no_batch_norm=False,
+             activation='elu',
              lr=1e-4,
              lr_decay=0,
              batch_size=1,
@@ -118,6 +119,7 @@ def training(image_dir,
                                  nb_conv_per_level=nb_conv_per_level,
                                  conv_dropout=dropout,
                                  batch_norm=batch_norm_dim,
+                                 activation=activation,
                                  input_model=augmentation_model)
 
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities

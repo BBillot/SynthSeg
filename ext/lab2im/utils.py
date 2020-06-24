@@ -46,15 +46,17 @@ from scipy.ndimage.morphology import distance_transform_edt
 # ---------------------------------------------- loading/saving functions ----------------------------------------------
 
 
-def load_volume(path_volume, im_only=True, squeeze=True, dtype=None):
+def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=None):
     """
     Load volume file.
     :param path_volume: path of the volume to load. Can either be a nii, nii.gz, mgz, or npz format.
     If npz format, 1) the variable name is assumed to be 'vol_data',
     2) the volume is associated with a identity affine matrix and blank header.
-    :param im_only: if False, the function also returns the affine matrix and header of the volume.
-    :param squeeze: whether to squeeze the volume when loading.
-    :param dtype: if not None, convert the loaded volume to this numpy dtype.
+    :param im_only: (optional) if False, the function also returns the affine matrix and header of the volume.
+    :param squeeze: (optional) whether to squeeze the volume when loading.
+    :param dtype: (optional) if not None, convert the loaded volume to this numpy dtype.
+    :param aff_ref: (optional) If not None, the loaded volume is aligned to this affine matrix.
+    The returned affine matrix is also given in this new space. Must be a numpy array of dimension 4x4.
     :return: the volume, with corresponding affine matrix and header if im_only is False.
     """
     assert path_volume.endswith(('.nii', '.nii.gz', '.mgz', '.npz')), 'Unknown data file: %s' % path_volume
@@ -76,6 +78,12 @@ def load_volume(path_volume, im_only=True, squeeze=True, dtype=None):
     if dtype is not None:
         volume = volume.astype(dtype=dtype)
 
+    # align image to reference affine matrix
+    if aff_ref is not None:
+        from . import edit_volumes  # the import is done here to avoid import loops
+        n_dims, _ = get_dims(list(volume.shape), max_channels=3)
+        volume, aff = edit_volumes.align_volume_to_ref(volume, aff, aff_ref=aff_ref, return_aff=True, n_dims=n_dims)
+
     if im_only:
         return volume
     else:
@@ -90,8 +98,8 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
     aff can also be set to 'FS', in which case the volume is saved with the affine matrix of FreeSurfer outputs.
     :param header: header of the volume to save. If None, the volume is saved with a blank header.
     :param path: path where to save the volume.
-    :param res: update the resolution in the header before saving the volume.
-    :param dtype: numpy dtype for the saved volume.
+    :param res: (optional) update the resolution in the header before saving the volume.
+    :param dtype: (optional) numpy dtype for the saved volume.
     :param n_dims: (optional) number of dimensions, to avoid confusion in multi-channel case. Default is None, where
     n_dims is automatically inferred.
     """
@@ -116,15 +124,17 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
         nib.save(nifty, path)
 
 
-def get_volume_info(path_volume, return_volume=False):
+def get_volume_info(path_volume, return_volume=False, aff_ref=None):
     """
     Gather information about a volume: shape, affine matrix, number of dimensions and channels, header, and resolution.
     :param path_volume: path of the volume to get information form.
-    :param return_volume: whether to return the volume along with the information.
+    :param return_volume: (optional) whether to return the volume along with the information.
+    :param aff_ref: (optional) If not None, the loaded volume is aligned to this affine matrix.
+    All info relative to the volume is then given in this new space. Must be a numpy array of dimension 4x4.
     :return: volume (if return_volume is true), and corresponding info.
     """
     # read image
-    im, vox2ras, header = load_volume(path_volume, im_only=False)
+    im, aff, header = load_volume(path_volume, im_only=False)
 
     # understand if image is multichannel
     im_shape = list(im.shape)
@@ -139,11 +149,24 @@ def get_volume_info(path_volume, return_volume=False):
     else:
         data_res = [1.0] * n_dims
 
+    # align to given affine matrix
+    if aff_ref is not None:
+        from . import edit_volumes  # the import is done here to avoid import loops
+        ras_axes = edit_volumes.get_ras_axes(aff, n_dims=n_dims)
+        ras_axes_ref = edit_volumes.get_ras_axes(aff_ref, n_dims=n_dims)
+        im, aff = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=True, n_dims=n_dims)
+        im_shape = np.array(im_shape)
+        data_res = np.array(data_res)
+        im_shape[ras_axes_ref] = im_shape[ras_axes]
+        data_res[ras_axes_ref] = data_res[ras_axes]
+        im_shape = im_shape.tolist()
+        data_res = data_res.tolist()
+
     # return info
     if return_volume:
-        return im, im_shape, vox2ras, n_dims, n_channels, header, data_res
+        return im, im_shape, aff, n_dims, n_channels, header, data_res
     else:
-        return im_shape, vox2ras, n_dims, n_channels, header, data_res
+        return im_shape, aff, n_dims, n_channels, header, data_res
 
 
 def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_sort=False):
@@ -204,7 +227,7 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
             else:
                 raise Exception('label {} not in our current FS classification, '
                                 'please update get_list_labels in utils.py'.format(la))
-        label_list = np.concatenate([neutral, left, right])
+        label_list = np.concatenate([sorted(neutral), sorted(left), sorted(right)])
         if ((len(left) > 0) & (len(right) > 0)) | ((len(left) == 0) & (len(right) == 0)):
             n_neutral_labels = len(neutral)
         else:
@@ -212,12 +235,12 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
 
     # save labels if specified
     if save_label_list is not None:
-        np.save(save_label_list, label_list)
+        np.save(save_label_list, np.int32(label_list))
 
     if FS_sort:
-        return label_list, n_neutral_labels
+        return np.int32(label_list), n_neutral_labels
     else:
-        return label_list
+        return np.int32(label_list)
 
 
 def load_array_if_path(var, load_as_numpy=True):
@@ -607,9 +630,11 @@ def build_gaussian_kernel(sigma, n_dims):
 
 def get_std_blurring_mask_for_downsampling(dowsample_res, current_res, thickness=None):
     """Compute standard deviations of 1d gaussian masks for image blurring before downsampling.
-    :param dowsample_res: resolution to dowsample to.
+    :param dowsample_res: resolution to dowsample to. Can be a 1d numpy array or list.
     :param current_res: resolution of the volume before downsampling.
+    Can be a 1d numpy array or list of the same length as downsample res.
     :param thickness: slices thickness in each dimension.
+    Can be a 1d numpy array or list of the same length as downsample res.
     :return: standard deviation of the blurring masks
     """
     # reformat data resolution at which we blur
