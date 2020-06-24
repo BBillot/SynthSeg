@@ -7,4 +7,5 @@ from . import model_inputs
 from . import predict
 from . import supervised_training
 from . import training
+from . import vae_model
 from . import validate

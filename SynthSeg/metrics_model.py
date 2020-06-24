@@ -95,7 +95,7 @@ def metrics_model(input_shape,
         # average mean dice loss over mini batch
         last_tensor = KL.Lambda(lambda x: K.mean(x), name='average_mean_dice_loss')(last_tensor)
 
-    elif metrics == 'weighted_l2':
+    elif metrics == 'wl2':
         # compute weighted l2 loss
         weights = KL.Lambda(lambda x: K.expand_dims(1 - x[..., 0] + weight_background))(labels_gt)
         normaliser = KL.Lambda(lambda x: K.sum(x[0]) * K.int_shape(x[1])[-1])([weights, last_tensor])
@@ -105,7 +105,7 @@ def metrics_model(input_shape,
             name='wl2')([labels_gt, last_tensor, weights, normaliser])
 
     else:
-        raise Exception('metrics should either be "dice or "weighted_l2, got {}'.format(metrics))
+        raise Exception('metrics should either be "dice or "wl2, got {}'.format(metrics))
 
     # create the model and return
     model = Model(inputs=input_tensor, outputs=last_tensor, name=model_name)
@@ -156,10 +156,8 @@ class IdentityLoss(object):
         self.keepdims = keepdims
 
     def loss(self, y_true, y_predicted):
-        """
-            because the metrics is already calculated in the model, we simply return y_predicted.
-             We still need to put y_true in the inputs, as it's expected by keras
-        """
+        """Because the metrics is already calculated in the model, we simply return y_predicted.
+           We still need to put y_true in the inputs, as it's expected by keras."""
         loss = y_predicted
 
         tf.debugging.check_numerics(loss, 'Loss not finite')

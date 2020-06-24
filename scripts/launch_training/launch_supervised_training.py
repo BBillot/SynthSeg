@@ -32,6 +32,7 @@ parser.add_argument("--unet_feat", type=int, dest="unet_feat_count", default=24,
                     help="number of features in first layer of the Unet")
 parser.add_argument("--no_batch_norm", action='store_true', dest="no_batch_norm",
                     help="deactivate batch normalisation")
+parser.add_argument("--activation", type=str, dest="activation", default='elu', help="activation function")
 
 # Training parameters
 parser.add_argument("--lr", type=float, dest="lr", default=1e-4, help="learning rate")

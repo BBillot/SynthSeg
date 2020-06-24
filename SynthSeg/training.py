@@ -16,6 +16,7 @@ from ext.neuron import models as nrn_models
 
 
 def training(labels_dir,
+             vae_model,
              model_dir,
              path_generation_labels=None,
              path_segmentation_labels=None,
@@ -50,6 +51,7 @@ def training(labels_dir,
              feat_multiplier=2,
              dropout=0,
              no_batch_norm=False,
+             activation='elu',
              lr=1e-4,
              lr_decay=0,
              wl2_epochs=5,
@@ -67,6 +69,7 @@ def training(labels_dir,
 
     :param labels_dir: path of folder with all input label maps, or to a single label map (if only one training example)
     :param model_dir: path of a directory where the models will be saved during training.
+    :param vae_model: path of vae weights to sample lesion mask.
 
     #---------------------------------------------- Generation parameters ----------------------------------------------
     # label maps parameters
@@ -171,6 +174,7 @@ def training(labels_dir,
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 2.
     :param dropout: (optional) probability of drpout for the Unet. Deafult is 0, where no dropout is applied.
     :param no_batch_norm: (optional) wheter to remove batch normalisation. Default is False, where BN is applied.
+    :param activation: (optional) activation function. Can be 'elu', 'relu'.
 
     # ----------------------------------------------- Training parameters ----------------------------------------------
     :param lr: (optional) learning rate for the training. Default is 1e-4
@@ -221,6 +225,7 @@ def training(labels_dir,
 
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
+                                     vae_model=vae_model,
                                      generation_labels=generation_labels,
                                      output_labels=segmentation_labels,
                                      n_neutral_labels=n_neutral_labels,
@@ -268,6 +273,7 @@ def training(labels_dir,
                                  nb_conv_per_level=nb_conv_per_level,
                                  conv_dropout=dropout,
                                  batch_norm=batch_norm_dim,
+                                 activation=activation,
                                  input_model=labels_to_image_model)
 
     # input generator
@@ -281,7 +287,7 @@ def training(labels_dir,
                                                 segmentation_label_list=segmentation_labels,
                                                 input_model=wl2_model,
                                                 loss_cropping=loss_cropping,
-                                                metrics='weighted_l2',
+                                                metrics='wl2',
                                                 weight_background=background_weight,
                                                 name='metrics_model')
         if load_model_file is not None:
@@ -319,25 +325,17 @@ def train_model(model,
                 metric_type,
                 initial_epoch=0):
 
-    # prepare callbacks
+    # model saving callback
     save_file_name = os.path.join(model_dir, '%s_{epoch:03d}.h5' % metric_type)
-    temp_callbacks = ModelCheckpoint(save_file_name, save_weights_only=True, verbose=1)
-    mg_model = model
+    callbacks = [ModelCheckpoint(save_file_name, save_weights_only=True, verbose=1)]
 
     # TensorBoard callback
     if metric_type == 'dice':
-        tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)
-        callbacks = [temp_callbacks, tensorboard]
-    else:
-        callbacks = [temp_callbacks]
-
-    # metric and loss
-    metric = metrics_model.IdentityLoss()
-    data_loss = metric.loss
+        callbacks.append(TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False))
 
     # compile
-    mg_model.compile(optimizer=Adam(lr=lr, decay=lr_decay), loss=data_loss, loss_weights=[1.0])
+    model.compile(optimizer=Adam(lr=lr, decay=lr_decay), loss=metrics_model.IdentityLoss().loss, loss_weights=[1.0])
 
     # fit
-    mg_model.fit_generator(generator, epochs=n_epochs, steps_per_epoch=n_steps, callbacks=callbacks,
-                           initial_epoch=initial_epoch)
+    model.fit_generator(generator, epochs=n_epochs, steps_per_epoch=n_steps, callbacks=callbacks,
+                        initial_epoch=initial_epoch)

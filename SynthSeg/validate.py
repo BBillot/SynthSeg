@@ -19,6 +19,11 @@ def validate_training(image_dir,
                       validation_main_dir,
                       path_label_list,
                       step_eval=1,
+                      conv_size=3,
+                      n_levels=5,
+                      nb_conv_per_level=2,
+                      feat_multiplier=1,
+                      activation='elu',
                       recompute=True):
     """This function validates models saved at different epochs of the same training.
     All models are assumed to be in the same folder.contained in models_dir.
@@ -30,6 +35,11 @@ def validate_training(image_dir,
     :param validation_main_dir: path of the folder where all the models validation subfolders will be saved.
     :param path_label_list: path of the numpy array containing all the label values to validate on.
     :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
+    :param n_levels: (optional) number of level for the Unet. Default is 5.
+    :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
+    :param conv_size: (optional) size of the convolution kernels. Default is 2.
+    :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 1.
+    :param activation: (optional) activation function. Can be 'elu', 'relu'.
     :param recompute: (optional) whether to recompute result files even if they already exists."""
 
     # create result folder
@@ -51,6 +61,11 @@ def validate_training(image_dir,
                     path_model=path_model,
                     segmentation_label_list=path_label_list,
                     path_segmentations=model_val_dir,
+                    conv_size=conv_size,
+                    n_levels=n_levels,
+                    nb_conv_per_level=nb_conv_per_level,
+                    feat_multiplier=feat_multiplier,
+                    activation=activation,
                     gt_folder=gt_dir)
 
 

@@ -13,6 +13,7 @@ class BrainGenerator:
 
     def __init__(self,
                  labels_dir,
+                 vae_model,
                  generation_labels=None,
                  output_labels=None,
                  n_neutral_labels=None,
@@ -245,7 +246,8 @@ class BrainGenerator:
         self.bias_shape_factor = bias_shape_factor
 
         # build transformation model
-        self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
+        self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model(batchsize)
+        self.labels_to_image_model.load_weights(vae_model, by_name=True)
 
         # build generator for model inputs
         self.model_inputs_generator = self._build_model_inputs_generator(batchsize)
@@ -253,9 +255,10 @@ class BrainGenerator:
         # build brain generator
         self.brain_generator = self._build_brain_generator()
 
-    def _build_labels_to_image_model(self):
+    def _build_labels_to_image_model(self, batchsize):
         # build_model
         lab_to_im_model = labels_to_image_model(labels_shape=self.labels_shape,
+                                                batchsize=batchsize,
                                                 n_channels=self.n_channels,
                                                 generation_labels=self.generation_labels,
                                                 output_labels=self.output_labels,
