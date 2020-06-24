@@ -5,9 +5,11 @@ print('\n')
 print('SynthSeg prediction')
 print('\n')
 
-# path imports
+# python imports
 import os
 import sys
+import numpy as np
+from argparse import ArgumentParser
 
 # add main folder to python path and import ./SynthSeg/predict.py
 synthseg_home = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))))
@@ -16,7 +18,6 @@ from SynthSeg.predict import predict
 
 
 # parse arguments
-from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("path_images", type=str, help="images to segment. Can be the path to a single image or to a folder")
 parser.add_argument("path_segmentations", type=str, help="path where to save the segmentations. Must be the same type "
@@ -35,6 +36,7 @@ args['segmentation_label_list'] = path_label_list
 args['path_model'] = path_model
 args['sigma_smoothing'] = 0.5
 args['keep_biggest_component'] = True
+args['aff_ref'] = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
 
 # call predict
 predict(**args)

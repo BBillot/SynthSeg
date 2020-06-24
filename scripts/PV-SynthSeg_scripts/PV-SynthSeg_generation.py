@@ -39,8 +39,7 @@ background_blur = False
 
 # IMPORTANT !!!
 # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
-# these values refer to the axes of the raw label map (i.e. once it has been loaded in python).
-# Depending on the label map orientation, the axes of its raw array may or may not correspond to the RAS axes.
+# these values refer to the RAS axes.
 
 # ---------------------------------------------------- multi_modal -----------------------------------------------------
 # Here we want to mimick multi-modal scans (double T1w, this is just an example) acquired at 1mm and subsampled to 1.5mm

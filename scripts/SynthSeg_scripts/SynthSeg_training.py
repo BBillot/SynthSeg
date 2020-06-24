@@ -24,7 +24,7 @@ output_shape = 160  # tune this to the size of your GPU
 
 # training parameters
 wl2_epochs = 5
-dice_epochs = 100
+dice_epochs = 150
 steps_per_epoch = 1000
 include_background = True
 

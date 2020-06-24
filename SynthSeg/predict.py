@@ -28,6 +28,7 @@ def predict(path_images,
             padding=None,
             cropping=None,
             resample=None,
+            aff_ref=np.eye(4),
             sigma_smoothing=0,
             keep_biggest_component=False,
             conv_size=3,
@@ -65,6 +66,9 @@ def predict(path_images,
     Can be an int, a sequence or a 1d numpy array.
     :param resample: (optional) resample the images to the specified resolution before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
+    :param aff_ref: (optional) affine matrix of the images used for training. By default this is set to identity matrix,
+    as the training script now automatically aligns the training data to this orientation.
+    However SynthSeg was trained prior to this automatic aligment, that's why we keep this parameter.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
@@ -112,10 +116,8 @@ def predict(path_images,
         utils.print_loop_info(idx, len(images_to_segment), 10)
 
         # preprocess image and get information
-        image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, cropping, crop_idx = preprocess_image(path_image,
-                                                                                                           n_levels,
-                                                                                                           cropping,
-                                                                                                           padding)
+        image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, cropping, crop_idx = \
+            preprocess_image(path_image, n_levels, cropping, padding, aff_ref=aff_ref)
         model_input_shape = list(image.shape[1:])
 
         # prepare net for first image or if input's size has changed
@@ -136,7 +138,7 @@ def predict(path_images,
 
         # get posteriors and segmentation
         seg, posteriors = postprocess(prediction_patch, cropping, pad_shape, shape, crop_idx, n_dims, label_list,
-                                      keep_biggest_component, aff)
+                                      keep_biggest_component, aff, aff_ref=aff_ref)
 
         # compute volumes
         if path_volumes is not None:
@@ -241,7 +243,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
     return images_to_segment, out_seg, out_posteriors, out_volumes
 
 
-def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
+def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref=np.eye(4)):
 
     # read image and corresponding info
     im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
@@ -278,7 +280,6 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None):
 
     # align image to training axes and directions, change this to the affine matrix of your training data
     if n_dims > 2:
-        aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
         im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
 
     # normalise image
@@ -371,7 +372,8 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
     return net
 
 
-def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, labels, keep_biggest_component, aff):
+def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, labels, keep_biggest_component,
+                aff, aff_ref=np.eye(4)):
 
     # get posteriors and segmentation
     post_patch = np.squeeze(prediction)
@@ -394,7 +396,6 @@ def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, label
 
     # align prediction back to first orientation
     if n_dims > 2:
-        aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
         seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
         post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, return_aff=False, n_dims=n_dims)
 

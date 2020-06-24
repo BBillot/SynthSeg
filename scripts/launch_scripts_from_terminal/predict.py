@@ -1,4 +1,5 @@
 # imports
+import numpy as np
 from argparse import ArgumentParser
 from SynthSeg.predict import predict
 
@@ -25,6 +26,8 @@ parser.add_argument("--cropping", type=int, dest="cropping", default=None,
 parser.add_argument("--resample", type=float, dest="resample", default=None,
                     help="Working resolution. Segmentations will be given at native resolution. "
                          "Default is native resolution")
+parser.add_argument("--align", type=float, dest="aff_ref", default=np.eye(4),
+                    help="affine matrix of training images (only use this for provided model of SynthSeg)")
 parser.add_argument("--smoothing", type=float, dest="sigma_smoothing", default=0,
                     help="var for gaussian blurring of the posteriors")
 parser.add_argument("--biggest_component", action='store_true', dest="keep_biggest_component",
