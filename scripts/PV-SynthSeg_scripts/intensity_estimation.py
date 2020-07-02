@@ -42,7 +42,7 @@ build_intensity_stats(list_image_dir=image_dir,
 
 # ---------------------------------------------- simple multi-modal case -----------------------------------------------
 
-# Here we have multi-modal images, where all channels are embedded in the same files.
+# Here we have multi-modal images, where every image contains all channels.
 # Channels are supposed to be sorted in the same order for all subjects.
 image_dir = '/image_folder/multi-modal_t1_t2'
 
