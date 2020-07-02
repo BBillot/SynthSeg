@@ -114,7 +114,8 @@ def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_
     return np.stack([means, stds])
 
 
-def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_list, classes_list=None, rescale=True):
+def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_list, classes_list=None, max_channel=3,
+                                               rescale=True):
     """This function aims at estimating the intensity distributions of K different structure types from a set of images.
     The distribution of each structure type is modelled as a Gaussian, parametrised by a mean and a standard deviation.
     Because the intensity distribution of structures can vary accross images, we additionally use Gausian priors for the
@@ -133,6 +134,7 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
     classes. Default is all labels have different classes (K=len(labels_list)).
+    :param max_channel: (optional) maximum number of channels to consider if the data is multispectral. Default is 3.
     :param rescale: (optional) whether to rescale images between 0 and 255 before intensity estimation
     :return: 2 numpy arrays of size (2*n_channels, K), one with the evaluated means/std for the mean
     intensity, and one for the mean/std for the standard deviation.
@@ -161,7 +163,7 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
                          'where K is the total number of classes. Here K = %d' % n_classes)
 
     # initialise result arrays
-    n_dims, n_channels = utils.get_dims(utils.load_volume(path_images[0]).shape, max_channels=3)
+    n_dims, n_channels = utils.get_dims(utils.load_volume(path_images[0]).shape, max_channels=max_channel)
     means = np.zeros((len(path_images), n_classes, n_channels))
     stds = np.zeros((len(path_images), n_classes, n_channels))
 
@@ -191,12 +193,12 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
     std_stds = np.std(stds, axis=0)
 
     # regroup prior parameters in two different arrays: one for the mean and one for the std
-    prior_means = np.zeros((2*n_channels, n_classes))
-    prior_stds = np.zeros((2*n_channels, n_classes))
+    prior_means = np.zeros((2 * n_channels, n_classes))
+    prior_stds = np.zeros((2 * n_channels, n_classes))
     for channel in range(n_channels):
-        prior_means[2*channel, :] = mean_means[:, channel]
+        prior_means[2 * channel, :] = mean_means[:, channel]
         prior_means[2 * channel + 1, :] = std_means[:, channel]
-        prior_stds[2*channel, :] = mean_stds[:, channel]
+        prior_stds[2 * channel, :] = mean_stds[:, channel]
         prior_stds[2 * channel + 1, :] = std_stds[:, channel]
 
     return prior_means, prior_stds
@@ -207,6 +209,7 @@ def build_intensity_stats(list_image_dir,
                           results_dir,
                           estimation_labels,
                           estimation_classes=None,
+                          max_channel=3,
                           rescale=True):
     """This function aims at estimating the intensity distributions of K different structure types from a set of images.
     The distribution of each structure type is modelled as a Gaussian, parametrised by a mean and a standard deviation.
@@ -235,6 +238,7 @@ def build_intensity_stats(list_image_dir,
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
     classes. Default is all labels have different classes (K=len(estimation_labels)).
+    :param max_channel: (optional) maximum number of channels to consider if the data is multispectral. Default is 3.
     :param rescale: (optional) whether to rescale images between 0 and 255 before intensity estimation
     """
 
