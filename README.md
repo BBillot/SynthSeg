@@ -168,7 +168,7 @@ accepted for MIDL 2020 \
 
 **Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast** \
 Benjamin Billot, Eleanor D. Robinson, Adrian V. Dalca, Juan Eugenio Iglesias \
-under revision \
+accepted for MICCAI 2020 \
 [ [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.txt) ]
 
 If you have any question regarding the usage of this code, or any suggestions to improve it you can contact us at: \
