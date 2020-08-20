@@ -4,6 +4,7 @@ import numpy.random as npr
 
 # project imports
 from . import utils
+from . import edit_volumes
 from .lab2im_model import lab2im_model
 
 
@@ -13,7 +14,7 @@ class ImageGenerator:
                  labels_dir,
                  generation_labels=None,
                  output_labels=None,
-                 batch_size=1,
+                 batchsize=1,
                  n_channels=1,
                  target_res=None,
                  output_shape=None,
@@ -34,8 +35,7 @@ class ImageGenerator:
 
         # IMPORTANT !!!
         # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
-        # these values refer to the axes of the raw label map (i.e. once it has been loaded in python).
-        # Depending on the label map orientation, the axes of its raw array may or may not correspond to the RAS axes.
+        # these values refer to the RAS axes.
 
         # label maps-related parameters
         :param generation_labels: (optional) list of all possible label values in the input label maps.
@@ -48,7 +48,7 @@ class ImageGenerator:
         By default output labels are equal to generation labels.
 
         # output-related parameters
-        :param batch_size: (optional) numbers of images to generate per mini-batch. Default is 1.
+        :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
         :param n_channels: (optional) number of channels to be synthetised. Default is 1.
         :param target_res: (optional) target resolution of the generated images and corresponding label maps.
         If None, the outputs will have the same resolution as the input label maps.
@@ -106,8 +106,9 @@ class ImageGenerator:
         assert len(self.labels_paths) > 0, "Could not find any training data"
 
         # generation parameters
-        self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
-            utils.get_volume_info(self.labels_paths[0])
+        _, self.aff, self.header = utils.load_volume(self.labels_paths[0], im_only=False)
+        self.labels_shape, _, self.n_dims, _, _, self.atlas_res = utils.get_volume_info(self.labels_paths[0],
+                                                                                        aff_ref=np.eye(4))
         self.n_channels = n_channels
         if generation_labels is not None:
             self.generation_labels = utils.load_array_if_path(generation_labels)
@@ -118,10 +119,12 @@ class ImageGenerator:
         else:
             self.output_labels = self.generation_labels
         self.target_res = utils.load_array_if_path(target_res)
+        self.batchsize = batchsize
         # preliminary operations
         self.output_shape = utils.load_array_if_path(output_shape)
         self.output_div_by_n = output_div_by_n
         # GMM parameters
+        self.prior_distributions = prior_distributions
         if generation_classes is not None:
             self.generation_classes = utils.load_array_if_path(generation_classes)
             assert self.generation_classes.shape == self.generation_labels.shape, \
@@ -131,7 +134,6 @@ class ImageGenerator:
                 'generation_classes should a linear range between 0 and its maximum value.'
         else:
             self.generation_classes = np.arange(self.generation_labels.shape[0])
-        self.prior_distributions = prior_distributions
         self.prior_means = utils.load_array_if_path(prior_means)
         self.prior_stds = utils.load_array_if_path(prior_stds)
         self.use_specific_stats_for_channel = use_specific_stats_for_channel
@@ -144,7 +146,7 @@ class ImageGenerator:
         self.labels_to_image_model, self.model_output_shape = self._build_lab2im_model()
 
         # build generator for model inputs
-        self.model_inputs_generator = self._build_model_inputs(len(self.generation_labels), batch_size)
+        self.model_inputs_generator = self._build_model_inputs(len(self.generation_labels))
 
         # build brain generator
         self.image_generator = self._build_image_generator()
@@ -173,9 +175,19 @@ class ImageGenerator:
     def generate_image(self):
         """call this method when an object of this class has been instantiated to generate new brains"""
         (image, labels) = next(self.image_generator)
+        # put back images in native space
+        list_images = list()
+        list_labels = list()
+        for i in range(self.batchsize):
+            list_images.append(edit_volumes.align_volume_to_ref(image[i], np.eye(4),
+                                                                aff_ref=self.aff, n_dims=self.n_dims))
+            list_labels.append(edit_volumes.align_volume_to_ref(labels[i], np.eye(4),
+                                                                aff_ref=self.aff, n_dims=self.n_dims))
+        image = np.stack(list_images, axis=0)
+        labels = np.stack(list_labels, axis=0)
         return np.squeeze(image), np.squeeze(labels)
 
-    def _build_model_inputs(self, n_labels, batchsize=1):
+    def _build_model_inputs(self, n_labels):
 
         # get label info
         _, _, n_dims, _, _, _ = utils.get_volume_info(self.labels_paths[0])
@@ -184,7 +196,7 @@ class ImageGenerator:
         while True:
 
             # randomly pick as many images as batchsize
-            indices = npr.randint(len(self.labels_paths), size=batchsize)
+            indices = npr.randint(len(self.labels_paths), size=self.batchsize)
 
             # initialise input lists
             list_label_maps = []
@@ -194,8 +206,8 @@ class ImageGenerator:
 
             for idx in indices:
 
-                # add labels to inputs
-                y = utils.load_volume(self.labels_paths[idx], dtype='int')
+                # load label in identity space, and add them to inputs
+                y = utils.load_volume(self.labels_paths[idx], dtype='int', aff_ref=np.eye(4))
                 list_label_maps.append(utils.add_axis(y, axis=-2))
 
                 # add means and standard deviations to inputs
@@ -253,7 +265,7 @@ class ImageGenerator:
             list_inputs = [list_label_maps, list_means, list_stds, list_affine_transforms]
 
             # concatenate individual input types if batchsize > 1
-            if batchsize > 1:
+            if self.batchsize > 1:
                 list_inputs = [np.concatenate(item, 0) for item in list_inputs]
             else:
                 list_inputs = [item[0] for item in list_inputs]
