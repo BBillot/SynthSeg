@@ -41,7 +41,8 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -erode_labels_in_dir
         -upsample_labels_in_dir
         -compute_hard_volumes_in_dir
-5- dataset editting: functions for editting datasets (i.e. images with corresponding label maps). I contains:
+        -build_binary_atlas
+5- dataset editting: functions for editting datasets (i.e. images with corresponding label maps). It contains:
         -check_images_and_labels
         -crop_dataset_to_minimum_size
         -subdivide_dataset_to_patches"""
@@ -1350,9 +1351,9 @@ def correct_labels_in_dir(labels_dir, list_incorrect_labels, list_correct_labels
         # correct labels
         path_result = os.path.join(results_dir, os.path.basename(path_label))
         if (not os.path.isfile(path_result)) | recompute:
-            im, vox2ras, header = utils.load_volume(path_label, im_only=False)
+            im, aff, h = utils.load_volume(path_label, im_only=False, dtype='int32')
             im = correct_label_map(im, list_incorrect_labels, list_correct_labels, smooth=smooth)
-            utils.save_volume(im.astype('int32'), vox2ras, header, path_result)
+            utils.save_volume(im, aff, h, path_result)
 
 
 def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, mask_result_dir=None, recompute=True):
@@ -1660,10 +1661,10 @@ def compute_hard_volumes_in_dir(labels_dir,
         subject_volumes = compute_hard_volumes(labels, voxel_volume, label_list, skip_background)
         volumes[:, idx] = subject_volumes
 
-        # compute volumes
+        # write volumes
         if path_csv_result is not None:
             subject_volumes = np.around(volumes[:, idx], 3)
-            row = [os.path.basename(path_label)] + [str(vol) for vol in subject_volumes]
+            row = [utils.strip_suffix(os.path.basename(path_label))] + [str(vol) for vol in subject_volumes]
             with open(path_csv_result, 'a') as csvFile:
                 writer = csv.writer(csvFile)
                 writer.writerow(row)
@@ -1674,6 +1675,40 @@ def compute_hard_volumes_in_dir(labels_dir,
         np.save(path_numpy_result, volumes)
 
     return volumes
+
+
+def build_binary_atlas(labels_dir, margin=15, path_result_atlas=None):
+    """This function builds a binary atlas (defined by label values > 0) from several label maps.
+    :param labels_dir: path of directory with input label maps
+    :param margin: (optional) margin by which to crop the input label maps around their center of mass.
+    Therefore it controls the size of the output atlas: (2*margin + 1)**n_dims.
+    :param path_result_atlas: (optional) path where the output atlas will be writen.
+    Default is None, where the atlas is not saved."""
+
+    # create empty atlas
+    atlas = np.zeros([margin * 2] * 3)
+
+    # loop over label maps
+    path_labels = utils.list_images_in_folder(labels_dir)
+    for idx, path_label in enumerate(path_labels):
+        utils.print_loop_info(idx, len(path_labels), 10)
+
+        # load label map and find centre of mass
+        lab = (utils.load_volume(path_label, dtype='int32', aff_ref=np.eye(4)) > 0) * 1
+        indices = np.where(lab > 0)
+        centre_of_mass = np.array([np.mean(indices[0]), np.mean(indices[1]), np.mean(indices[2])], dtype='int32')
+
+        # crop label map around centre of mass
+        min_cropping = centre_of_mass - margin
+        max_cropping = centre_of_mass + margin
+        atlas += lab[min_cropping[0]:max_cropping[0], min_cropping[1]:max_cropping[1], min_cropping[2]:max_cropping[2]]
+
+    # normalise atlas and save it if necessary
+    atlas /= len(path_labels)
+    if path_result_atlas is not None:
+        utils.save_volume(atlas, None, None, path_result_atlas)
+
+    return atlas
 
 
 # ---------------------------------------------------- edit dataset ----------------------------------------------------
@@ -1787,7 +1822,8 @@ def subdivide_dataset_to_patches(patch_shape,
                                  image_result_dir=None,
                                  labels_dir=None,
                                  labels_result_dir=None,
-                                 full_background=True):
+                                 full_background=True,
+                                 remove_after_dividing=False):
     """This function subdivides images and/or label maps into several smaller patches of specified shape.
     :param patch_shape: shape of patches to create. Can either be an int, a sequence, or a 1d numpy array.
     :param image_dir: (optional) path of directory with input images
@@ -1796,6 +1832,8 @@ def subdivide_dataset_to_patches(patch_shape,
     :param labels_result_dir: (optional) path of directory where label map patches will be writen
     :param full_background: (optional) whether to keep patches only labelled as background (only if label maps are
     provided).
+    :param remove_after_dividing: (optional) whether to delete input images after having divided them in smaller
+    patches. This enables to save disk space in the subdivision process.
     """
 
     # create result dir and list images and label maps
@@ -1846,7 +1884,7 @@ def subdivide_dataset_to_patches(patch_shape,
 
         # crop image and label map to size divisible by patch_shape
         new_size = np.array([utils.find_closest_number_divisible_by_m(shape[i], patch_shape[i]) for i in range(n_dims)])
-        crop = np.round((np.array(shape) - new_size) / 2).astype('int')
+        crop = np.round((np.array(shape[:n_dims]) - new_size) / 2).astype('int')
         crop = np.concatenate((crop, crop + new_size), axis=0)
         if (im is not None) & (n_dims == 2):
             im = im[crop[0]:crop[2], crop[1]:crop[3], ...]
@@ -1882,15 +1920,15 @@ def subdivide_dataset_to_patches(patch_shape,
                         if full_background | (not (temp_la == 0).all()):
                             n_im += 1
                             utils.save_volume(temp_la, aff_lab, h_lab, os.path.join(labels_result_dir,
-                                              path_label.replace('.nii.gz', '_%d.nii.gz' % n_im)))
+                                              os.path.basename(path_label.replace('.nii.gz', '_%d.nii.gz' % n_im))))
                             if temp_im is not None:
                                 utils.save_volume(temp_im, aff_im, h_im, os.path.join(image_result_dir,
-                                                  path_label.replace('.nii.gz', '_%d.nii.gz' % n_im)))
+                                                  os.path.basename(path_image.replace('.nii.gz', '_%d.nii.gz' % n_im))))
                     else:
                         utils.save_volume(temp_im, aff_im, h_im, os.path.join(image_result_dir,
-                                          path_label.replace('.nii.gz', '_%d.nii.gz' % n_im)))
+                                          os.path.basename(path_image.replace('.nii.gz', '_%d.nii.gz' % n_im))))
 
-                if n_dims == 3:
+                elif n_dims == 3:
                     for k in range(n_crop[2]):
                         k *= patch_shape[2]
 
@@ -1909,10 +1947,16 @@ def subdivide_dataset_to_patches(patch_shape,
                             if full_background | (not (temp_la == 0).all()):
                                 n_im += 1
                                 utils.save_volume(temp_la, aff_lab, h_lab, os.path.join(labels_result_dir,
-                                                  path_label.replace('.nii.gz', '_%d.nii.gz' % n_im)))
+                                                  os.path.basename(path_label.replace('.nii.gz', '_%d.nii.gz' % n_im))))
                                 if temp_im is not None:
                                     utils.save_volume(temp_im, aff_im, h_im, os.path.join(image_result_dir,
-                                                      path_label.replace('.nii.gz', '_%d.nii.gz' % n_im)))
+                                                      os.path.basename(path_image.replace('.nii.gz', '_%d.nii.gz' % n_im))))
                         else:
                             utils.save_volume(temp_im, aff_im, h_im, os.path.join(image_result_dir,
-                                              path_label.replace('.nii.gz', '_%d.nii.gz' % n_im)))
+                                              os.path.basename(path_image.replace('.nii.gz', '_%d.nii.gz' % n_im))))
+
+        if remove_after_dividing:
+            if path_image is not None:
+                os.remove(path_image)
+            if path_label is not None:
+                os.remove(path_label)

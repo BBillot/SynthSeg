@@ -19,6 +19,7 @@ def validate_training(image_dir,
                       validation_main_dir,
                       path_label_list,
                       step_eval=1,
+                      cropping=None,
                       conv_size=3,
                       n_levels=5,
                       nb_conv_per_level=2,
@@ -35,6 +36,8 @@ def validate_training(image_dir,
     :param validation_main_dir: path of the folder where all the models validation subfolders will be saved.
     :param path_label_list: path of the numpy array containing all the label values to validate on.
     :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
+    :param cropping: (optional) whether to crop the input to smaller size while being run through the network.
+    The result is then given in the original image space. Can be an int, a sequence, or a 1d numpy array.
     :param n_levels: (optional) number of level for the Unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
     :param conv_size: (optional) size of the convolution kernels. Default is 2.
@@ -58,9 +61,10 @@ def validate_training(image_dir,
 
         if (not os.path.isfile(dice_path)) | recompute:
             predict(path_images=image_dir,
+                    path_segmentations=model_val_dir,
                     path_model=path_model,
                     segmentation_label_list=path_label_list,
-                    path_segmentations=model_val_dir,
+                    cropping=cropping,
                     conv_size=conv_size,
                     n_levels=n_levels,
                     nb_conv_per_level=nb_conv_per_level,
@@ -146,9 +150,11 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, fontsize=18)
         plt.plot(1-np.array(list_losses), label=name, linewidth=2)
 
     # finalise plot
+    plt.grid()
     plt.legend(fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
     plt.ylabel('Soft Dice scores', fontsize=fontsize)
     plt.tick_params(axis='both', labelsize=fontsize)
-    plt.title('Learning curves', fontsize=fontsize)
+    plt.title('Validation curves', fontsize=fontsize)
+    plt.tight_layout(pad=0)
     plt.show()
