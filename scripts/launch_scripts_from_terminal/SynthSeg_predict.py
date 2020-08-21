@@ -36,7 +36,7 @@ args['segmentation_label_list'] = path_label_list
 args['path_model'] = path_model
 args['sigma_smoothing'] = 0.5
 args['keep_biggest_component'] = True
-args['aff_ref'] = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
+args['aff_ref'] = 'FS'
 
 # call predict
 predict(**args)

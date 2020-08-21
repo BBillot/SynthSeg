@@ -28,7 +28,7 @@ def predict(path_images,
             padding=None,
             cropping=None,
             resample=None,
-            aff_ref=np.eye(4),
+            aff_ref='FS',
             sigma_smoothing=0,
             keep_biggest_component=False,
             conv_size=3,
@@ -66,9 +66,9 @@ def predict(path_images,
     Can be an int, a sequence or a 1d numpy array.
     :param resample: (optional) resample the images to the specified resolution before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
-    :param aff_ref: (optional) affine matrix of the images used for training. By default this is set to identity matrix,
-    as the training script now automatically aligns the training data to this orientation.
-    However SynthSeg was trained prior to this automatic aligment, that's why we keep this parameter.
+    :param aff_ref: (optional) type of affine matrix of the images used for training. By default this is set to the
+    FreeSurfer orientation ('FS'), as it was the configuration in which SynthSeg was trained. However, the new models
+    are now trained on data aligned with identity vox2ras matrix, so you need to change aff_ref to 'identity'.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
@@ -243,7 +243,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
     return images_to_segment, out_seg, out_posteriors, out_volumes
 
 
-def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref=np.eye(4)):
+def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='FS'):
 
     # read image and corresponding info
     im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
@@ -280,7 +280,12 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref=n
 
     # align image to training axes and directions, change this to the affine matrix of your training data
     if n_dims > 2:
-        im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
+        if aff_ref == 'FS':
+            aff_ref = np.array([[-1.,  0.,  0.,  0.], [0.,  0.,  1.,  0.], [0., -1.,  0.,  0.], [0.,  0.,  0.,  1.]])
+            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
+        elif aff_ref == 'identity':
+            aff_ref = np.eye(4)
+            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
 
     # normalise image
     m = np.min(im)
@@ -373,7 +378,7 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
 
 
 def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, labels, keep_biggest_component,
-                aff, aff_ref=np.eye(4)):
+                aff, aff_ref='FS'):
 
     # get posteriors and segmentation
     post_patch = np.squeeze(prediction)
@@ -396,8 +401,14 @@ def postprocess(prediction, crop_shape, pad_shape, im_shape, crop, n_dims, label
 
     # align prediction back to first orientation
     if n_dims > 2:
-        seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
-        post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, return_aff=False, n_dims=n_dims)
+        if aff_ref == 'FS':
+            aff_ref = np.array([[-1.,  0.,  0.,  0.], [0.,  0.,  1.,  0.], [0., -1.,  0.,  0.], [0.,  0.,  0.,  1.]])
+            seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
+            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
+        elif aff_ref == 'identity':
+            aff_ref = np.eye(4)
+            seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
+            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
 
     # paste patches back to matrix of original image size
     if crop_shape is not None:
