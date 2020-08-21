@@ -9,14 +9,14 @@ parser = ArgumentParser()
 parser.add_argument("path_images", type=str, help="path single image or path of the folders with training labels")
 
 # Load materials
-parser.add_argument("--model", type=str, default=None, dest="model_file", help="model file path")
-parser.add_argument("--label_list", type=str, dest="path_segmentation_label_list", default=None,
+parser.add_argument("--model", type=str, default=None, dest="path_model", help="model file path")
+parser.add_argument("--label_list", type=str, dest="segmentation_label_list", default=None,
                     help="path label list")
 
 # Saving paths
-parser.add_argument("--out_seg", type=str, dest="out_seg", default=None, help="segmentations folder/path")
-parser.add_argument("--out_post", type=str, dest="out_posteriors", default=None, help="posteriors folder/path")
-parser.add_argument("--out_vol", type=str, dest="out_volumes", default=None, help="path volume file")
+parser.add_argument("--out_seg", type=str, dest="path_segmentations", default=None, help="segmentations folder/path")
+parser.add_argument("--out_post", type=str, dest="path_posteriors", default=None, help="posteriors folder/path")
+parser.add_argument("--out_vol", type=str, dest="path_volumes", default=None, help="path volume file")
 
 # Processing parameters
 parser.add_argument("--padding", type=int, dest="padding", default=None,
@@ -26,8 +26,8 @@ parser.add_argument("--cropping", type=int, dest="cropping", default=None,
 parser.add_argument("--resample", type=float, dest="resample", default=None,
                     help="Working resolution. Segmentations will be given at native resolution. "
                          "Default is native resolution")
-parser.add_argument("--align", type=float, dest="aff_ref", default=np.eye(4),
-                    help="affine matrix of training images (only use this for provided model of SynthSeg)")
+parser.add_argument("--align", type=str, dest="aff_ref", default='FS', help="affine matrix of training label maps. Set "
+                    "to 'FS' if you use the provided SynthSeg model, or to 'identity' otherwise. Default is 'FS'.")
 parser.add_argument("--smoothing", type=float, dest="sigma_smoothing", default=0,
                     help="var for gaussian blurring of the posteriors")
 parser.add_argument("--biggest_component", action='store_true', dest="keep_biggest_component",
