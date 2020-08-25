@@ -187,13 +187,14 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
         out_volumes = os.path.abspath(out_volumes)
 
     # prepare input/output volumes
-    if ('nii.gz' not in path_images) & ('.mgz' not in path_images) & ('.npz' not in path_images):
+    if ('.nii.gz' not in path_images) & ('.nii' not in path_images) & ('.mgz' not in path_images) & \
+            ('.npz' not in path_images):
         images_to_segment = utils.list_images_in_folder(path_images)
         assert len(images_to_segment) > 0, "Could not find any training data"
         if out_seg:
             if not os.path.exists(out_seg):
                 os.mkdir(out_seg)
-            out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii.gz', '_seg.nii.gz') for image in
+            out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii', '_seg.nii') for image in
                        images_to_segment]
             out_seg = [seg_path.replace('.mgz', '_seg.mgz') for seg_path in out_seg]
             out_seg = [seg_path.replace('.npz', '_seg.npz') for seg_path in out_seg]
@@ -202,8 +203,8 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
         if out_posteriors:
             if not os.path.exists(out_posteriors):
                 os.mkdir(out_posteriors)
-            out_posteriors = [os.path.join(out_posteriors, os.path.basename(image)).replace('.nii.gz',
-                              '_posteriors.nii.gz') for image in images_to_segment]
+            out_posteriors = [os.path.join(out_posteriors, os.path.basename(image)).replace('.nii',
+                              '_posteriors.nii') for image in images_to_segment]
             out_posteriors = [posteriors_path.replace('.mgz', '_posteriors.mgz')
                               for posteriors_path in out_posteriors]
             out_posteriors = [posteriors_path.replace('.npz', '_posteriors.npz')
@@ -215,22 +216,29 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
         assert os.path.exists(path_images), "Could not find image to segment"
         images_to_segment = [path_images]
         if out_seg is not None:
-            if ('nii.gz' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):
+            if ('.nii.gz' not in out_seg) & ('.nii' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):
                 if not os.path.exists(out_seg):
                     os.mkdir(out_seg)
-                filename = os.path.basename(path_images).replace('.nii.gz', '_seg.nii.gz')
+                filename = os.path.basename(path_images).replace('.nii', '_seg.nii')
                 filename = filename.replace('mgz', '_seg.mgz')
                 filename = filename.replace('.npz', '_seg.npz')
                 out_seg = os.path.join(out_seg, filename)
+            else:
+                if not os.path.exists(os.path.dirname(out_seg)):
+                    os.mkdir(os.path.dirname(out_seg))
         out_seg = [out_seg]
         if out_posteriors is not None:
-            if ('nii.gz' not in out_posteriors) & ('.mgz' not in out_posteriors) & ('.npz' not in out_posteriors):
+            if ('.nii.gz' not in out_posteriors) & ('.nii' not in out_posteriors) & ('.mgz' not in out_posteriors) & \
+                    ('.npz' not in out_posteriors):
                 if not os.path.exists(out_posteriors):
                     os.mkdir(out_posteriors)
-                filename = os.path.basename(path_images).replace('.nii.gz', '_posteriors.nii.gz')
+                filename = os.path.basename(path_images).replace('.nii', '_posteriors.nii')
                 filename = filename.replace('mgz', '_posteriors.mgz')
                 filename = filename.replace('.npz', '_posteriors.npz')
                 out_posteriors = os.path.join(out_posteriors, filename)
+            else:
+                if not os.path.exists(os.path.dirname(out_posteriors)):
+                    os.mkdir(os.path.dirname(out_posteriors))
         out_posteriors = [out_posteriors]
 
     if out_volumes:
