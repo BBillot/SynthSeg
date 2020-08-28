@@ -1950,7 +1950,8 @@ def subdivide_dataset_to_patches(patch_shape,
                                                   os.path.basename(path_label.replace('.nii.gz', '_%d.nii.gz' % n_im))))
                                 if temp_im is not None:
                                     utils.save_volume(temp_im, aff_im, h_im, os.path.join(image_result_dir,
-                                                      os.path.basename(path_image.replace('.nii.gz', '_%d.nii.gz' % n_im))))
+                                                      os.path.basename(path_image.replace('.nii.gz',
+                                                                                          '_%d.nii.gz' % n_im))))
                         else:
                             utils.save_volume(temp_im, aff_im, h_im, os.path.join(image_result_dir,
                                               os.path.basename(path_image.replace('.nii.gz', '_%d.nii.gz' % n_im))))
