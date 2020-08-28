@@ -91,8 +91,8 @@ def random_cropping(tensor, crop_shape, n_dims=3):
     crop_idx = KL.Lambda(lambda x: tf.zeros([1], dtype='int32'))([])
     for val_idx, val in enumerate(cropping_max_val):  # draw cropping indices for image dimensions
         if val > 0:
-            crop_idx = KL.Lambda(lambda x: tf.concat([tf.cast(x, dtype='int32'), K.random_uniform([1], minval=0,
-                                 maxval=val, dtype='int32')], axis=0))(crop_idx)
+            crop_idx = KL.Lambda(lambda x: tf.concat([tf.cast(x, dtype='int32'),
+                                                      tf.random.uniform([1], 0, val, 'int32')], axis=0))(crop_idx)
         else:
             crop_idx = KL.Lambda(lambda x: tf.concat([tf.cast(x, dtype='int32'),
                                                       tf.zeros([1], dtype='int32')], axis=0))(crop_idx)
@@ -220,3 +220,4 @@ def build_rotation_matrix(theta, n_dims):
                                      tf.zeros(1), tf.zeros(1), tf.ones(1), tf.zeros(1),
                                      tf.zeros(1), tf.zeros(1), tf.zeros(1), tf.ones(1)], axis=0)
         rotation_matrix = tf.reshape(rotation_matrix, (4, 4))
+        return rotation_matrix
