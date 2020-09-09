@@ -40,7 +40,7 @@ def blur_tensor(tensor, list_kernels, n_dims=3):
     return tensor
 
 
-def get_gaussian_1d_kernels(sigma, blurring_range=None):
+def get_gaussian_1d_kernels(sigma, blurring_range=None, return_rc=False):
     """This function builds a list of 1d gaussian blurring kernels.
     The produced tensors are designed to be used with tf.nn.convolution.
     The number of dimensions of the image to blur is assumed to be the length of sigma.
@@ -56,22 +56,31 @@ def get_gaussian_1d_kernels(sigma, blurring_range=None):
     n_dims = len(sigma)
 
     kernels_list = list()
+    random_coefs_list = list()
     for i in range(n_dims):
 
         if (sigma[i] is None) or (sigma[i] == 0):
             kernels_list.append(None)
 
         else:
+            # random_coef = draw_random_resolution_coefficient(blurring_range, n_dims)
             # build kernel
             if blurring_range is not None:
+                # if i == 2:
+                #     random_coef = KL.Lambda(lambda x: tf.convert_to_tensor([0.5]))([])
+                # else:
+                #     random_coef = KL.Lambda(lambda x: tf.convert_to_tensor([1.]))([])
+                # random_coef = KL.Lambda(lambda x: tf.convert_to_tensor([blurring_range*0.75]))([])
                 random_coef = KL.Lambda(lambda x: tf.random.uniform((1,), 1 / blurring_range, blurring_range))([])
                 size = int(math.ceil(2.5 * blurring_range * sigma[i]) / 2)
                 kernel = KL.Lambda(lambda x: tfp.distributions.Normal(0., x*sigma[i]).prob(tf.range(start=-size,
                                    limit=size + 1, dtype=tf.float32)))(random_coef)
+                random_coefs_list.append(random_coef)
             else:
                 size = int(math.ceil(2.5 * sigma[i]) / 2)
                 kernel = KL.Lambda(lambda x: tfp.distributions.Normal(0., sigma[i]).prob(tf.range(start=-size,
                                    limit=size + 1, dtype=tf.float32)))([])
+                random_coefs_list.append(None)
             kernel = KL.Lambda(lambda x: x / tf.reduce_sum(x))(kernel)
 
             # add dimensions
@@ -83,7 +92,19 @@ def get_gaussian_1d_kernels(sigma, blurring_range=None):
             kernel = KL.Lambda(lambda x: tf.expand_dims(tf.expand_dims(x, -1), -1))(kernel)  # for tf.nn.convolution
             kernels_list.append(kernel)
 
-    return kernels_list
+    if return_rc:
+        random_coefs = KL.Lambda(lambda x: tf.concat(x, axis=0))(random_coefs_list)
+        return kernels_list, random_coefs
+    else:
+        return kernels_list
+
+
+def draw_random_resolution_coefficient(blurring_range, n_dims):
+
+    low_var_coefs = KL.Lambda(lambda x: tf.random.uniform([n_dims], -1.05, 1.05))([])
+    high_var_coefs = KL.Lambda(lambda x: tf.random.uniform([1], 1/blurring_range, blurring_range))([])
+    axis = KL.Lambda(lambda x: tf.random.uniform([1, 1], 0, n_dims-1, dtype='int32'))([])
+    return KL.Lambda(lambda x: tf.tensor_scatter_nd_update(x[0], x[1], x[2]))([low_var_coefs, axis, high_var_coefs])
 
 
 def blur_channel(tensor, mask, kernels_list, n_dims, blur_background=True):
@@ -141,9 +162,7 @@ def resample_tensor(tensor,
                     resample_shape,
                     interp_method='linear',
                     subsample_res=None,
-                    volume_res=None,
-                    subsample_interp_method='nearest',
-                    n_dims=3):
+                    volume_res=None):
     """This function resamples a volume to resample_shape. It does not apply any pre-filtering.
     A prior downsampling step can be added if subsample_res is specified. In this case, volume_res should also be
     specified, in order to calculate the downsampling ratio.
@@ -154,14 +173,15 @@ def resample_tensor(tensor,
     list or numpy array of size (n_dims,).
     :param volume_res: if subsample_res is not None, this should be provided to compute downsampling ratio.
      list or numpy array of size (n_dims,).
-    :param subsample_interp_method: interpolation method for downsampling, 'linear' or 'nearest'
-    :param n_dims: number of dimensions of the initial image (excluding batch and channel dimensions)
     :return: resampled volume
     """
 
     # reformat resolutions to lists
     subsample_res = utils.reformat_to_list(subsample_res)
     volume_res = utils.reformat_to_list(volume_res)
+    assert len(subsample_res) == len(volume_res), 'subsample_res and volume_res must have the same length, ' \
+                                                  'had {0}, and {1}'.format(len(subsample_res), len(volume_res))
+    n_dims = len(volume_res)
 
     # downsample image
     downsample_shape = None
@@ -171,12 +191,11 @@ def resample_tensor(tensor,
 
             # get shape at which we downsample
             assert volume_res is not None, 'if subsanple_res is specified, so should atlas_res be.'
-            downsample_factor = [volume_res[i] / subsample_res[i] for i in range(n_dims)]
-            downsample_shape = [int(tensor_shape[i] * downsample_factor[i]) for i in range(n_dims)]
+            downsample_shape = [int(tensor_shape[i] * volume_res[i] / subsample_res[i]) for i in range(n_dims)]
 
             # downsample volume
             tensor._keras_shape = tuple(tensor.get_shape().as_list())
-            tensor = nrn_layers.Resize(size=downsample_shape, interp_method=subsample_interp_method)(tensor)
+            tensor = nrn_layers.Resize(size=downsample_shape, interp_method='nearest')(tensor)
 
     # resample image at target resolution
     if resample_shape != downsample_shape:

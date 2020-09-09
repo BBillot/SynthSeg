@@ -416,7 +416,7 @@ def blur_volume(volume, sigma, mask=None):
 def correct_label_map(labels, list_incorrect_labels, list_correct_labels, smooth=False):
     """This function corrects specified label values in a label map by other given values.
     :param labels: a 2d or 3d label map
-    :param list_incorrect_labels: list of all label values to correct (e.g. [1, 2, 3, 4]).
+    :param list_incorrect_labels: list of all label values to correct (eg [1, 2, 3]). Can also be a path to such a list.
     :param list_correct_labels: list of correct label values.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
@@ -427,6 +427,8 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels, smooth
     """
 
     # initialisation
+    list_incorrect_labels = utils.load_array_if_path(list_incorrect_labels)
+    list_correct_labels = utils.load_array_if_path(list_correct_labels)
     volume_labels = np.unique(labels)
     n_dims, _ = utils.get_dims(labels.shape)
     previous_correct_labels = None
@@ -749,7 +751,7 @@ def crop_images_in_dir(image_dir, result_dir, cropping_margin=None, cropping_sha
         # crop image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_result)) | recompute:
-            volume, aff, h = utils.load_volume(path_image, im_only=True)
+            volume, aff, h = utils.load_volume(path_image, im_only=False)
             volume, aff = crop_volume(volume, cropping_margin, cropping_shape, aff)
             utils.save_volume(volume, aff, h, path_result)
 
@@ -1079,7 +1081,7 @@ def mri_convert_images_in_dir(image_dir,
     sorting order. If same_reference is false, references and images are matched by sorting order.
     This can also be the path to a single image that will be used as reference for all images im image_dir (set
     same_reference to true in that case).
-    :param same_reference: (optional) whether to use a single reference for all images.
+    :param same_reference: (optional) whether to use a single image as reference for all images to interpolate.
     :param voxsize: (optional) resolution at which to resample converted image. Must be a list of length n_dims.
     :param path_freesurfer: (optional) path FreeSurfer home
     :param mri_convert_path: (optional) path mri_convert binary file

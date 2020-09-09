@@ -12,6 +12,8 @@ from ext.lab2im import edit_tensors as l2i_et
 from ext.lab2im import spatial_augmentation as l2i_sp
 from ext.lab2im import intensity_augmentation as l2i_ia
 
+from ext.neuron import layers as nrn_layers
+
 
 def labels_to_image_model(labels_shape,
                           n_channels,
@@ -130,10 +132,6 @@ def labels_to_image_model(labels_shape,
     else:
         data_res = utils.reformat_to_n_channels_array(data_res, n_dims=n_dims, n_channels=n_channels)
     atlas_res = atlas_res[0]
-    if downsample:  # same as data_res if we want to actually downsample the synthetic image
-        downsample_res = data_res
-    else:  # set downsample_res to None if downsampling is not necessary
-        downsample_res = None
     if target_res is None:
         target_res = atlas_res
     else:
@@ -207,23 +205,30 @@ def labels_to_image_model(labels_shape,
             sigma = utils.get_std_blurring_mask_for_downsampling(data_res[i], atlas_res, thickness=thickness[i])
         else:
             sigma = utils.get_std_blurring_mask_for_downsampling(data_res[i], atlas_res)
-        kernels_list = l2i_et.get_gaussian_1d_kernels(sigma, blurring_range=blur_range)
+        kernels_list, random_coefs = l2i_et.get_gaussian_1d_kernels(sigma, blurring_range=blur_range, return_rc=True)
         channel = l2i_et.blur_channel(channel, mask, kernels_list, n_dims, blur_background)
         if (crop_channel2 is not None) & (i == 1):
             channel = KL.multiply([channel, tmp_mask])
 
         # resample channel
-        if downsample_res is not None:
-            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', downsample_res[i], atlas_res,
-                                             n_dims=n_dims)
-        else:
-            if thickness is not None:
-                diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
-                if min(diff) < 0:
-                    channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res,
-                                                     n_dims=n_dims)
-                else:
-                    channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res, n_dims)
+        if downsample:
+            ###################################
+            # undo changes in resample tensor #
+            ###################################
+            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
+            # channel._keras_shape = tuple(channel.get_shape().as_list())
+            # channel = nrn_layers.MimicAcquisition(atlas_res, data_res[i], blur_range, output_shape)([channel,
+            #                                                                                          random_coefs])
+        elif thickness is not None:
+            diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
+            if min(diff) < 0:  # automatically downsample if data_res > thickness
+                # channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
+                channel._keras_shape = tuple(channel.get_shape().as_list())
+                channel = nrn_layers.MimicAcquisition(atlas_res, data_res[i], blur_range, output_shape)([channel,
+                                                                                                         random_coefs])
+        elif output_shape != crop_shape:
+            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res)
+        channel = KL.Lambda(lambda x: tf.cast(x, 'float32'), name='resampled')(channel)
 
         # apply bias field
         if apply_bias_field:
@@ -243,7 +248,7 @@ def labels_to_image_model(labels_shape,
     # resample labels at target resolution
     if crop_shape != output_shape:
         labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
-        labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest', n_dims=3)
+        labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
     # convert labels back to original values and reset unwanted labels to zero
     labels = l2i_et.convert_labels(labels, generation_labels)
     labels_to_reset = [lab for lab in generation_labels if lab not in output_labels]

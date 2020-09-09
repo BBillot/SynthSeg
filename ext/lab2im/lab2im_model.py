@@ -113,7 +113,7 @@ def lab2im_model(labels_shape,
         channel = blur_channel(channel, mask, kernels_list, n_dims, blur_background)
 
         # resample channel
-        channel = resample_tensor(channel, output_shape, 'linear', n_dims=n_dims)
+        channel = resample_tensor(channel, output_shape, 'linear')
 
         # apply bias field
         channel = bias_field_augmentation(channel, bias_shape_factor=.025, bias_field_std=.3)
@@ -132,7 +132,7 @@ def lab2im_model(labels_shape,
     # resample labels at target resolution
     if crop_shape != output_shape:
         labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
-        labels = resample_tensor(labels, output_shape, interp_method='nearest', n_dims=3)
+        labels = resample_tensor(labels, output_shape, interp_method='nearest')
     # convert labels back to original values and reset unwanted labels to zero
     labels = convert_labels(labels, generation_labels)
     labels_to_reset = [lab for lab in generation_labels if lab not in output_labels]
