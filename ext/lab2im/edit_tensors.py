@@ -141,9 +141,7 @@ def resample_tensor(tensor,
                     resample_shape,
                     interp_method='linear',
                     subsample_res=None,
-                    volume_res=None,
-                    subsample_interp_method='nearest',
-                    n_dims=3):
+                    volume_res=None):
     """This function resamples a volume to resample_shape. It does not apply any pre-filtering.
     A prior downsampling step can be added if subsample_res is specified. In this case, volume_res should also be
     specified, in order to calculate the downsampling ratio.
@@ -154,14 +152,15 @@ def resample_tensor(tensor,
     list or numpy array of size (n_dims,).
     :param volume_res: if subsample_res is not None, this should be provided to compute downsampling ratio.
      list or numpy array of size (n_dims,).
-    :param subsample_interp_method: interpolation method for downsampling, 'linear' or 'nearest'
-    :param n_dims: number of dimensions of the initial image (excluding batch and channel dimensions)
     :return: resampled volume
     """
 
     # reformat resolutions to lists
     subsample_res = utils.reformat_to_list(subsample_res)
     volume_res = utils.reformat_to_list(volume_res)
+    assert len(subsample_res) == len(volume_res), 'subsample_res and volume_res must have the same length, ' \
+                                                  'had {0}, and {1}'.format(len(subsample_res), len(volume_res))
+    n_dims = len(volume_res)
 
     # downsample image
     downsample_shape = None
@@ -171,12 +170,11 @@ def resample_tensor(tensor,
 
             # get shape at which we downsample
             assert volume_res is not None, 'if subsanple_res is specified, so should atlas_res be.'
-            downsample_factor = [volume_res[i] / subsample_res[i] for i in range(n_dims)]
-            downsample_shape = [int(tensor_shape[i] * downsample_factor[i]) for i in range(n_dims)]
+            downsample_shape = [int(tensor_shape[i] * volume_res[i] / subsample_res[i]) for i in range(n_dims)]
 
             # downsample volume
             tensor._keras_shape = tuple(tensor.get_shape().as_list())
-            tensor = nrn_layers.Resize(size=downsample_shape, interp_method=subsample_interp_method)(tensor)
+            tensor = nrn_layers.Resize(size=downsample_shape, interp_method='nearest')(tensor)
 
     # resample image at target resolution
     if resample_shape != downsample_shape:

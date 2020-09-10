@@ -32,6 +32,7 @@
     -get_std_blurring_mask_for_downsampling
     -draw_value_from_distribution
     -create_affine_transformation_matrix
+    -build_exp
 """
 
 import os
@@ -538,7 +539,7 @@ def get_padding_margin(cropping, loss_cropping):
 # --------------------------------------------------- miscellaneous ----------------------------------------------------
 
 
-def print_loop_info(idx, n_iterations, spacing=None):
+def print_loop_info(idx, n_iterations, spacing):
     """Print loop iteration number.
     :param idx: iteration number
     :param n_iterations: total number iterations.
@@ -628,9 +629,9 @@ def build_gaussian_kernel(sigma, n_dims):
     return h
 
 
-def get_std_blurring_mask_for_downsampling(dowsample_res, current_res, thickness=None):
+def get_std_blurring_mask_for_downsampling(downsample_res, current_res, thickness=None):
     """Compute standard deviations of 1d gaussian masks for image blurring before downsampling.
-    :param dowsample_res: resolution to dowsample to. Can be a 1d numpy array or list.
+    :param downsample_res: resolution to downsample to. Can be a 1d numpy array or list.
     :param current_res: resolution of the volume before downsampling.
     Can be a 1d numpy array or list of the same length as downsample res.
     :param thickness: slices thickness in each dimension.
@@ -638,20 +639,20 @@ def get_std_blurring_mask_for_downsampling(dowsample_res, current_res, thickness
     :return: standard deviation of the blurring masks
     """
     # reformat data resolution at which we blur
-    n_dims = len(dowsample_res)
+    n_dims = len(downsample_res)
     if thickness is not None:
-        dowsample_res = [min(dowsample_res[i], thickness[i]) for i in range(n_dims)]
+        downsample_res = [min(downsample_res[i], thickness[i]) for i in range(n_dims)]
 
     # build 1d blurring kernels for each direction
     sigma = [0] * n_dims
     for i in range(n_dims):
         # define sigma
-        if dowsample_res[i] == 0:
+        if downsample_res[i] == 0:
             sigma[i] = 0
-        elif current_res[i] == dowsample_res[i]:
+        elif current_res[i] == downsample_res[i]:
             sigma[i] = np.float32(0.5)
         else:
-            sigma[i] = np.float32(0.75 * np.around(dowsample_res[i] / current_res[i], 3))
+            sigma[i] = np.float32(0.75 * np.around(downsample_res[i] / current_res[i], 3))
 
     return sigma
 
@@ -767,3 +768,11 @@ def create_affine_transformation_matrix(n_dims, scaling=None, rotation=None, she
         T_rot3[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [np.cos(rotation[2]), np.sin(rotation[2]),
                                                                   np.sin(rotation[2]) * -1, np.cos(rotation[2])]
         return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling
+
+
+def build_exp(x, first, last, fix_point):
+    # first = f(0), last = f(+inf), fix_point = [x0, f(x0))]
+    a = last
+    b = first - last
+    c = - (1 / fix_point[0]) * np.log((fix_point[1] - last) / (first - last))
+    return a + b * np.exp(-c * x)

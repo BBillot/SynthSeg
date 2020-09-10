@@ -92,11 +92,12 @@ def build_model_inputs(path_label_maps,
         for idx in indices:
 
             # add labels to inputs
-            y = utils.load_volume(path_label_maps[idx], dtype='int')
+            y = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
             if background_paths is not None:
                 idx_258 = np.where(y == 258)
                 if np.any(idx_258):
-                    background = utils.load_volume(background_paths[npr.randint(len(background_paths))], dtype='int')
+                    background = utils.load_volume(background_paths[npr.randint(len(background_paths))],
+                                                   dtype='int', aff_ref=np.eye(4))
                     background_shape = background.shape
                     if np.all(np.array(background_shape) == background_shape[0]):  # flip if same dimensions
                         background = np.flip(background, tuple([i for i in range(3) if np.random.normal() > 0]))

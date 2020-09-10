@@ -57,6 +57,9 @@ def labels_to_image_model(labels_shape,
     The model returns:
         -the generated image normalised between 0 and 1.
         -the corresponding label map, with only the labels present in output_labels (the other are reset to zero).
+    # IMPORTANT !!!
+    # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
+    # these values refer to the RAS axes.
     :param labels_shape: shape of the input label maps. Can be a sequence or a 1d numpy array.
     :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
     :param n_channels: number of channels to be synthetised.
@@ -132,10 +135,6 @@ def labels_to_image_model(labels_shape,
     else:
         data_res = utils.reformat_to_n_channels_array(data_res, n_dims=n_dims, n_channels=n_channels)
     atlas_res = atlas_res[0]
-    if downsample:  # same as data_res if we want to actually downsample the synthetic image
-        downsample_res = data_res
-    else:  # set downsample_res to None if downsampling is not necessary
-        downsample_res = None
     if target_res is None:
         target_res = atlas_res
     else:
@@ -163,6 +162,7 @@ def labels_to_image_model(labels_shape,
 
     # add lesion label
     labels = sample_lesion(labels_input, labels_shape, batchsize=batchsize)
+    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_lesions')(labels)
 
     # convert labels to new_label_list
     labels = l2i_et.convert_labels(labels, lut)
@@ -218,17 +218,14 @@ def labels_to_image_model(labels_shape,
             channel = KL.multiply([channel, tmp_mask])
 
         # resample channel
-        if downsample_res is not None:
-            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', downsample_res[i], atlas_res,
-                                             n_dims=n_dims)
-        else:
-            if thickness is not None:
-                diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
-                if min(diff) < 0:
-                    channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res,
-                                                     n_dims=n_dims)
-                else:
-                    channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res, n_dims)
+        if downsample:
+            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
+        elif thickness is not None:
+            diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
+            if min(diff) < 0:
+                channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
+        elif output_shape != crop_shape:
+            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res)
 
         # apply bias field
         if apply_bias_field:
@@ -248,7 +245,7 @@ def labels_to_image_model(labels_shape,
     # resample labels at target resolution
     if crop_shape != output_shape:
         labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
-        labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest', n_dims=3)
+        labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
     # convert labels back to original values and reset unwanted labels to zero
     labels = l2i_et.convert_labels(labels, generation_labels)
     labels_to_reset = [lab for lab in generation_labels if lab not in output_labels]
