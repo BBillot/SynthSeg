@@ -8,8 +8,8 @@ SynthSeg/__pycache__/
 SynthSeg/boxplots.py
 SynthSeg/check_brain_generator.py
 SynthSeg/check_generative_model.py
-SynthSeg/check_model.py
-SynthSeg/check_training_supervised.py
+SynthSeg/check_training.py
+SynthSeg/check_supervised_training.py
 
 scripts/PV-SynthSeg_scripts/check_generative_model.py
 scripts/PV-SynthSeg_scripts/check_generative_model_lesion.py
