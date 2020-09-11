@@ -52,7 +52,7 @@ filenames = [
 # -------------------------------------------------- MS data -----------------------------------------------------------
 
 # general parameters
-examples = 5
+examples = 3
 result_folder = '/home/benjamin/data/lesions/MS/PV-SynthSeg/generated_images'
 
 # generation parameters
@@ -67,8 +67,8 @@ output_shape = None
 output_divisible_by_n = None
 generation_classes = '/home/benjamin/data/lesions/MS/PV-SynthSeg/labels_classes_stats/generation_classes.npy'
 prior_distribution = 'normal'
-prior_means = '/home/benjamin/data/lesions/MS/PV-SynthSeg/new_labels_classes_stats/prior_means.npy'
-prior_stds = '/home/benjamin/data/lesions/MS/PV-SynthSeg/new_labels_classes_stats/prior_stds.npy'
+prior_means = '/home/benjamin/data/lesions/MS/PV-SynthSeg/labels_classes_stats/prior_means_t1_flair.npy'
+prior_stds = '/home/benjamin/data/lesions/MS/PV-SynthSeg/labels_classes_stats/prior_stds_t1_flair.npy'
 specific_stats_for_channel = True
 flip = False
 apply_linear_trans = True
