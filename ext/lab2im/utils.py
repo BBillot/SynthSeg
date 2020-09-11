@@ -686,6 +686,7 @@ def draw_value_from_distribution(hyperparameter,
     its lower and upper bounds, and if the distribution is normal, rows correspond to its mean and std deviation.
     5) a numpy array of size (2*n, m). Same as 4) but we first randomly select a block of two rows among the
     n possibilities.
+    6) the path to a numpy array corresponding to case 4 or 5.
     :param size: (optional) number of values to sample. All values are sampled independently.
     Used only if hyperparameter is not a numpy array.
     :param distribution: (optional) the distribution type. Can be 'uniform' or 'normal'. Default is 'uniform'.
@@ -696,6 +697,7 @@ def draw_value_from_distribution(hyperparameter,
     """
 
     # reformat parameter_range
+    hyperparameter = load_array_if_path(hyperparameter, load_as_numpy=True)
     if not isinstance(hyperparameter, np.ndarray):
         if hyperparameter is None:
             hyperparameter = np.array([[centre - default_range] * size, [centre + default_range] * size])

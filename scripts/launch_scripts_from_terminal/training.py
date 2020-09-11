@@ -5,6 +5,7 @@ parser = ArgumentParser()
 
 # Positional arguments
 parser.add_argument("labels_dir", type=str)
+parser.add_argument("vae_model", type=str)
 parser.add_argument("model_dir", type=str)
 
 # ---------------------------------------------- Generation parameters ----------------------------------------------

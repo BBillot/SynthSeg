@@ -9,7 +9,7 @@ from keras.models import Model
 from ext.lab2im import utils
 from ext.lab2im import sample_gmm as l2i_gmm
 from ext.lab2im import edit_tensors as l2i_et
-from ext.lab2im import spatial_augmentation as l2i_sp
+from ext.lab2im import spatial_augmentation as l2i_sa
 from ext.lab2im import intensity_augmentation as l2i_ia
 
 from ext.neuron import layers as nrn_layers
@@ -168,17 +168,17 @@ def labels_to_image_model(labels_shape,
 
     # deform labels
     if apply_linear_trans | apply_nonlin_trans:
-        labels = l2i_sp.deform_tensor(labels, aff_in, apply_nonlin_trans, 'nearest', nonlin_std, nonlin_shape_factor)
+        labels = l2i_sa.deform_tensor(labels, aff_in, apply_nonlin_trans, 'nearest', nonlin_std, nonlin_shape_factor)
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'))(labels)
 
     # cropping
     if crop_shape != labels_shape:
-        labels, _ = l2i_sp.random_cropping(labels, crop_shape, n_dims)
+        labels, _ = l2i_sa.random_cropping(labels, crop_shape, n_dims)
 
     # flipping
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
-        labels, _ = l2i_sp.label_map_random_flipping(labels, new_generation_label_list, n_neutral_labels, aff, n_dims)
+        labels, _ = l2i_sa.label_map_random_flipping(labels, new_generation_label_list, n_neutral_labels, aff, n_dims)
 
     # build synthetic image
     image = l2i_gmm.sample_gmm_conditioned_on_labels(labels, means_input, std_devs_input, n_generation_labels,
@@ -196,7 +196,7 @@ def labels_to_image_model(labels_shape,
 
         # reset edges of second channels to zero
         if (crop_channel2 is not None) & (i == 1):  # randomly crop sides of second channel
-            channel, tmp_mask = l2i_sp.restrict_tensor(channel, axes=3, boundaries=crop_channel2)
+            channel, tmp_mask = l2i_sa.restrict_tensor(channel, axes=3, boundaries=crop_channel2)
         else:
             tmp_mask = None
 
