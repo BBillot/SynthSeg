@@ -8,7 +8,7 @@ This repository contains code to train a single Convolutional Neural Network to 
 This project is explained in details in the following video:
 \
 \
-[![Talk SynthSeg](data/README_figures/youtube_link.png)](https://www.youtube.com/watch?v=IX8fAJccFkc&feature=emb_logo)
+[![Talk SynthSeg](data/README_figures/youtube_link.png)](https://www.youtube.com/watch?v=Bfp3cILSKZg&t=173s)
 \
 \
 \
