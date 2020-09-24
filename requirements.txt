@@ -56,7 +56,7 @@ six==1.14.0
 sklearn==0.0
 tensorboard==2.0.2
 tensorflow-estimator==2.0.1
-tensorflow-gpu==2.0.0
+tensorflow-gpu==2.0.1
 tensorflow-probability==0.8.0
 termcolor==1.1.0
 tqdm==4.45.0
