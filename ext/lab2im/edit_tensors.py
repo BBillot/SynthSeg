@@ -167,7 +167,8 @@ def resample_tensor(tensor,
     A prior downsampling step can be added if subsample_res is specified. In this case, volume_res should also be
     specified, in order to calculate the downsampling ratio.
     :param tensor: tensor
-    :param resample_shape: list or numpy array of size (n_dims,)
+    :param resample_shape: shape to resample the input tensor to. This can be a list or numpy array of size (n_dims,),
+    where n_dims excludes the batchsize and channels dimensions.
     :param interp_method: interpolation method for resampling, 'linear' or 'nearest'
     :param subsample_res: if not None, this triggers a downsampling of the volume, prior to the resampling step.
     list or numpy array of size (n_dims,).
@@ -179,9 +180,11 @@ def resample_tensor(tensor,
     # reformat resolutions to lists
     subsample_res = utils.reformat_to_list(subsample_res)
     volume_res = utils.reformat_to_list(volume_res)
-    assert len(subsample_res) == len(volume_res), 'subsample_res and volume_res must have the same length, ' \
-                                                  'had {0}, and {1}'.format(len(subsample_res), len(volume_res))
-    n_dims = len(volume_res)
+    if subsample_res is not None:
+        assert volume_res is not None, 'volume_res must be given when providing a subsampling resolution.'
+        assert len(subsample_res) == len(volume_res), 'subsample_res and volume_res must have the same length, ' \
+                                                      'had {0}, and {1}'.format(len(subsample_res), len(volume_res))
+    n_dims = len(resample_shape)
 
     # downsample image
     downsample_shape = None
@@ -238,13 +241,17 @@ def pad_tensor(tensor, padding_shape=None, pad_value=0):
 
     # get shapes and padding margins
     tensor_shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
-    padding_shape = KL.Lambda(lambda x: tf.math.maximum(x, tf.convert_to_tensor(padding_shape, tf.int32)))(tensor_shape)
+    padding_shape = KL.Lambda(lambda x: tf.math.maximum(tf.cast(x, dtype='int32'),
+                              tf.convert_to_tensor(padding_shape, dtype='int32')))(tensor_shape)
 
     # build padding margins
-    min_margins = KL.Lambda(lambda x: tf.cast((x[0] - x[1]) / 2, tf.int32))([padding_shape, tensor_shape])
-    max_margins = KL.Lambda(lambda x: (x[0] - x[1]) - x[2])([padding_shape, tensor_shape, min_margins])
-    margins = KL.Lambda(lambda x: tf.stack([x[0], tf.cast(x[1], tf.int32)], axis=-1))([min_margins, max_margins])
+    min_margins = KL.Lambda(lambda x: tf.cast((x[0] - x[1]) / 2, dtype='int32'))([padding_shape, tensor_shape])
+    max_margins = KL.Lambda(lambda x: tf.cast((x[0] - x[1]) - x[2], dtype='int32'))([padding_shape, tensor_shape,
+                                                                                     min_margins])
+    margins = KL.Lambda(lambda x: tf.stack([tf.cast(x[0], dtype='int32'),
+                                            tf.cast(x[1], dtype='int32')], axis=-1))([min_margins, max_margins])
 
     # pad tensor
-    padded_tensor = KL.Lambda(lambda x: tf.pad(x[0], x[1], 'CONSTANT', constant_values=pad_value))([tensor, margins])
+    padded_tensor = KL.Lambda(lambda x: tf.pad(x[0], tf.cast(x[1], dtype='int32'), mode='CONSTANT',
+                                               constant_values=pad_value))([tensor, margins])
     return padded_tensor

@@ -27,7 +27,8 @@ def sample_gmm_conditioned_on_labels(labels, means, std_devs, n_labels, n_channe
 
     # multi-channel
     else:
-        cat_labels = KL.Lambda(lambda x: tf.concat([x+n_labels*i for i in range(n_channels)], -1))(labels)
+        cat_labels = KL.Lambda(lambda x: tf.concat([tf.cast(x, dtype='int32') + n_labels*i
+                                                    for i in range(n_channels)], -1))(labels)
 
         means = KL.Lambda(lambda x: K.reshape(tf.split(x, [1, -1])[0], tuple([n_labels, n_channels])))(means)
         means = KL.Lambda(lambda x: K.reshape(tf.concat(tf.split(x, [1]*n_channels, axis=-1), 0),
