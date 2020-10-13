@@ -564,7 +564,6 @@ def conv_dec(nb_features,
     # output prediction layer
     # we use a softmax to compute P(L_x|I) where x is each location
     if final_pred_activation == 'softmax':
-        print("using final_pred_activation %s for %s" % (final_pred_activation, model_name))
         name = '%s_prediction' % prefix
         softmax_lambda_fcn = lambda x: keras.activations.softmax(x, axis=ndims + 1)
         pred_tensor = KL.Lambda(softmax_lambda_fcn, name=name)(last_tensor)
