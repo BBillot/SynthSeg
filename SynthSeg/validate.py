@@ -56,8 +56,7 @@ def validate_training(image_dir,
     :param recompute: (optional) whether to recompute result files even if they already exists."""
 
     # create result folder
-    if not os.path.exists(os.path.join(validation_main_dir)):
-        os.mkdir(validation_main_dir)
+    utils.mkdir(validation_main_dir)
 
     # loop over models
     list_models = utils.list_files(models_dir, expr=['dice', 'h5'], cond_type='and')[::step_eval]
@@ -66,10 +65,10 @@ def validate_training(image_dir,
         # build names and create folders
         model_val_dir = os.path.join(validation_main_dir, os.path.basename(path_model).replace('.h5', ''))
         dice_path = os.path.join(model_val_dir, 'dice.npy')
-        if not os.path.exists(os.path.join(model_val_dir)):
-            os.mkdir(model_val_dir)
+        utils.mkdir(model_val_dir)
 
         if (not os.path.isfile(dice_path)) | recompute:
+            utils.print_loop_info(model_idx, len(list_models), spacing=1)
             predict(path_images=image_dir,
                     path_model=path_model,
                     segmentation_label_list=segmentation_label_list,

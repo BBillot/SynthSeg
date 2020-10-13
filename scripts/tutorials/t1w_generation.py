@@ -9,7 +9,7 @@
 import os
 import time
 import numpy as np
-from ext.lab2im.utils import save_volume
+from ext.lab2im import utils
 from SynthSeg.brain_generator import BrainGenerator
 
 
@@ -54,8 +54,7 @@ brain_generator = BrainGenerator(labels_dir=path_label_map,
                                  output_shape=output_shape)
 
 # create result dir
-if not os.path.exists(os.path.join(result_dir)):
-    os.mkdir(result_dir)
+utils.mkdir(result_dir)
 
 for n in range(n_examples):
 
@@ -66,7 +65,7 @@ for n in range(n_examples):
     print('generation {0:d} took {1:.01f}s'.format(n, end - start))
 
     # save output image and label map
-    save_volume(np.squeeze(im), brain_generator.aff, brain_generator.header,
+    utils.save_volume(np.squeeze(im), brain_generator.aff, brain_generator.header,
                 os.path.join(result_dir, 't1_%s.nii.gz' % n))
-    save_volume(np.squeeze(lab), brain_generator.aff, brain_generator.header,
+    utils.save_volume(np.squeeze(lab), brain_generator.aff, brain_generator.header,
                 os.path.join(result_dir, 't1_labels_%s.nii.gz' % n))

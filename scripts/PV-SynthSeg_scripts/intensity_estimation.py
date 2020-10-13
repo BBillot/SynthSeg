@@ -97,5 +97,5 @@ build_intensity_stats(list_image_dir=list_image_dir,
                       list_labels_dir=labels_dir,
                       estimation_labels=estimation_labels,
                       estimation_classes=estimation_classes,
-                      results_dir=result_dir,
+                      result_dir=result_dir,
                       rescale=True)
