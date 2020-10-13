@@ -20,8 +20,7 @@ def estimate_t2_cropping(image_dir, result_dir=None, dilation=5):
 
     # create result dir
     if result_dir is not None:
-        if not os.path.exists(result_dir):
-            os.mkdir(result_dir)
+        utils.mkdir(result_dir)
 
     # loop through images
     list_image_paths = utils.list_images_in_folder(image_dir)
@@ -206,7 +205,7 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
 
 def build_intensity_stats(list_image_dir,
                           list_labels_dir,
-                          results_dir,
+                          result_dir,
                           estimation_labels,
                           estimation_classes=None,
                           max_channel=3,
@@ -230,7 +229,7 @@ def build_intensity_stats(list_image_dir,
     If list_image_dir is a list of several folders, list_labels_dir can either be a list of folders (one for each image
     folder), or the path to a single folder, which will be used for all datasets.
     If a dataset has multi-modal images, the same label map is applied to all modalities.
-    :param results_dir: path of directory where estimated priors will be writen.
+    :param result_dir: path of directory where estimated priors will be writen.
     :param estimation_labels: labels to estimate intensity statistics from.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param estimation_classes: (optional) enables to regroup structures into classes of similar intensity statistics.
@@ -243,8 +242,7 @@ def build_intensity_stats(list_image_dir,
     """
 
     # handle results directories
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
+    utils.mkdir(result_dir)
 
     # reformat image/labels dir into lists
     list_image_dir = utils.reformat_to_list(list_image_dir)
@@ -275,6 +273,7 @@ def build_intensity_stats(list_image_dir,
                                                                                      labels_dir,
                                                                                      estimation_labels,
                                                                                      estimation_classes,
+                                                                                     max_channel=max_channel,
                                                                                      rescale=rescale)
 
         # add stats arrays to list of datasets-wise statistics
@@ -286,7 +285,7 @@ def build_intensity_stats(list_image_dir,
     prior_stds = np.concatenate(list_datasets_prior_stds, axis=0)
 
     # save files
-    np.save(os.path.join(results_dir, 'prior_means.npy'), prior_means)
-    np.save(os.path.join(results_dir, 'prior_stds.npy'), prior_stds)
+    np.save(os.path.join(result_dir, 'prior_means.npy'), prior_means)
+    np.save(os.path.join(result_dir, 'prior_stds.npy'), prior_stds)
 
     return prior_means, prior_stds
