@@ -13,7 +13,10 @@ class BrainGenerator:
 
     def __init__(self,
                  labels_dir,
-                 vae_model,
+                 vae_model=None,
+                 vae_mode=None,
+                 path_lesion_prior=None,
+                 path_lesion_maps=None,
                  generation_labels=None,
                  output_labels=None,
                  n_neutral_labels=None,
@@ -56,6 +59,14 @@ class BrainGenerator:
         # IMPORTANT !!!
         # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
         # these values refer to the RAS axes.
+
+        # lesion parameters
+        :param vae_model: (optional) path of vae weights to sample lesion mask.
+        Default is None, where no lesion labels are sampled from the VAE. Must be None if vae_mode is.
+        :param vae_mode: (optional) dataset used to train vae, can be 'swiss', or 'challenge'.
+        Default is None, where no lesion labels are sampled from the VAE. Must be None if vae_model is.
+        :param path_lesion_prior: (optional) path of a prior probability map for lesions.
+        :param path_lesion_maps: (optional) list of paths of label maps to copy lesion labels (label 77) from.
 
         # label maps-related parameters
         :param generation_labels: (optional) list of all possible label values in the input label maps.
@@ -190,6 +201,16 @@ class BrainGenerator:
             self.labels_paths = utils.list_images_in_folder(labels_dir)
         assert len(self.labels_paths) > 0, "Could not find any training data"
 
+        # lesion parameters
+        assert ((vae_mode is not None) & (vae_model is not None)) | ((vae_mode is None) & (vae_model is None)), \
+            'vae_model and vae mode must be specified together, or left as default together'
+        self.vae_mode = vae_mode
+        if path_lesion_maps is not None:
+            self.path_lesion_maps = utils.list_images_in_folder(path_lesion_maps)
+        else:
+            self.path_lesion_maps = None
+        self.path_lesion_prior = path_lesion_prior
+
         # generation parameters
         self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
             utils.get_volume_info(self.labels_paths[0], aff_ref=np.eye(4))
@@ -250,7 +271,8 @@ class BrainGenerator:
 
         # build transformation model
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
-        self.labels_to_image_model.load_weights(vae_model, by_name=True)
+        if (self.vae_mode is not None) & (vae_model is not None):
+            self.labels_to_image_model.load_weights(vae_model, by_name=True)
 
         # build generator for model inputs
         self.model_inputs_generator = self._build_model_inputs_generator(mix_prior_and_random)
@@ -261,6 +283,8 @@ class BrainGenerator:
     def _build_labels_to_image_model(self):
         # build_model
         lab_to_im_model = labels_to_image_model(labels_shape=self.labels_shape,
+                                                vae_mode=self.vae_mode,
+                                                path_lesion_prior=self.path_lesion_prior,
                                                 batchsize=self.batchsize,
                                                 n_channels=self.n_channels,
                                                 generation_labels=self.generation_labels,
@@ -304,7 +328,8 @@ class BrainGenerator:
                                                     apply_linear_trans=self.apply_linear_trans,
                                                     scaling_bounds=self.scaling_bounds,
                                                     rotation_bounds=self.rotation_bounds,
-                                                    shearing_bounds=self.shearing_bounds)
+                                                    shearing_bounds=self.shearing_bounds,
+                                                    path_lesion_maps=self.path_lesion_maps)
         return model_inputs_generator
 
     def _build_brain_generator(self):

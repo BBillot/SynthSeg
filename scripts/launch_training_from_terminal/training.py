@@ -5,10 +5,15 @@ parser = ArgumentParser()
 
 # Positional arguments
 parser.add_argument("labels_dir", type=str)
-parser.add_argument("vae_model", type=str)
 parser.add_argument("model_dir", type=str)
 
 # ---------------------------------------------- Generation parameters ----------------------------------------------
+# lesion parameters
+parser.add_argument("--vae_mode", type=str, dest="vae_mode", default=None)
+parser.add_argument("--vae_model", type=str, dest="vae_model", default=None)
+parser.add_argument("--lesion_prior", type=str, dest="path_lesion_prior", default=None)
+parser.add_argument("--lesion_maps", type=str, dest="path_lesion_maps", default=None)
+
 # label maps parameters
 parser.add_argument("--generation_labels", type=str, dest="path_generation_labels", default=None)
 parser.add_argument("--segmentation_labels", type=str, dest="path_segmentation_labels", default=None)

@@ -20,7 +20,8 @@ def build_model_inputs(path_label_maps,
                        scaling_bounds=None,
                        rotation_bounds=None,
                        shearing_bounds=None,
-                       background_paths=None):
+                       background_paths=None,
+                       path_lesion_maps=None):
     """
     This function builds a generator to be fed to the lab2im model. It enables to generate all the required inputs,
     according to the operations performed in the model.
@@ -71,6 +72,7 @@ def build_model_inputs(path_label_maps,
     If None (default), rotation_bounds = 15.
     :param shearing_bounds: (optional) same as scaling bounds. If None (default), shearing_bounds = 0.01.
     :param background_paths: (optional) list of paths of label maps to replace the soft brain tissues (label 258) with.
+    :param path_lesion_maps: (optional) list of paths of label maps to copy lesion labels (label 77) from.
     """
 
     # get label info
@@ -96,7 +98,7 @@ def build_model_inputs(path_label_maps,
 
             # add labels to inputs
             y = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
-            if background_paths is not None:
+            if background_paths is not None:  # modify soft extracerebral tisues with background patches
                 idx_258 = np.where(y == 258)
                 if np.any(idx_258):
                     background = utils.load_volume(background_paths[npr.randint(len(background_paths))],
@@ -107,6 +109,12 @@ def build_model_inputs(path_label_maps,
                     assert background.shape == y.shape, 'background patches should have same shape than training ' \
                                                         'labels. Had {0} and {1}'.format(background.shape, y.shape)
                     y[idx_258] = background[idx_258]
+            if path_lesion_maps is not None:  # paste lesion labels in cerebral/cerebellar WM, and brain stem
+                mask_lesion = utils.load_volume(path_lesion_maps[npr.randint(len(path_lesion_maps))], aff_ref=np.eye(4))
+                mask_lesion = mask_lesion == 77
+                assert mask_lesion.shape == y.shape, 'lesion patches should have same shape than training labels'
+                mask_lesion = (mask_lesion & ((y == 2) | (y == 7) | (y == 16) | (y == 41) | (y == 46)))
+                y[mask_lesion] = 77
             list_label_maps.append(utils.add_axis(y, axis=-2))
 
             # add means and standard deviations to inputs

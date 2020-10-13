@@ -16,8 +16,11 @@ from ext.neuron import models as nrn_models
 
 
 def training(labels_dir,
-             vae_model,
              model_dir,
+             vae_model=None,
+             vae_mode=None,
+             path_lesion_prior=None,
+             path_lesion_maps=None,
              path_generation_labels=None,
              path_segmentation_labels=None,
              save_generation_labels=None,
@@ -74,9 +77,17 @@ def training(labels_dir,
 
     :param labels_dir: path of folder with all input label maps, or to a single label map (if only one training example)
     :param model_dir: path of a directory where the models will be saved during training.
-    :param vae_model: path of vae weights to sample lesion mask.
 
     #---------------------------------------------- Generation parameters ----------------------------------------------
+
+    # lesion parameters
+    :param vae_model: (optional) path of vae weights to sample lesion mask.
+    Default is None, where no lesion labels are sampled from the VAE. Must be None if vae_mode is.
+    :param vae_mode: (optional) dataset used to train vae, can be 'swiss', or 'challenge'.
+    Default is None, where no lesion labels are sampled from the VAE. Must be None if vae_model is.
+    :param path_lesion_prior: (optional) path of a prior probability map for lesions.
+    :param path_lesion_maps: (optional) list of paths of label maps to copy lesion labels (label 77) from.
+
     # label maps parameters
     :param path_generation_labels: (optional) list of all possible label values in the input label maps.
     Default is None, where the label values are directly gotten from the provided label maps.
@@ -231,6 +242,9 @@ def training(labels_dir,
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
                                      vae_model=vae_model,
+                                     vae_mode=vae_mode,
+                                     path_lesion_prior=path_lesion_prior,
+                                     path_lesion_maps=path_lesion_maps,
                                      generation_labels=generation_labels,
                                      output_labels=segmentation_labels,
                                      n_neutral_labels=n_neutral_labels,

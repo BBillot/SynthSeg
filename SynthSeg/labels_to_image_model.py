@@ -17,6 +17,8 @@ from ext.lab2im import intensity_augmentation as l2i_ia
 
 
 def labels_to_image_model(labels_shape,
+                          vae_mode,
+                          path_lesion_prior,
                           batchsize,
                           n_channels,
                           generation_labels,
@@ -61,9 +63,12 @@ def labels_to_image_model(labels_shape,
     # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
     # these values refer to the RAS axes.
     :param labels_shape: shape of the input label maps. Can be a sequence or a 1d numpy array.
-    :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
+    :param vae_mode: (optional) dataset used to train vae, can be 'swiss', or 'challenge'.
+    Default is None, where no lesion labels are sampled from the VAE.
+    :param path_lesion_prior: (optional) path of a prior probability map for lesions.
+    :param batchsize: numbers of images to generate per mini-batch. Default is 1.
     :param n_channels: number of channels to be synthetised.
-    :param generation_labels: (optional) list of all possible label values in the input label maps.
+    :param generation_labels: list of all possible label values in the input label maps.
     Default is None, where the label values are directly gotten from the provided label maps.
     If not None, can be a sequence or a 1d numpy array. It should be organised as follows: background label first, then
     non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same hemisphere (can be left or right),
@@ -161,8 +166,12 @@ def labels_to_image_model(labels_shape,
         aff_in = None
 
     # add lesion label
-    labels = sample_lesion(labels_input, labels_shape, batchsize=batchsize)
-    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_lesions')(labels)
+    if vae_mode is not None:
+        labels = sample_lesion(labels_input, labels_shape, mode=vae_mode, batchsize=batchsize,
+                               path_prior=path_lesion_prior)
+        labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_lesions')(labels)
+    else:
+        labels = labels_input
 
     # convert labels to new_label_list
     labels = l2i_et.convert_labels(labels, lut)
