@@ -2,37 +2,25 @@ venv
 **/__pycache__/
 .idea
 
-SynthSeg/__pycache__/
-SynthSeg/boxplots.py
-SynthSeg/check_brain_generator.py
-SynthSeg/check_generative_model.py
-SynthSeg/check_training.py
-SynthSeg/check_supervised_training.py
-
 scripts/generated_images/
 scripts/model_dir
 
-scripts/lesion-SynthSeg_scripts/check_generative_model_lesion.py
-scripts/lesion-SynthSeg_scripts/check_supervised_training.py
-scripts/lesion-SynthSeg_scripts/lesions_preprocess.py
-scripts/lesion-SynthSeg_scripts/predict_Le_MS.py
-scripts/lesion-SynthSeg_scripts/PV-SynthSeg_generation_script_Le.py
-scripts/lesion-SynthSeg_scripts/validation.py
+scripts/lesions_scripts/check_generative_model.py
+scripts/lesions_scripts/check_supervised_training.py
+scripts/lesions_scripts/sample_vae_keras.py
+scripts/lesions_scripts/validation.py
 
 scripts/PV-SynthSeg_scripts/check_generative_model.py
 scripts/PV-SynthSeg_scripts/draw_boxplots.py
-scripts/PV-SynthSeg_scripts/intensity_estimation_script.py
-scripts/PV-SynthSeg_scripts/preprocess_hippo_script.py
 scripts/PV-SynthSeg_scripts/PV-SynthSeg_generation_script.py
-scripts/PV-SynthSeg_scripts/PV-SynthSeg_validation.py
-scripts/PV-SynthSeg_scripts/PV-SynthSeg_validation_epimix.py
 
-scripts/SynthSeg_scripts/boxplots_presentation.py
 scripts/SynthSeg_scripts/check_generative_model.py
-scripts/SynthSeg_scripts/contours.py
 scripts/SynthSeg_scripts/draw_boxplots.py
 scripts/SynthSeg_scripts/list_test_subjects.txt
 scripts/SynthSeg_scripts/mosaic_figure.py
-scripts/SynthSeg_scripts/SynthSeg_generation_script.py
-scripts/SynthSeg_scripts/test.py
-scripts/SynthSeg_scripts/validation.py
+
+SynthSeg/boxplots.py
+SynthSeg/check_generative_model.py
+SynthSeg/check_supervised_training.py
+
+VAE
