@@ -27,6 +27,7 @@ class BrainGenerator:
                  prior_means=None,
                  prior_stds=None,
                  use_specific_stats_for_channel=False,
+                 mix_prior_and_random=False,
                  flipping=True,
                  apply_linear_trans=True,
                  scaling_bounds=None,
@@ -114,6 +115,8 @@ class BrainGenerator:
         Default is None, which corresponds to prior_stds = [5, 25].
         :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
         only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
+        :param mix_prior_and_random: (optional) if prior_means is not None, enables to reset the priors to their default
+        values for half of thes cases, and thus generate images of random contrast.
 
         # spatial deformation parameters
         :param flipping: (optional) whether to introduce right/left random flipping. Default is True.
@@ -248,7 +251,7 @@ class BrainGenerator:
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
 
         # build generator for model inputs
-        self.model_inputs_generator = self._build_model_inputs_generator()
+        self.model_inputs_generator = self._build_model_inputs_generator(mix_prior_and_random)
 
         # build brain generator
         self.brain_generator = self._build_brain_generator()
@@ -283,7 +286,7 @@ class BrainGenerator:
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
 
-    def _build_model_inputs_generator(self):
+    def _build_model_inputs_generator(self, mix_prior_and_random):
         # build model's inputs generator
         model_inputs_generator = build_model_inputs(path_label_maps=self.labels_paths,
                                                     n_labels=len(self.generation_labels),
@@ -294,6 +297,7 @@ class BrainGenerator:
                                                     prior_stds=self.prior_stds,
                                                     prior_distributions=self.prior_distributions,
                                                     use_specific_stats_for_channel=self.use_specific_stats_for_channel,
+                                                    mix_prior_and_random=mix_prior_and_random,
                                                     apply_linear_trans=self.apply_linear_trans,
                                                     scaling_bounds=self.scaling_bounds,
                                                     rotation_bounds=self.rotation_bounds,

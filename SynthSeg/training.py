@@ -29,6 +29,7 @@ def training(labels_dir,
              prior_means=None,
              prior_stds=None,
              use_specific_stats_for_channel=False,
+             mix_prior_and_random=False,
              flipping=True,
              scaling_bounds=None,
              rotation_bounds=None,
@@ -118,6 +119,8 @@ def training(labels_dir,
     Default is None, which corresponds to U(5, 25).
     :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
     only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
+    :param mix_prior_and_random: (optional) if prior_means is not None, enables to reset the priors to their default
+    values for half of thes cases, and thus generate images of random contrast.
 
     # spatial deformation parameters
     :param flipping: (optional) whether to introduce right/left random flipping. Default is True.
@@ -241,6 +244,7 @@ def training(labels_dir,
                                      prior_means=prior_means,
                                      prior_stds=prior_stds,
                                      use_specific_stats_for_channel=use_specific_stats_for_channel,
+                                     mix_prior_and_random=mix_prior_and_random,
                                      flipping=flipping,
                                      scaling_bounds=scaling_bounds,
                                      rotation_bounds=rotation_bounds,
