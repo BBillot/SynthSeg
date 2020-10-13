@@ -76,6 +76,7 @@ def prepare_anisotropic_dataset(image_dir,
                                                                slice_thickness=thickness,
                                                                recompute=recompute)
 
+
 def prepare_hippo_training_atlases(labels_dir,
                                    result_dir,
                                    image_dir=None,
