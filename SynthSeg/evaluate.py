@@ -19,11 +19,17 @@ def fast_dice(x, y, labels):
 
     assert x.shape == y.shape, 'both inputs should have same size, had {} and {}'.format(x.shape, y.shape)
 
-    label_edges = np.concatenate([labels[0:1] - 0.5, labels + 0.5])
-    hst = np.histogram2d(x.flatten(), y.flatten(), bins=label_edges)
-    c = hst[0]
+    if len(labels) > 1:
+        label_edges = np.concatenate([labels[0:1] - 0.5, labels + 0.5])
+        hst = np.histogram2d(x.flatten(), y.flatten(), bins=label_edges)
+        c = hst[0]
+        dice = np.diag(c) * 2 / (np.sum(c, 0) + np.sum(c, 1) + 1e-5)
+    else:
+        x = (x == labels[0]) * 1
+        y = (y == labels[0]) * 1
+        dice = 2 * np.sum(x * y) / (np.sum(x) + np.sum(y))
 
-    return np.diag(c) * 2 / (np.sum(c, 0) + np.sum(c, 1) + 1e-5)
+    return dice
 
 
 def surface_distances(x, y):
@@ -57,12 +63,12 @@ def surface_distances(x, y):
     return np.maximum(x_max_dist_to_y, y_max_dist_to_x), (x_mean_dist_to_y + y_mean_dist_to_x) / 2
 
 
-def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices, alternative='two-sided'):
+def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None, alternative='two-sided'):
     """Compute non-parametric paired t-tests between two sets of Dice scores.
     :param dice_ref: numpy array with Dice scores, rows represent structures, and columns represent subjects.
     Taken as reference for one-sided tests.
     :param dice_compare: numpy array of the same format as dice_ref.
-    :param eval_indices: (optional) list or 1d array indicating the row indices of structures to run the tests for
+    :param eval_indices: (optional) list or 1d array indicating the row indices of structures to run the tests for.
     :param alternative: (optional) The alternative hypothesis to be tested, Cab be 'two-sided', 'greater', 'less'.
     :return: 1d numpy array, with p-values for all tests on evaluated structures, as well as an additionnal test for
     average scores (last value of the array). The average score is computed only on the evaluation structures.
@@ -70,18 +76,31 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices, alt
 
     # loop over all evaluation label values
     pvalues = list()
-    for idx in eval_indices:
+    if eval_indices is not None:
+        for idx in eval_indices:
 
-        x = dice_ref[idx, :]
-        y = dice_compare[idx, :]
+            x = dice_ref[idx, :]
+            y = dice_compare[idx, :]
+            _, p = wilcoxon(x, y, alternative=alternative)
+            pvalues.append(p)
+
+        # average score
+        x = np.mean(dice_ref[eval_indices, :], axis=0)
+        y = np.mean(dice_compare[eval_indices, :], axis=0)
         _, p = wilcoxon(x, y, alternative=alternative)
         pvalues.append(p)
 
-    # average score
-    x = np.mean(dice_ref[eval_indices, :], axis=0)
-    y = np.mean(dice_compare[eval_indices, :], axis=0)
-    _, p = wilcoxon(x, y, alternative=alternative)
-    pvalues.append(p)
+    elif len(dice_ref.shape) > 1:
+        # average score
+        x = np.mean(dice_ref, axis=0)
+        y = np.mean(dice_compare, axis=0)
+        _, p = wilcoxon(x, y, alternative=alternative)
+        pvalues.append(p)
+
+    else:
+        # average score
+        _, p = wilcoxon(dice_ref, dice_compare, alternative=alternative)
+        pvalues.append(p)
 
     return np.array(pvalues)
 
@@ -89,19 +108,23 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices, alt
 def dice_evaluation(gt_dir,
                     seg_dir,
                     path_label_list,
-                    path_result_dice_array):
+                    path_result_dice_array,
+                    cropping_margin_around_gt=10,
+                    verbose=True):
     """Computes Dice scores for all labels contained in path_segmentation_label_list. Files in gt_folder and seg_folder
     are matched by sorting order.
     :param gt_dir: folder containing ground truth files.
     :param seg_dir: folder containing evaluation files.
     :param path_label_list: path of numpy vector containing all labels to compute the Dice for.
     :param path_result_dice_array: path where the resulting Dice will be writen as numpy array.
+    :param cropping_margin_around_gt: (optional) margin by which to crop around the gt volumes.
+    If None, no cropping is performed.
+    :param verbose: (optional) whether to print out info about the remaining number of cases.
     :return: numpy array containing all dice scores (labels in rows, subjects in columns).
     """
 
     # create result folder
-    if not os.path.exists(os.path.dirname(path_result_dice_array)):
-        os.mkdir(os.path.dirname(path_result_dice_array))
+    utils.mkdir(os.path.dirname(path_result_dice_array))
 
     # get list label maps to compare
     path_gt_labels = utils.list_images_in_folder(gt_dir)
@@ -118,17 +141,22 @@ def dice_evaluation(gt_dir,
 
     # loop over segmentations
     for idx, (path_gt, path_seg) in enumerate(zip(path_gt_labels, path_segs)):
-        utils.print_loop_info(idx, len(path_segs), 10)
+        if verbose:
+            utils.print_loop_info(idx, len(path_segs), 10)
 
         # load gt labels and segmentation
         gt_labels = utils.load_volume(path_gt, dtype='int')
         seg = utils.load_volume(path_seg, dtype='int')
         # crop images
-        gt_labels, cropping = edit_volumes.crop_volume_around_region(gt_labels, margin=10)
-        seg = edit_volumes.crop_volume_with_idx(seg, cropping)
+        if cropping_margin_around_gt is not None:
+            gt_labels, cropping = edit_volumes.crop_volume_around_region(gt_labels, margin=cropping_margin_around_gt)
+            seg = edit_volumes.crop_volume_with_idx(seg, cropping)
         # compute dice scores
         tmp_dice = fast_dice(gt_labels, seg, label_list_sorted)
-        dice_coefs[:, idx] = tmp_dice[np.searchsorted(label_list_sorted, label_list)]
+        if len(label_list_sorted) > 1:
+            dice_coefs[:, idx] = tmp_dice[np.searchsorted(label_list_sorted, label_list)]
+        else:
+            dice_coefs[:, idx] = tmp_dice
 
     # write dice results
     np.save(path_result_dice_array, dice_coefs)
