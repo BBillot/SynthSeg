@@ -99,10 +99,10 @@ def metrics_model(input_shape,
         # compute weighted l2 loss
         weights = KL.Lambda(lambda x: K.expand_dims(1 - x[..., 0] + weight_background))(labels_gt)
         normaliser = KL.Lambda(lambda x: K.sum(x[0]) * K.int_shape(x[1])[-1])([weights, last_tensor])
-        last_tensor = KL.Lambda(
-            # lambda x: K.sum(x[2] * K.square(x[1] - (x[0] * 30 - 15))) / x[3],
-            lambda x: K.sum(x[2] * K.square(x[1] - (x[0] * 6 - 3))) / x[3],
-            name='wl2')([labels_gt, last_tensor, weights, normaliser])
+        # last_tensor = KL.Lambda(lambda x: K.sum(x[2] * K.square(x[1] - 15 * (2 * x[0] - 1))) / x[3])([
+        #                         labels_gt, last_tensor, weights, normaliser])
+        last_tensor = KL.Lambda(lambda x: K.sum(x[2] * K.square(x[1] - 5 * (2 * x[0] - 1))) / x[3])([
+                                labels_gt, last_tensor, weights, normaliser])
 
     else:
         raise Exception('metrics should either be "dice or "wl2, got {}'.format(metrics))
