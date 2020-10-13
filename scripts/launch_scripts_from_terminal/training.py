@@ -26,6 +26,7 @@ parser.add_argument("--prior_type", type=str, dest="prior_distributions", defaul
 parser.add_argument("--prior_means", type=str, dest="prior_means", default=None)
 parser.add_argument("--prior_stds", type=str, dest="prior_stds", default=None)
 parser.add_argument("--specific_stats", action='store_true', dest="use_specific_stats_for_channel")
+parser.add_argument("--mix_prior_and_random", action='store_true', dest="mix_prior_and_random")
 
 # spatial deformation parameters
 parser.add_argument("--no_flipping", action='store_false', dest="flipping")
