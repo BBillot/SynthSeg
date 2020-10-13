@@ -8,7 +8,7 @@ This repository contains code to train a single Convolutional Neural Network to 
 This project is explained in details in the following video:
 \
 \
-[![Talk SynthSeg](data/README_figures/youtube_link.png)](https://www.youtube.com/watch?v=IX8fAJccFkc&feature=emb_logo)
+[![Talk SynthSeg](scripts/data_example/youtube_link.png)](https://www.youtube.com/watch?v=Bfp3cILSKZg&t=173s)
 \
 \
 \
@@ -19,7 +19,7 @@ of the many generation possibilities offered by SynthSeg:
 realistic/unrealistic, isotropic/anisotropic, uni-modal/multi-modal scans.
 \
 \
-![Generation examples](data/README_figures/figure.png)
+![Generation examples](scripts/data_example/figure.png)
 \
 \
 The generated images are then usd to train a CNN for image segmentation. Because the parameters of the GMM (means and 
@@ -28,7 +28,7 @@ variances) are sampled at each minibatch from prior distributions, the network i
 represented in the following figure:
 \
 \
-![Training overview](data/README_figures/schematic.png)
+![Training overview](scripts/data_example/schematic.png)
 \
 \
 Additionally to the `training` function, we provide the generative model `labels_to_image_model`, along with a wrapper 
