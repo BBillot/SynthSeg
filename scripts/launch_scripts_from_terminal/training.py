@@ -45,7 +45,7 @@ parser.add_argument("--blur_range", type=float, dest="blur_range", default=1.15)
 parser.add_argument("--crop_channel_2", type=str, dest="crop_channel_2", default=None)
 
 # bias field parameters
-parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=3.)
+parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.3)
 parser.add_argument("--bias_shape_factor", type=float, dest="bias_shape_factor", default=.025)
 
 # ------------------------------------------ UNet architecture parameters ------------------------------------------
