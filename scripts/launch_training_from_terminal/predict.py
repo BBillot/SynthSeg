@@ -49,6 +49,8 @@ parser.add_argument("--gt", type=str, default=None, dest="gt_folder",
                     help="folder containing ground truth segmentations, evaluation is performed only if this is "
                          "specified. Evaluation results will be preferably stored in out_seg folder, or else in "
                          "out_posteriors folder")
+parser.add_argument("--eval_label_list", type=str, dest="evaluation_label_list", default=None,
+                    help="labels to evaluate Dice scores on if gt is provided. Default is the same as label_list.")
 
 args = parser.parse_args()
 predict(**vars(args))
