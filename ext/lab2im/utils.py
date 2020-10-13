@@ -132,7 +132,8 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
     :param return_volume: (optional) whether to return the volume along with the information.
     :param aff_ref: (optional) If not None, the loaded volume is aligned to this affine matrix.
     All info relative to the volume is then given in this new space. Must be a numpy array of dimension 4x4.
-    :return: volume (if return_volume is true), and corresponding info.
+    :return: volume (if return_volume is true), and corresponding info. If aff_ref is not None, the returned aff is
+    the original one, i.e. the affine of the image before being aligned to aff_ref.
     """
     # read image
     im, aff, header = load_volume(path_volume, im_only=False)
@@ -155,7 +156,7 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
         from . import edit_volumes  # the import is done here to avoid import loops
         ras_axes = edit_volumes.get_ras_axes(aff, n_dims=n_dims)
         ras_axes_ref = edit_volumes.get_ras_axes(aff_ref, n_dims=n_dims)
-        im, aff = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=True, n_dims=n_dims)
+        im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, n_dims=n_dims)
         im_shape = np.array(im_shape)
         data_res = np.array(data_res)
         im_shape[ras_axes_ref] = im_shape[ras_axes]
@@ -471,10 +472,20 @@ def strip_suffix(path):
     return path
 
 
+def mkdir(path_dir):
+    """Recursively creates the current dir as well as its parent folders if they do not already exist."""
+    if not os.path.isdir(path_dir):
+        list_dir_to_create = [path_dir]
+        while not os.path.isdir(os.path.dirname(list_dir_to_create[-1])):
+            list_dir_to_create.append(os.path.dirname(list_dir_to_create[-1]))
+        for dir_to_create in reversed(list_dir_to_create):
+            os.mkdir(dir_to_create)
+
+
 # ---------------------------------------------- shape-related functions -----------------------------------------------
 
 
-def get_dims(shape, max_channels=3):
+def get_dims(shape, max_channels=10):
     """Get the number of dimensions and channels from the shape of an array.
     The number of dimensions is assumed to be the length of the shape, as long as the shape of the last dimension is
     inferior or equal to max_channels (default 3).

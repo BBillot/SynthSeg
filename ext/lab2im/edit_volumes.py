@@ -17,6 +17,7 @@ These functions are sorted in five categories:
         -smooth_label_map
         -erode_label_map
         -compute_hard_volumes
+        -compute_distance_map
 3- editting all volumes in a folder: functions are more or less the same as 1, but they now apply to all the volumes
 in a given folder. Thus we provide folder paths rather than numpy arrays as inputs. It contains:
         -mask_images_in_dir
@@ -41,7 +42,7 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -erode_labels_in_dir
         -upsample_labels_in_dir
         -compute_hard_volumes_in_dir
-        -build_binary_atlas
+        -build_atlas
 5- dataset editting: functions for editting datasets (i.e. images with corresponding label maps). It contains:
         -check_images_and_labels
         -crop_dataset_to_minimum_size
@@ -115,7 +116,7 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, masking_val
         return volume
 
 
-def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.025, max_percentile=0.975, use_positive_only=True):
+def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.01, max_percentile=0.99, use_positive_only=True):
     """This function linearly rescales a volume between new_min and new_max.
     :param volume: a numpy array
     :param new_min: (optional) minimum value for the rescaled image.
@@ -640,6 +641,52 @@ def compute_hard_volumes(labels, voxel_volume=1., label_list=None, skip_backgrou
     return volumes * voxel_volume
 
 
+def compute_distance_map(labels, masking_labels=None, crop_margin=None):
+    """Compute distance map for a given list of label values in a label map.
+    :param labels: a label map
+    :param masking_labels: (optional) list of label values to mask the label map with. The distances will be computed
+    for these labels only. default is None, where all positive values are considered.
+    :return: a distance map with positive values inside the considered regions, and negative values outside."""
+
+    n_dims, _ = utils.get_dims(labels.shape)
+
+    # crop label map if necessary
+    if crop_margin is not None:
+        tmp_labels, crop_idx = crop_volume_around_region(labels, margin=crop_margin)
+    else:
+        tmp_labels = labels
+        crop_idx = None
+
+    # mask label map around specify values
+    if masking_labels is not None:
+        masking_labels = utils.reformat_to_list(masking_labels)
+        mask = np.zeros(tmp_labels.shape, dtype='bool')
+        for masking_label in masking_labels:
+            mask = mask | tmp_labels == masking_label
+    else:
+        mask = tmp_labels > 0
+    not_mask = np.logical_not(mask)
+
+    # compute distances
+    dist_in = distance_transform_edt(mask)
+    dist_in = np.where(mask, dist_in - 0.5, dist_in)
+    dist_out = - distance_transform_edt(not_mask)
+    dist_out = np.where(not_mask, dist_out + 0.5, dist_out)
+    tmp_dist = dist_in + dist_out
+
+    # put back in original matrix if we cropped
+    if crop_idx is not None:
+        dist = np.min(tmp_dist) * np.ones(labels.shape, dtype='float32')
+        if n_dims == 3:
+            dist[crop_idx[0]:crop_idx[3], crop_idx[1]:crop_idx[4], crop_idx[2]:crop_idx[5], ...] = tmp_dist
+        elif n_dims == 2:
+            dist[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3], ...] = tmp_dist
+    else:
+        dist = tmp_dist
+
+    return dist
+
+
 # ------------------------------------------------- edit volumes in dir ------------------------------------------------
 
 def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dilate=0, erode=0, masking_value=0,
@@ -662,11 +709,9 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
     if mask_result_dir is not None:
-        if not os.path.isdir(mask_result_dir):
-            os.mkdir(mask_result_dir)
+        utils.mkdir(mask_result_dir)
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
@@ -713,8 +758,7 @@ def rescale_images_in_dir(image_dir, result_dir,
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
@@ -740,8 +784,7 @@ def crop_images_in_dir(image_dir, result_dir, cropping_margin=None, cropping_sha
     """
 
     # create result dir
-    if not os.path.exists(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # loop over images and masks
     path_images = utils.list_images_in_folder(image_dir)
@@ -778,8 +821,7 @@ def crop_images_around_region_in_dir(image_dir,
     """
 
     # create result dir
-    if not os.path.exists(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # list volumes and masks
     path_images = utils.list_images_in_folder(image_dir)
@@ -816,8 +858,7 @@ def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, re
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # list labels
     path_images = utils.list_images_in_folder(image_dir)
@@ -855,8 +896,7 @@ def flip_images_in_dir(image_dir, result_dir, axis=None, direction=None, recompu
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
@@ -883,8 +923,7 @@ def align_images_in_dir(image_dir, result_dir, aff_ref=None, path_ref_image=None
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # read reference affine matrix
     if path_ref_image is not None:
@@ -914,8 +953,7 @@ def correct_nans_images_in_dir(image_dir, result_dir, recompute=True):
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
@@ -943,8 +981,7 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # list images and masks
     path_images = utils.list_images_in_folder(image_dir)
@@ -1004,8 +1041,7 @@ def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     if not isinstance(list_channel_dir, list):
         raise TypeError('list_channel_dir should be a list')
@@ -1045,8 +1081,7 @@ def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, recompute=Tr
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
@@ -1089,8 +1124,7 @@ def mri_convert_images_in_dir(image_dir,
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
@@ -1147,8 +1181,7 @@ def samseg_images_in_dir(image_dir,
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
@@ -1210,15 +1243,12 @@ def simulate_upsampled_anisotropic_images(image_dir,
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
     # create result dir
-    if not os.path.isdir(resample_image_result_dir):
-        os.mkdir(resample_image_result_dir)
-    if not os.path.isdir(downsample_image_result_dir):
-        os.mkdir(downsample_image_result_dir)
+    utils.mkdir(resample_image_result_dir)
+    utils.mkdir(downsample_image_result_dir)
     if labels_dir is not None:
         assert downsample_labels_result_dir is not None, \
             'downsample_labels_result_dir should not be None if labels_dir is specified'
-        if not os.path.isdir(downsample_labels_result_dir):
-            os.mkdir(downsample_labels_result_dir)
+        utils.mkdir(downsample_labels_result_dir)
 
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
@@ -1342,8 +1372,7 @@ def correct_labels_in_dir(labels_dir, list_incorrect_labels, list_correct_labels
     """
 
     # create result dir
-    if not os.path.isdir(results_dir):
-        os.mkdir(results_dir)
+    utils.mkdir(results_dir)
 
     # prepare data files
     path_labels = utils.list_images_in_folder(labels_dir)
@@ -1369,11 +1398,9 @@ def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, 
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
     if mask_result_dir is not None:
-        if not os.path.isdir(mask_result_dir):
-            os.mkdir(mask_result_dir)
+        utils.mkdir(mask_result_dir)
 
     # reformat values to keep
     if isinstance(values_to_keep, (int, float)):
@@ -1416,8 +1443,7 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, path_label_list=None
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # list label maps
     path_labels = utils.list_images_in_folder(labels_dir)
@@ -1505,8 +1531,7 @@ def erode_labels_in_dir(labels_dir, result_dir, labels_to_erode, erosion_factors
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # loop over label maps
     model = None
@@ -1541,8 +1566,7 @@ def upsample_labels_in_dir(labels_dir,
     """
 
     # prepare result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
@@ -1575,10 +1599,8 @@ def upsample_labels_in_dir(labels_dir,
             basefilename = utils.strip_extension(os.path.basename(path_label))
             indiv_label_dir = os.path.join(result_dir, basefilename)
             upsample_indiv_label_dir = os.path.join(result_dir, basefilename + '_upsampled')
-            if not os.path.isdir(indiv_label_dir):
-                os.mkdir(indiv_label_dir)
-            if not os.path.isdir(upsample_indiv_label_dir):
-                os.mkdir(upsample_indiv_label_dir)
+            utils.mkdir(indiv_label_dir)
+            utils.mkdir(upsample_indiv_label_dir)
 
             # loop over label values
             for label in new_label_list:
@@ -1627,11 +1649,9 @@ def compute_hard_volumes_in_dir(labels_dir,
 
     # create result directories
     if path_numpy_result is not None:
-        if not os.path.isdir(os.path.dirname(path_numpy_result)):
-            os.mkdir(os.path.dirname(path_numpy_result))
+        utils.mkdir(os.path.dirname(path_numpy_result))
     if path_csv_result is not None:
-        if not os.path.isdir(os.path.dirname(path_csv_result)):
-            os.mkdir(os.path.dirname(path_csv_result))
+        utils.mkdir(os.path.dirname(path_csv_result))
 
     # load or compute labels list
     label_list = utils.get_list_labels(path_label_list, labels_dir, FS_sort=FS_sort)
@@ -1679,31 +1699,42 @@ def compute_hard_volumes_in_dir(labels_dir,
     return volumes
 
 
-def build_binary_atlas(labels_dir, margin=15, path_result_atlas=None):
+def build_atlas(labels_dir, align_centre_of_mass=False, margin=15, path_result_atlas=None):
     """This function builds a binary atlas (defined by label values > 0) from several label maps.
     :param labels_dir: path of directory with input label maps
-    :param margin: (optional) margin by which to crop the input label maps around their center of mass.
-    Therefore it controls the size of the output atlas: (2*margin + 1)**n_dims.
+    :param align_centre_of_mass: whether to build the atlas by aligning the center of mass of each label map.
+    If False, the atlas has the same size as the input label maps, which are assumed to be aligned.
+    :param margin: (optional) If align_centre_of_mass is True, margin by which to crop the input label maps around
+    their center of mass. Therefore it controls the size of the output atlas: (2*margin + 1)**n_dims.
     :param path_result_atlas: (optional) path where the output atlas will be writen.
     Default is None, where the atlas is not saved."""
 
+    # list of all label maps
+    path_labels = utils.list_images_in_folder(labels_dir)
+
     # create empty atlas
-    atlas = np.zeros([margin * 2] * 3)
+    if align_centre_of_mass:
+        atlas = np.zeros([margin * 2] * 3)
+    else:
+        atlas = np.zeros(utils.load_volume(path_labels[0]).shape)
 
     # loop over label maps
-    path_labels = utils.list_images_in_folder(labels_dir)
     for idx, path_label in enumerate(path_labels):
         utils.print_loop_info(idx, len(path_labels), 10)
 
-        # load label map and find centre of mass
+        # load label map and build mask
         lab = (utils.load_volume(path_label, dtype='int32', aff_ref=np.eye(4)) > 0) * 1
-        indices = np.where(lab > 0)
-        centre_of_mass = np.array([np.mean(indices[0]), np.mean(indices[1]), np.mean(indices[2])], dtype='int32')
 
-        # crop label map around centre of mass
-        min_cropping = centre_of_mass - margin
-        max_cropping = centre_of_mass + margin
-        atlas += lab[min_cropping[0]:max_cropping[0], min_cropping[1]:max_cropping[1], min_cropping[2]:max_cropping[2]]
+        if align_centre_of_mass:
+            # find centre of mass
+            indices = np.where(lab > 0)
+            centre_of_mass = np.array([np.mean(indices[0]), np.mean(indices[1]), np.mean(indices[2])], dtype='int32')
+            # crop label map around centre of mass
+            min_crop = centre_of_mass - margin
+            max_crop = centre_of_mass + margin
+            atlas += lab[min_crop[0]:max_crop[0], min_crop[1]:max_crop[1], min_crop[2]:max_crop[2]]
+        else:
+            atlas += lab
 
     # normalise atlas and save it if necessary
     atlas /= len(path_labels)
@@ -1767,12 +1798,10 @@ def crop_dataset_to_minimum_size(labels_dir,
     """
 
     # create result dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
     if image_dir is not None:
         assert image_result_dir is not None, 'image_result_dir should not be None if image_dir is specified'
-        if not os.path.isdir(image_result_dir):
-            os.mkdir(image_result_dir)
+        utils.mkdir(image_result_dir)
 
     # list labels and images
     path_labels = utils.list_images_in_folder(labels_dir)
@@ -1843,15 +1872,13 @@ def subdivide_dataset_to_patches(patch_shape,
         'at least one of image_dir or labels_dir should not be None.'
     if image_dir is not None:
         assert image_result_dir is not None, 'image_result_dir should not be None if image_dir is specified'
-        if not os.path.isdir(image_result_dir):
-            os.mkdir(image_result_dir)
+        utils.mkdir(image_result_dir)
         path_images = utils.list_images_in_folder(image_dir)
     else:
         path_images = None
     if labels_dir is not None:
         assert labels_result_dir is not None, 'labels_result_dir should not be None if labels_dir is specified'
-        if not os.path.isdir(labels_result_dir):
-            os.mkdir(labels_result_dir)
+        utils.mkdir(labels_result_dir)
         path_labels = utils.list_images_in_folder(labels_dir)
     else:
         path_labels = None

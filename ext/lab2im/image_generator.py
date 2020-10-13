@@ -106,9 +106,8 @@ class ImageGenerator:
         assert len(self.labels_paths) > 0, "Could not find any training data"
 
         # generation parameters
-        _, self.aff, self.header = utils.load_volume(self.labels_paths[0], im_only=False)
-        self.labels_shape, _, self.n_dims, _, _, self.atlas_res = utils.get_volume_info(self.labels_paths[0],
-                                                                                        aff_ref=np.eye(4))
+        self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
+            utils.get_volume_info(self.labels_paths[0], aff_ref=np.eye(4))
         self.n_channels = n_channels
         if generation_labels is not None:
             self.generation_labels = utils.load_array_if_path(generation_labels)
