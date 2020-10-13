@@ -27,18 +27,14 @@ def prepare_hippo_training_atlases(labels_dir,
     :param recompute: (optional) whether to recompute result files even if they already exists"""
 
     # create results dir
-    if not os.path.exists(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
     tmp_result_dir = os.path.join(result_dir, 'first_cropping')
-    if not os.path.exists(tmp_result_dir):
-        os.mkdir(tmp_result_dir)
+    utils.mkdir(tmp_result_dir)
     if image_dir is not None:
         assert image_result_dir is not None, 'image_result_dir should not be None if image_dir is specified'
-        if not os.path.exists(image_result_dir):
-            os.mkdir(image_result_dir)
+        utils.mkdir(image_result_dir)
         tmp_image_result_dir = os.path.join(image_result_dir, 'first_cropping')
-        if not os.path.exists(tmp_image_result_dir):
-            os.mkdir(tmp_image_result_dir)
+        utils.mkdir(tmp_image_result_dir)
     else:
         tmp_image_result_dir = None
 
@@ -173,8 +169,7 @@ def prepare_testing_images(main_image_dir,
     :param recompute: (optional) whether to recompute result files even if they already exists"""
 
     # create results dir
-    if not os.path.isdir(main_result_dir):
-        os.mkdir(main_result_dir)
+    utils.mkdir(main_result_dir)
 
     # loop over states (i.e. AD and healthy)
     list_states = utils.list_subfolders(main_image_dir, whole_path=False)
@@ -183,8 +178,7 @@ def prepare_testing_images(main_image_dir,
         # create state directory in result folder
         state_dir = os.path.join(main_image_dir, state)
         result_state_dir = os.path.join(main_result_dir, state)
-        if not os.path.isdir(result_state_dir):
-            os.mkdir(result_state_dir)
+        utils.mkdir(result_state_dir)
 
         # loop over subjects
         list_subjects = utils.list_subfolders(state_dir, whole_path=False)
@@ -193,8 +187,7 @@ def prepare_testing_images(main_image_dir,
             # create subject directoty in state subfolder
             subject_dir = os.path.join(state_dir, subject)
             result_subject_dir = os.path.join(result_state_dir, subject)
-            if not os.path.isdir(result_subject_dir):
-                os.mkdir(result_subject_dir)
+            utils.mkdir(result_subject_dir)
 
             # get file paths
             t1_path = os.path.join(subject_dir, 't1.mgz')
@@ -244,8 +237,7 @@ def preprocess_adni_hippo(path_t1,
     """
 
     # create results dir
-    if not os.path.isdir(result_dir):
-        os.mkdir(result_dir)
+    utils.mkdir(result_dir)
 
     path_test_im_right = os.path.join(result_dir, 'hippo_right.nii.gz')
     path_test_aseg_right = os.path.join(result_dir, 'hippo_right_aseg.nii.gz')

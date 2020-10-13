@@ -2,7 +2,7 @@
 
 import os
 import numpy as np
-from ext.lab2im.utils import save_volume
+from ext.lab2im import utils
 from SynthSeg.brain_generator import BrainGenerator
 
 
@@ -17,7 +17,8 @@ brain_generator = BrainGenerator(path_label_map)
 im, lab = brain_generator.generate_brain()
 
 # save output image and label map
-if not os.path.exists(os.path.join(result_dir)):
-    os.mkdir(result_dir)
-save_volume(np.squeeze(im), brain_generator.aff, brain_generator.header, os.path.join(result_dir, 'brain.nii.gz'))
-save_volume(np.squeeze(lab), brain_generator.aff, brain_generator.header, os.path.join(result_dir, 'labels.nii.gz'))
+utils.mkdir(result_dir)
+utils.save_volume(np.squeeze(im), brain_generator.aff, brain_generator.header,
+                  os.path.join(result_dir, 'brain.nii.gz'))
+utils.save_volume(np.squeeze(lab), brain_generator.aff, brain_generator.header,
+                  os.path.join(result_dir, 'labels.nii.gz'))
