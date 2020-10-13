@@ -51,8 +51,7 @@ brain_generator = BrainGenerator(labels_dir=path_label_maps,
                                  prior_distributions=prior_distributions,
                                  flipping=flipping)
 
-if not os.path.exists(os.path.join(result_folder)):
-    os.mkdir(result_folder)
+utils.mkdir(result_folder)
 
 for n in range(n_examples):
 

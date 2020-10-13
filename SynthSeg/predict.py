@@ -201,8 +201,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
         images_to_segment = utils.list_images_in_folder(path_images)
         assert len(images_to_segment) > 0, "Could not find any training data"
         if out_seg:
-            if not os.path.exists(out_seg):
-                os.mkdir(out_seg)
+            utils.mkdir(out_seg)
             out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii', '_seg.nii') for image in
                        images_to_segment]
             out_seg = [seg_path.replace('.mgz', '_seg.mgz') for seg_path in out_seg]
@@ -210,8 +209,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
         else:
             out_seg = [out_seg] * len(images_to_segment)
         if out_posteriors:
-            if not os.path.exists(out_posteriors):
-                os.mkdir(out_posteriors)
+            utils.mkdir(out_posteriors)
             out_posteriors = [os.path.join(out_posteriors, os.path.basename(image)).replace('.nii',
                               '_posteriors.nii') for image in images_to_segment]
             out_posteriors = [posteriors_path.replace('.mgz', '_posteriors.mgz')
@@ -226,36 +224,31 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
         images_to_segment = [path_images]
         if out_seg is not None:
             if ('.nii.gz' not in out_seg) & ('.nii' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):
-                if not os.path.exists(out_seg):
-                    os.mkdir(out_seg)
+                utils.mkdir(out_seg)
                 filename = os.path.basename(path_images).replace('.nii', '_seg.nii')
                 filename = filename.replace('mgz', '_seg.mgz')
                 filename = filename.replace('.npz', '_seg.npz')
                 out_seg = os.path.join(out_seg, filename)
             else:
-                if not os.path.exists(os.path.dirname(out_seg)):
-                    os.mkdir(os.path.dirname(out_seg))
+                utils.mkdir(os.path.dirname(out_seg))
         out_seg = [out_seg]
         if out_posteriors is not None:
             if ('.nii.gz' not in out_posteriors) & ('.nii' not in out_posteriors) & ('.mgz' not in out_posteriors) & \
                     ('.npz' not in out_posteriors):
-                if not os.path.exists(out_posteriors):
-                    os.mkdir(out_posteriors)
+                utils.mkdir(out_posteriors)
                 filename = os.path.basename(path_images).replace('.nii', '_posteriors.nii')
                 filename = filename.replace('mgz', '_posteriors.mgz')
                 filename = filename.replace('.npz', '_posteriors.npz')
                 out_posteriors = os.path.join(out_posteriors, filename)
             else:
-                if not os.path.exists(os.path.dirname(out_posteriors)):
-                    os.mkdir(os.path.dirname(out_posteriors))
+                utils.mkdir(os.path.dirname(out_posteriors))
         out_posteriors = [out_posteriors]
 
     if out_volumes:
         if out_volumes[-4:] != '.csv':
             print('out_volumes provided without csv extension. Adding csv extension to output_volumes.')
             out_volumes += '.csv'
-        if not os.path.exists(os.path.dirname(out_volumes)):
-            os.mkdir(os.path.dirname(out_volumes))
+            utils.mkdir(os.path.dirname(out_volumes))
 
     return images_to_segment, out_seg, out_posteriors, out_volumes
 
