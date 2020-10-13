@@ -84,6 +84,10 @@ def predict(path_images,
     :param gt_folder: (optional) folder containing ground truth files for evaluation.
     A numpy array containing all dice scores (labels in rows, subjects in columns) will be writen either at
     segmentations_dir (if not None), or posteriors_dir.
+    :param evaluation_label_list: (optional) if gt_folder is True you can evaluate the Dice scores on a subset of the
+    segmentation labels, by providing another label list here. Can be a sequence, a 1d numpy array, or the path to a
+    numpy 1d array. Default is the same as segmentation_label_list.
+    :param verbose: (optional) whether to print out info about the remaining number of cases.
     """
 
     assert path_model, "A model file is necessary"
@@ -97,6 +101,8 @@ def predict(path_images,
 
     # get label and classes lists
     label_list, _ = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
+    if evaluation_label_list is None:
+        evaluation_label_list = segmentation_label_list
 
     # prepare volume file if needed
     if path_volumes is not None:
@@ -115,7 +121,8 @@ def predict(path_images,
     for idx, (path_image, path_segmentation, path_posterior) in enumerate(zip(images_to_segment,
                                                                               path_segmentations,
                                                                               path_posteriors)):
-        utils.print_loop_info(idx, len(images_to_segment), 10)
+        if verbose:
+            utils.print_loop_info(idx, len(images_to_segment), 10)
 
         # preprocess image and get information
         image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, cropping, crop_idx = \
@@ -174,7 +181,7 @@ def predict(path_images,
         else:
             eval_folder = os.path.dirname(path_posteriors[0])
         path_result_dice = os.path.join(eval_folder, 'dice.npy')
-        evaluate.dice_evaluation(gt_folder, eval_folder, segmentation_label_list, path_result_dice)
+        evaluate.dice_evaluation(gt_folder, eval_folder, evaluation_label_list, path_result_dice, verbose=verbose)
 
 
 def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
@@ -288,7 +295,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
     else:
         crop_idx = None
 
-    # align image to training axes and directions, change this to the affine matrix of your training data
+    # align image to training axes and directions
     if n_dims > 2:
         if aff_ref == 'FS':
             aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
