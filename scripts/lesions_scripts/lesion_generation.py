@@ -16,10 +16,6 @@ result_folder = '/home/benjamin/data/lesions/MS/SynthSeg/generated_images'
 
 # generation parameters
 labels_folder = '/home/benjamin/data/lesions/MS/labels/resample_1_1_1/samseg_lesions_extracerebral'
-vae_model = None  # '/home/benjamin/PycharmProjects/SynthSeg/VAE/decoder_challenge.h5'
-vae_mode = None  # 'challenge'
-path_lesion_prior = None  # '/home/benjamin/data/lesions/MS/SynthSeg-VAE/registrations_buckner/lesion_prior_eye_padded.nii.gz'
-path_lesion_maps = None  # '/home/benjamin/data/lesions/MS/SynthSeg-VAE/labels/challenge_aligned_to_buckner_template'
 generation_labels = '/home/benjamin/data/lesions/MS/labels_classes_stats/generation_labels.npy'
 segmentation_labels = '/home/benjamin/data/lesions/MS/labels_classes_stats/segmentation_labels.npy'
 batchsize = 1
@@ -60,10 +56,6 @@ else:
 
 # instantiate BrainGenerator object
 brain_generator = BrainGenerator(labels_dir=labels_folder,
-                                 vae_model=vae_model,
-                                 vae_mode=vae_mode,
-                                 path_lesion_prior=path_lesion_prior,
-                                 path_lesion_maps=path_lesion_maps,
                                  generation_labels=generation_labels,
                                  output_labels=segmentation_labels,
                                  n_neutral_labels=n_neutral_labels,

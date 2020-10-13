@@ -16,7 +16,7 @@ result_dir = '../../data/estimated_PV-SynthSeg_priors'
 build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
                       estimation_labels=estimation_labels,
-                      results_dir=result_dir,
+                      result_dir=result_dir,
                       rescale=True)
 
 # ------------------------------------ building Gaussian priors from several labels ------------------------------------
@@ -37,7 +37,7 @@ build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
                       estimation_labels=estimation_labels,
                       estimation_classes=estimation_classes,
-                      results_dir=result_dir,
+                      result_dir=result_dir,
                       rescale=True)
 
 # ---------------------------------------------- simple multi-modal case -----------------------------------------------
@@ -56,7 +56,7 @@ build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
                       estimation_labels=estimation_labels,
                       estimation_classes=estimation_classes,
-                      results_dir=result_dir,
+                      result_dir=result_dir,
                       rescale=True)
 
 # -------------------------------------  multi-modal images with separate channels -------------------------------------
@@ -77,7 +77,7 @@ build_intensity_stats(list_image_dir=list_image_dir,
                       list_labels_dir=labels_dir,
                       estimation_labels=estimation_labels,
                       estimation_classes=estimation_classes,
-                      results_dir=result_dir,
+                      result_dir=result_dir,
                       rescale=True)
 
 # ------------------------------------ multi-modal case with unregistered channels -------------------------------------

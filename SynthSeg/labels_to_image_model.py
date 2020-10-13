@@ -222,10 +222,10 @@ def labels_to_image_model(labels_shape,
         elif thickness is not None:
             diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
             if min(diff) < 0:  # automatically downsample if data_res > thickness
-                # channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
-                channel._keras_shape = tuple(channel.get_shape().as_list())
-                channel = nrn_layers.MimicAcquisition(atlas_res, data_res[i], blur_range, output_shape)([channel,
-                                                                                                         random_coefs])
+                channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
+                # channel._keras_shape = tuple(channel.get_shape().as_list())
+                # channel = nrn_layers.MimicAcquisition(atlas_res, data_res[i], blur_range, output_shape)([channel,
+                #                                                                                          random_coefs])
         elif output_shape != crop_shape:
             channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res)
         channel = KL.Lambda(lambda x: tf.cast(x, 'float32'), name='resampled')(channel)
