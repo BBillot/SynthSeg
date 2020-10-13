@@ -15,6 +15,7 @@ def build_model_inputs(path_label_maps,
                        prior_means=None,
                        prior_stds=None,
                        use_specific_stats_for_channel=False,
+                       mix_prior_and_random=False,
                        apply_linear_trans=True,
                        scaling_bounds=None,
                        rotation_bounds=None,
@@ -53,6 +54,8 @@ def build_model_inputs(path_label_maps,
     Default is None, which corresponds to prior_stds = [5, 25].
     :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
     only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
+    :param mix_prior_and_random: (optional) if prior_means is not None, enables to reset the priors to their default
+    values for half of thes cases, and thus generate images of random contrast.
     :param apply_linear_trans: (optional) whether to apply affine deformation. Default is True.
     :param scaling_bounds: (optional) if apply_linear_trans is True, the scaling factor for each dimension is
     sampled from a uniform distribution of predefined bounds. Can either be:
@@ -122,6 +125,8 @@ def build_model_inputs(path_label_maps,
                         tmp_prior_means = prior_means
                 else:
                     tmp_prior_means = prior_means
+                if (prior_means is not None) & mix_prior_and_random & (npr.uniform() > 0.5):
+                    tmp_prior_means = None
                 if isinstance(prior_stds, np.ndarray):
                     if (prior_stds.shape[0] > 2) & use_specific_stats_for_channel:
                         if prior_stds.shape[0] / 2 != n_channels:
@@ -132,6 +137,8 @@ def build_model_inputs(path_label_maps,
                         tmp_prior_stds = prior_stds
                 else:
                     tmp_prior_stds = prior_stds
+                if (prior_stds is not None) & mix_prior_and_random & (npr.uniform() > 0.5):
+                    tmp_prior_stds = None
 
                 # draw means and std devs from priors
                 tmp_classes_means = utils.draw_value_from_distribution(tmp_prior_means, n_labels, prior_distributions,
