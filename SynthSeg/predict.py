@@ -38,7 +38,9 @@ def predict(path_images,
             feat_multiplier=2,
             no_batch_norm=False,
             activation='elu',
-            gt_folder=None):
+            gt_folder=None,
+            evaluation_label_list=None,
+            verbose=True):
     """
     This function uses trained models to segment images.
     It is crucial that the inputs match the architecture parameters of the trained model.
@@ -299,12 +301,22 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
             im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
 
     # normalise image
-    m = np.min(im)
-    M = np.max(im)
-    if M == m:
-        im = np.zeros(im.shape)
-    else:
-        im = (im - m) / (M - m)
+    if n_channels == 1:
+        m = np.min(im)
+        M = np.max(im)
+        if M == m:
+            im = np.zeros(im.shape)
+        else:
+            im = (im - m) / (M - m)
+    if n_channels > 1:
+        for i in range(im.shape[-1]):
+            channel = im[..., i]
+            m = np.min(channel)
+            M = np.max(channel)
+            if M == m:
+                im[..., i] = np.zeros(channel.shape)
+            else:
+                im[..., i] = (channel - m) / (M - m)
 
     # add batch and channel axes
     if n_channels > 1:
