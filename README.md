@@ -19,7 +19,7 @@ of the many generation possibilities offered by SynthSeg:
 realistic/unrealistic, isotropic/anisotropic, uni-modal/multi-modal scans.
 \
 \
-![Generation examples](scripts/data_example/figure.png)
+![Generation examples](data/README_figures/figure.png)
 \
 \
 The generated images are then usd to train a CNN for image segmentation. Because the parameters of the GMM (means and 
@@ -28,7 +28,7 @@ variances) are sampled at each minibatch from prior distributions, the network i
 represented in the following figure:
 \
 \
-![Training overview](scripts/data_example/schematic.png)
+![Training overview](data/README_figures/schematic.png)
 \
 \
 Additionally to the `training` function, we provide the generative model `labels_to_image_model`, along with a wrapper 
