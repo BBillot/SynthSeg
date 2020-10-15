@@ -7,6 +7,7 @@ scripts/model_dir
 
 scripts/lesions_scripts/check_generative_model.py
 scripts/lesions_scripts/check_supervised_training.py
+scripts/lesions_scripts/lesion_generation.py
 scripts/lesions_scripts/sample_vae_keras.py
 scripts/lesions_scripts/validation.py
 
