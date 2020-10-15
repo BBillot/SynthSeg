@@ -1,13 +1,22 @@
-@article{billot2020learning,
-  title={A Learning Strategy for Contrast-agnostic MRI Segmentation},
-  author={Billot, Benjamin and Greve, Douglas and Van Leemput, Koen and Fischl, Bruce and Iglesias, Juan Eugenio and Dalca, Adrian V}
-  journal={arXiv preprint arXiv:2003.01995},
-  year={2020}
+@inproceedings{billot_midl_2020,
+	title = {A {Learning} {Strategy} for {Contrast}-agnostic {MRI} {Segmentation}},
+	booktitle = {Medical {Imaging} with {Deep} {Learning}},
+	publisher = {PMLR},
+	author = {Billot, Benjamin and Greve, Douglas N. and Leemput, Koen Van and Fischl, Bruce and Iglesias, Juan Eugenio and Dalca, Adrian},
+	month = sep,
+	year = {2020},
+	pages = {75--93},
 }
 
-@article{billot2020partial,
-  title={Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast},
-  author={Billot, Benjamin and Robinson, Eleanor D and Dalca, Adrian V and Iglesias, Juan Eugenio }
-  journal={arXiv preprint arXiv:2004.10221},
-  year={2020}
-}
+@inproceedings{billot_miccai_2020,
+	address = {Cham},
+	series = {Lecture {Notes} in {Computer} {Science}},
+	title = {Partial {Volume} {Segmentation} of {Brain} {MRI} {Scans} of {Any} {Resolution} and {Contrast}},
+	isbn = {978-3-030-59728-3},
+	doi = {10.1007/978-3-030-59728-3_18},
+	booktitle = {Medical {Image} {Computing} and {Computer} {Assisted} {Intervention} – {MICCAI} 2020},
+	publisher = {Springer International Publishing},
+	author = {Billot, Benjamin and Robinson, Eleanor and Dalca, Adrian V. and Iglesias, Juan Eugenio},
+	year = {2020},
+	keywords = {Brain MRI, Partial volume segmentation},
+	pages = {177--187},
