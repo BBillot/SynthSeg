@@ -163,13 +163,13 @@ If you use this code, please cite the following papers:
 **A Learning Strategy for Contrast-agnostic MRI Segmentation** \
 Benjamin Billot, Douglas N. Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca* \
 *contributed equally \
-accepted for MIDL 2020 \
-[ [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.txt) ]
+MIDL 2020 \
+[[link](http://proceedings.mlr.press/v121/billot20a.html) | [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.txt)]
 
 **Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast** \
 Benjamin Billot, Eleanor D. Robinson, Adrian V. Dalca, Juan Eugenio Iglesias \
-accepted for MICCAI 2020 \
-[ [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.txt) ]
+MICCAI 2020 \
+[[link](https://link.springer.com/chapter/10.1007/978-3-030-59728-3_18) | [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.txt)]
 
 If you have any question regarding the usage of this code, or any suggestions to improve it you can contact us at: \
 benjamin.billot.18@ucl.ac.uk
@@ -179,12 +179,10 @@ benjamin.billot.18@ucl.ac.uk
 
 ### References
 
-[1] *Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation* \
+[1] *[Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation](http://www.mit.edu/~adalca/files/papers/cvpr2018_priors.pdf)* \
 Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
-CVPR 2018 \
-[link](http://www.mit.edu/~adalca/files/papers/cvpr2018_priors.pdf)
+CVPR 2018
 
-[2] *Unsupervised Data Imputation via Variational Inference of Deep Subspaces* \
+[2] *[Unsupervised Data Imputation via Variational Inference of Deep Subspaces](https://arxiv.org/abs/1903.03503)* \
 Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
-Arxiv preprint 2019 \
-[link](https://arxiv.org/abs/1903.03503)
+Arxiv preprint 2019
