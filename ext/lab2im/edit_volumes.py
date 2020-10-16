@@ -116,7 +116,7 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, masking_val
         return volume
 
 
-def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.01, max_percentile=0.99, use_positive_only=True):
+def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.02, max_percentile=0.98, use_positive_only=True):
     """This function linearly rescales a volume between new_min and new_max.
     :param volume: a numpy array
     :param new_min: (optional) minimum value for the rescaled image.
