@@ -17,6 +17,7 @@
     -list_subfolders
     -strip_extension
     -strip_suffix
+    -mkdir
 4- shape-related functions
     -get_dims
     -get_resample_shape
@@ -140,7 +141,7 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
 
     # understand if image is multichannel
     im_shape = list(im.shape)
-    n_dims, n_channels = get_dims(im_shape, max_channels=3)
+    n_dims, n_channels = get_dims(im_shape, max_channels=10)
     im_shape = im_shape[:n_dims]
 
     # get labels res
