@@ -1,13 +1,28 @@
-"""This file regroups all the major pre/postprocessing steps used in the SynthSeg-lesion paper."""
+"""This file regroups all the major pre/postprocessing steps used in the SynthSeg-lesion paper.
+The following list regroups all the functions of this file:
+    -dilate_lesions
+    -paste_lesions_on_buckner
+    -downsample_upsample_flair
+    -inter_rater_reproducibility_cross_val_exp
+    -build_longitudinal_consensus
+    -preprocess_asegs
+    -validation_on_dilated_lesions
+    -run_validation_on_aseg_gt
+    -postprocess_samseg
+    -cross_validate_posteriors_threshold
+    -plot_experiment_1
+    -plot_experiment_2
+"""
 
 # python imports
 import os
 import numpy as np
+from copy import deepcopy
 from scipy.ndimage import binary_dilation, binary_erosion
 
 # project imports
 from SynthSeg.boxplots import draw_boxplots
-from SynthSeg.evaluate import dice_evaluation
+from SynthSeg.evaluate import dice_evaluation, fast_dice
 
 # third-party imports
 from ext.lab2im import edit_volumes, utils
@@ -286,6 +301,8 @@ def postprocess_samseg(list_samseg_dir,
                        path_segmentation_labels,
                        incorrect_labels,
                        correct_labels,
+                       list_posteriors_dir=None,
+                       list_thresholds=None,
                        recompute=False):
 
     """ This function processes the samseg segmentations: it corrects the labels (right/left and 99 to 77), resamples
@@ -302,32 +319,104 @@ def postprocess_samseg(list_samseg_dir,
     :param recompute: whether to recompute files
     """
 
-    for samseg_dir, gt_dir in zip(list_samseg_dir, list_gt_dir):
+    if list_posteriors_dir is None:
+        list_posteriors_dir = [None] * len(list_samseg_dir)
 
-        # regroup right/left labels and change 99 to 77
+    for samseg_dir, gt_dir, posteriors_dir, threshold in zip(list_samseg_dir, list_gt_dir, list_posteriors_dir,
+                                                             list_thresholds):
+
+        # define result directories
         samseg_corrected_dir = samseg_dir + '_corrected'
-        edit_volumes.correct_labels_in_dir(samseg_dir,
-                                           incorrect_labels,
-                                           correct_labels,
-                                           samseg_corrected_dir,
-                                           recompute=recompute)
+        samseg_preprocessed_dir = samseg_dir + '_preprocessed'
+        if (not os.path.isdir(samseg_preprocessed_dir)) | recompute:
 
-        # resample to gt format
-        samseg_aligned_dir = samseg_corrected_dir + '_resampled_111_cropped'
-        edit_volumes.mri_convert_images_in_dir(samseg_corrected_dir,
-                                               samseg_aligned_dir,
-                                               interpolation='nearest',
-                                               reference_dir=gt_dir,
+            # regroup right/left labels and change 99 to 77
+            edit_volumes.correct_labels_in_dir(samseg_dir,
+                                               incorrect_labels,
+                                               correct_labels,
+                                               samseg_corrected_dir,
                                                recompute=recompute)
 
+            # resample to gt format
+            edit_volumes.mri_convert_images_in_dir(samseg_corrected_dir,
+                                                   samseg_preprocessed_dir,
+                                                   interpolation='nearest',
+                                                   reference_dir=gt_dir,
+                                                   recompute=recompute)
+
+        # replace lesions by thresholded lesion posteriors
+        if posteriors_dir is not None:
+
+            # resample posteriors to gt format
+            posteriors_preprocessed_dir = posteriors_dir + '_preprocessed'
+            edit_volumes.mri_convert_images_in_dir(posteriors_dir,
+                                                   posteriors_preprocessed_dir,
+                                                   reference_dir=gt_dir,
+                                                   recompute=recompute)
+
+            # list hard segmentations and posteriors
+            samseg_postprocessed_dir = samseg_dir + '_postprocessed'
+            utils.mkdir(samseg_postprocessed_dir)
+            path_segs = [path for path in utils.list_images_in_folder(samseg_preprocessed_dir)]
+            path_posteriors = [path for path in utils.list_images_in_folder(posteriors_preprocessed_dir)]
+
+            for subject_idx, (path_seg, path_post) in enumerate(zip(path_segs, path_posteriors)):
+                path_result = os.path.join(samseg_postprocessed_dir, os.path.basename(path_seg))
+                if (not os.path.isfile(path_result)) | recompute:
+
+                    # replace segmented lesions by thresholded posteriors
+                    seg, aff, h = utils.load_volume(path_seg, im_only=False)
+                    posteriors = utils.load_volume(path_post)
+                    seg[seg == 77] = 2
+                    seg[posteriors > threshold] = 77
+                    utils.save_volume(seg, aff, h, path_result)
+
+        else:
+            samseg_postprocessed_dir = samseg_preprocessed_dir
+
         # compute dice scores with
-        path_dice_testing = os.path.join(samseg_aligned_dir, 'dice.npy')
-        path_dice_lesions_testing = os.path.join(samseg_aligned_dir, 'dice_lesions.npy')
+        path_dice_testing = os.path.join(samseg_postprocessed_dir, 'dice.npy')
+        path_dice_lesions_testing = os.path.join(samseg_postprocessed_dir, 'dice_lesions.npy')
         if (not os.path.isfile(path_dice_testing)) | recompute:
-            dice_evaluation(gt_dir, samseg_aligned_dir, path_segmentation_labels, path_dice_testing)
+            dice_evaluation(gt_dir, samseg_postprocessed_dir, path_segmentation_labels, path_dice_testing)
         if (not os.path.isfile(path_dice_lesions_testing)) | recompute:
             dice = np.load(path_dice_testing)
             np.save(path_dice_lesions_testing, dice[4, :])
+
+
+def cross_validate_posteriors_threshold(list_seg_dir, list_posteriors_dir, list_gt_dir, list_thresholds,
+                                        recompute=True):
+
+    for fold_idx, (seg_dir, posteriors_dir, gt_dir) in enumerate(zip(list_seg_dir, list_posteriors_dir, list_gt_dir)):
+
+        path_dice = os.path.join(os.path.dirname(seg_dir), 'dice_lesions_for_thresholds.npy')
+        path_dice_means = os.path.join(os.path.dirname(seg_dir), 'dice_lesions_means_for_thresholds.npy')
+        if (not os.path.isfile(path_dice)) | (not os.path.isfile(path_dice_means)) | recompute:
+
+            path_segs = [path for path in utils.list_images_in_folder(seg_dir)]
+            path_posteriors = [path for path in utils.list_images_in_folder(posteriors_dir)]
+            path_gts = [path for path in utils.list_images_in_folder(gt_dir)]
+            dice = np.zeros((len(list_thresholds), len(path_gts)))
+
+            for subject_idx, (path_seg, path_post, path_gt) in enumerate(zip(path_segs, path_posteriors, path_gts)):
+
+                seg = utils.load_volume(path_seg)
+                posteriors = utils.load_volume(path_post)
+                gt = utils.load_volume(path_gt)
+
+                seg[seg == 77] = 2
+                for idx, threshold in enumerate(list_thresholds):
+                    tmp_seg = deepcopy(seg)
+                    lesion_mask = posteriors > threshold
+                    tmp_seg[lesion_mask] = 77
+                    dice[idx, subject_idx] = fast_dice(gt, tmp_seg, [77])
+
+            np.save(path_dice, dice)
+            np.save(path_dice_means, np.mean(dice, axis=1))
+
+        dice_means = np.load(path_dice_means)
+        max_threshold = list_thresholds[np.argmax(dice_means)]
+        print('max threshold for fold {0}: {1:.2f}'.format(fold_idx, max_threshold))
 
 
 def plot_experiment_1(list_methods_segm, indices):
@@ -337,6 +426,7 @@ def plot_experiment_1(list_methods_segm, indices):
     my_palette = {'manual': (0.7878969627066512, 0.09217993079584776, 0.11200307574009996),
                   'supervised': (0.9137254901960784, 0.3686274509803921, 0.050980392156862744),
                   'SAMSEG-lesion': (0.9921568627450981, 0.5793310265282584, 0.272879661668589),
+                  'SAMSEG-lesion-retrained': (0.6083967704728951, 0.19538638985005768, 0.012856593617839291),
                   'SynthSeg': (0.08404459823144944, 0.38506728181468663, 0.6644367550941945),
                   'SynthSeg-mix': (0.2758477508650519, 0.5841753171856978, 0.783114186851211),
                   'SynthSeg-rule': (0.647289504036909, 0.803921568627451, 0.8920415224913495)}
@@ -380,7 +470,7 @@ def plot_experiment_1(list_methods_segm, indices):
                   av_plot_step_yticks=0.2,
                   av_plot_title='Dice for MS lesions',
                   draw_subplots=False,
-                  path_av_figure='/home/benjamin/data/lesions/MS/exp1_lesion_dice.pdf')
+                  path_av_figure='/home/benjamin/data/lesions/MSSeg/segmentations/exp1_lesion_dice.pdf')
     draw_boxplots(list_dice,
                   list_datasets,
                   list_methods,
@@ -401,7 +491,7 @@ def plot_experiment_1(list_methods_segm, indices):
                   av_yticks=np.array([0.75, 0.8, 0.85, 0.90]),
                   av_plot_title='Average Dice for brain ROIs',
                   draw_subplots=False,
-                  path_av_figure='/home/benjamin/data/lesions/MS/exp1_dice.pdf')
+                  path_av_figure='/home/benjamin/data/lesions/MSSeg/segmentations/exp1_dice.pdf')
 
 
 def plot_experiment_2(list_methods_segm, indices):
@@ -411,6 +501,7 @@ def plot_experiment_2(list_methods_segm, indices):
     my_palette = {'manual': (0.7878969627066512, 0.09217993079584776, 0.11200307574009996),
                   'supervised': (0.9137254901960784, 0.3686274509803921, 0.050980392156862744),
                   'SAMSEG-lesion': (0.9921568627450981, 0.5793310265282584, 0.272879661668589),
+                  'SAMSEG-FS':  (0.6083967704728951, 0.19538638985005768, 0.012856593617839291),
                   'SynthSeg': (0.08404459823144944, 0.38506728181468663, 0.6644367550941945),
                   'SynthSeg-mix': (0.2758477508650519, 0.5841753171856978, 0.783114186851211),
                   'SynthSeg-rule': (0.647289504036909, 0.803921568627451, 0.8920415224913495)}
@@ -447,14 +538,14 @@ def plot_experiment_2(list_methods_segm, indices):
                   fontsize=24,
                   fontsize_legend=13,
                   y_label=None,
-                  boxplot_width=0.8,
+                  boxplot_width=0.75,
                   boxplot_linewidth=2,
                   outlier_size=6,
                   av_plot_ylim=[0, 0.84],
                   av_plot_step_yticks=0.2,
                   av_plot_title='Dice for MS lesions',
                   draw_subplots=False,
-                  path_av_figure='/home/benjamin/data/lesions/MS/exp2_lesion_dice.pdf')
+                  path_av_figure='/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/exp2_lesion_dice.pdf')
     draw_boxplots(list_dice,
                   list_datasets,
                   list_methods,
@@ -463,31 +554,24 @@ def plot_experiment_2(list_methods_segm, indices):
                   palette=my_palette,
                   order=list_contrast,
                   figsize=(6, 4.5),
-                  legend_loc='lower right',
+                  legend_loc=(0.422, 0.01),
                   remove_legend=False,
                   fontsize=24,
-                  fontsize_legend=18,
+                  fontsize_legend=18.7,
                   y_label=None,
-                  boxplot_width=0.8,
+                  boxplot_width=0.75,
                   boxplot_linewidth=2,
                   outlier_size=6,
                   av_plot_ylim=[0.55, 0.835],
                   av_yticks=np.array([0.6, 0.7, 0.8]),
                   av_plot_title='Average Dice for brain ROIs',
                   draw_subplots=False,
-                  path_av_figure='/home/benjamin/data/lesions/MS/exp2_dice.pdf')
+                  path_av_figure='/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/exp2_dice.pdf')
 
 
 if __name__ == '__main__':
 
-    # ------------------------------------ merge manual lesions and buckner label maps ---------------------------------
-
-    lesion_folder = '/home/benjamin/data/lesions/MSSeg/SynthSeg-VAE/labels/MSSeg_aligned_to_buckner_template'
-    buckner_folder = '/home/benjamin/data/lesions/MSSeg/SynthSeg-VAE/labels/training_buckner_reg_to_buckner_template'
-    result_folder = '/home/benjamin/data/lesions/MSSeg/SynthSeg-VAE/labels/training_buckner_lesions_reg_to_buckner'
-    paste_lesions_on_buckner(lesion_folder, buckner_folder, result_folder, dilate=2)
-
-    # --------------------- create anisotropic real data for ISBU longitudinal supervised networks ---------------------
+    # --------------------- create anisotropic real data for ISBI longitudinal supervised networks ---------------------
 
     downsample_upsample_flair(flair_image_dir='/home/benjamin/data/lesions/MSSeg/images/resampled_1_1_1/flair_cropped')
     edit_volumes.create_mutlimodal_images(
@@ -520,9 +604,9 @@ if __name__ == '__main__':
 
     # ---------------------------------------------- preprocess MSSeg asegs --------------------------------------------
 
-    aseg_folder = '/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/aseg_lesions_gt/asegs_original'
+    aseg_folder = '/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/asegs'
     cropped_labels_dir = '/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/SAMSEG_generation/samseg_lesions'
-    main_result_dir = '/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/aseg_lesions_gt'
+    main_result_dir = '/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/aseg_lesions'
     incorrect = '/home/benjamin/data/lesions/MSSeg/labels_classes_stats/aseg_incorrect_labels.npy'
     correct = '/home/benjamin/data/lesions/MSSeg/labels_classes_stats/aseg_correct_labels.npy'
     preprocess_asegs(aseg_folder, cropped_labels_dir, incorrect, correct)
@@ -535,23 +619,13 @@ if __name__ == '__main__':
     correct = '/home/benjamin/data/lesions/ISBI_longitudinal/labels_classes_stats/aseg_correct_labels.npy'
     preprocess_asegs(aseg_folder, consensus_folder, incorrect, correct, lesion_label_in_gt=1, recompute=False)
 
-    # ------------------------------------- process cross-validation samseg labels -------------------------------------
+    # ------------------------------------- process SAMSEG-lesion MSSeg ------------------------------------
 
     # data dir
-    samseg_dirs = ['/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/flair_fold1',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_fold2',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_fold3',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_fold1',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_fold2',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_fold3',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/flair_fold1',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/flair_fold2',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/flair_fold3',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_flair_fold1',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_flair_fold2',
-                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/samseg_lesions_cross_validation/t1_flair_fold3']
-    gt_folders = ['/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/aseg_lesions_gt/aseg_lesions_fold%s' % i
-                  for i in range(1, 4)] * 4
+    samseg_dirs = ['/home/benjamin/data/lesions/MSSeg/SAMSEG/SAMSEG-lesion/flair',
+                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/SAMSEG-lesion/t1',
+                   '/home/benjamin/data/lesions/MSSeg/SAMSEG/SAMSEG-lesion/t1_flair']
+    gt_folders = ['/home/benjamin/data/lesions/MSSeg/labels/resample_1_1_1/aseg_lesions_gt/aseg_lesions'] * 3
     # labels
     incorrect = '/home/benjamin/data/lesions/MSSeg/labels_classes_stats/samseg_incorrect_labels_generation.npy'
     correct = '/home/benjamin/data/lesions/MSSeg/labels_classes_stats/samseg_correct_labels_generation.npy'
@@ -559,44 +633,43 @@ if __name__ == '__main__':
     # postprocess
     postprocess_samseg(samseg_dirs, gt_folders, segmentation_labels, incorrect, correct, recompute=False)
 
-    # --------------------------------------- process longitudinal samseg labels ---------------------------------------
+    # ------------------------------------- process SAMSEG-lesion ISBI longitudinal ------------------------------------
 
     # data dir
-    samseg_dirs = ['/home/benjamin/data/lesions/ISBI_longitudinal/SAMSEG/flair/orig',
-                   '/home/benjamin/data/lesions/ISBI_longitudinal/SAMSEG/t1/orig',
-                   '/home/benjamin/data/lesions/ISBI_longitudinal/SAMSEG/t1_flair/orig']
-    gt_folders = ['/home/benjamin/data/lesions/ISBI_longitudinal/labels/asegs/asegs_original'] * 3
+    samseg_dirs = ['/home/benjamin/data/lesions/ISBI_longitudinal/SAMSEG/SAMSEG-lesions/flair/flair_2.2_only',
+                   '/home/benjamin/data/lesions/ISBI_longitudinal/SAMSEG/SAMSEG-lesions/t1/t1_2.2_only',
+                   '/home/benjamin/data/lesions/ISBI_longitudinal/SAMSEG/SAMSEG-lesions/t1_flair/t1_flair_2.2_only']
+    gt_folders = ['/home/benjamin/data/lesions/ISBI_longitudinal/labels/asegs/asegs_lesions_2.2_only'] * 3
     # labels
     incorrect = '/home/benjamin/data/lesions/ISBI_longitudinal/labels_classes_stats/samseg_incorrect_labels_generation.npy'
     correct = '/home/benjamin/data/lesions/ISBI_longitudinal/labels_classes_stats/samseg_correct_labels_generation.npy'
-    segmentation_labels = 'home/benjamin/data/lesions/ISBI_longitudinal/labels_classes_stats/segmentation_labels.npy'
+    segmentation_labels = '/home/benjamin/data/lesions/ISBI_longitudinal/labels_classes_stats/segmentation_labels.npy'
     # postprocess
     postprocess_samseg(samseg_dirs, gt_folders, segmentation_labels, incorrect, correct, recompute=False)
 
-    # ----------------------------------------- plot results first experiment ------------------------------------------
+    # --------------------------------- plot results first experiment with FS version ----------------------------------
 
     # competing methods
     list_methods_segmentations = [
-        # '/home/benjamin/data/lesions/MSSeg/segmentations/manual',
         '/home/benjamin/data/lesions/MSSeg/segmentations/supervised',
         '/home/benjamin/data/lesions/MSSeg/segmentations/SAMSEG-lesion',
         '/home/benjamin/data/lesions/MSSeg/segmentations/SynthSeg',
-        '/home/benjamin/data/lesions/MSSeg/segmentations/SynthSeg-mix',
-        '/home/benjamin/data/lesions/MSSeg/segmentations/SynthSeg-rule']
+        '/home/benjamin/data/lesions/MSSeg/segmentations/SynthSeg-rule',
+        '/home/benjamin/data/lesions/MSSeg/segmentations/SynthSeg-mix']
     # plotting options
     eval_indices = '/home/benjamin/data/lesions/MSSeg/labels_classes_stats/eval_indices_lesion_less.npy'
     # plot
     plot_experiment_1(list_methods_segmentations, eval_indices)
 
-    # ----------------------------------------- plot results second experiment -----------------------------------------
+    # --------------------------------- plot results second experiment with FS version ---------------------------------
 
     # competing methods
     list_methods_segmentations = [
         '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/supervised',
         '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/SAMSEG-lesion',
         '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/SynthSeg',
-        '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/SynthSeg-mix',
-        '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/SynthSeg-rule']
+        '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/SynthSeg-rule',
+        '/home/benjamin/data/lesions/ISBI_longitudinal/segmentations/SynthSeg-mix']
     # plotting options
     eval_indices = '/home/benjamin/data/lesions/ISBI_longitudinal/labels_classes_stats/eval_indices_lesion_less.npy'
     # plot
