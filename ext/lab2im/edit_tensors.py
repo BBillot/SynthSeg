@@ -152,7 +152,7 @@ def blur_channel(tensor, mask, kernels_list, n_dims, blur_background=True):
                                                  KL.Lambda(lambda x: tf.zeros_like(x))(y[1]),
                                                  y[1]))([rand, bckgd_std])
         background = KL.Lambda(lambda x: x[1] + x[2]*tf.random.normal(tf.shape(x[0])))([tensor, bckgd_mean, bckgd_std])
-        background_kernels = get_gaussian_1d_kernels(sigma=[1]*3)
+        background_kernels = get_gaussian_1d_kernels(sigma=[1] * 3)
         background = blur_tensor(background, background_kernels, n_dims)
         tensor = KL.Lambda(lambda x: tf.where(tf.cast(x[1], dtype='bool'), x[0], x[2]))([tensor, mask, background])
 

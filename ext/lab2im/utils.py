@@ -83,7 +83,7 @@ def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=Non
     # align image to reference affine matrix
     if aff_ref is not None:
         from . import edit_volumes  # the import is done here to avoid import loops
-        n_dims, _ = get_dims(list(volume.shape), max_channels=3)
+        n_dims, _ = get_dims(list(volume.shape), max_channels=10)
         volume, aff = edit_volumes.align_volume_to_ref(volume, aff, aff_ref=aff_ref, return_aff=True, n_dims=n_dims)
 
     if im_only:
