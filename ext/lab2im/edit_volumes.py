@@ -200,6 +200,7 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
     3) keeping a set of label values if the volume is a label map.
     :param volume: a 2d or 3d numpy array
     :param mask: (optional) mask of region to crop around. Must be same size as volume. Can either be boolean or 0/1.
+    it defaults to masking around all values above threshold.
     :param threshold: (optional) if mask is None, lower bound to determine values to crop around
     :param masking_labels: (optional) if mask is None, and if the volume is a label map, it can be cropped around a
     set of labels specified in masking_labels, which can either be a single int, a sequence or a 1d numpy array.
