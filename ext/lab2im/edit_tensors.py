@@ -33,10 +33,13 @@ import ext.neuron.layers as nrn_layers
 
 
 def blur_tensor(tensor, list_kernels, n_dims=3):
-    """Blur image with masks in list_kernels, if they are not None."""
-    for k in list_kernels:
-        if k is not None:
-            tensor = KL.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME', strides=[1]*n_dims))([tensor, k])
+    """Blur image with masks in list_kernels, if they are not None or do not contain NaN values."""
+    for kernel in list_kernels:
+        if kernel is not None:
+            tensor = KL.Lambda(lambda x: K.switch(tf.math.reduce_any(tf.math.is_nan(x[1])),
+                                                  x[0],
+                                                  tf.nn.convolution(x[0], x[1], padding='SAME',
+                                                                    strides=[1]*n_dims)))([tensor, kernel])
     return tensor
 
 

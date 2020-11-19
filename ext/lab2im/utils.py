@@ -475,6 +475,8 @@ def strip_suffix(path):
 
 def mkdir(path_dir):
     """Recursively creates the current dir as well as its parent folders if they do not already exist."""
+    if path_dir[-1] == '/':
+        path_dir = path_dir[:-1]
     if not os.path.isdir(path_dir):
         list_dir_to_create = [path_dir]
         while not os.path.isdir(os.path.dirname(list_dir_to_create[-1])):
