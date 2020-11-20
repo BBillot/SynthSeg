@@ -215,8 +215,8 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     # sort labels in neutral/left/right according to FS labels
     n_neutral_labels = 0
     if FS_sort:
-        neutral_FS_labels = [0, 14, 15, 16, 21, 22, 23, 24, 72, 77, 80, 85, 165, 251, 252, 253, 254, 255, 258, 259,
-                             331, 332, 333, 334, 335, 336, 337, 338, 339, 340]
+        neutral_FS_labels = [0, 14, 15, 16, 21, 22, 23, 24, 72, 77, 80, 85, 101, 102, 103, 104, 105, 165, 251, 252, 253,
+                             254, 255, 258, 259, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340]
         neutral = list()
         left = list()
         right = list()
@@ -495,9 +495,9 @@ def get_dims(shape, max_channels=10):
     :param shape: shape of an array. Can be a sequence or a 1d numpy array.
     :param max_channels: maximum possible number of channels.
     :return: the number of dimensions and channels associated with the provided shape.
-    example 1: get_dims([150, 150, 150], max_channels=3) = (3, 1)
-    example 2: get_dims([150, 150, 150, 3], max_channels=3) = (3, 3)
-    example 3: get_dims([150, 150, 150, 5], max_channels=10) = (3, 5)"""
+    example 1: get_dims([150, 150, 150], max_channels=10) = (3, 1)
+    example 2: get_dims([150, 150, 150, 3], max_channels=10) = (3, 3)
+    example 3: get_dims([150, 150, 150, 15], max_channels=10) = (4, 1), because 5>3"""
     if shape[-1] <= max_channels:
         n_dims = len(shape) - 1
         n_channels = shape[-1]

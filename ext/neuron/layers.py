@@ -21,12 +21,11 @@ import numpy as np
 import tensorflow as tf
 from keras import backend as K
 from keras.legacy import interfaces
-from keras.layers import Layer, InputLayer, Input
+from keras.layers import Layer
 from keras.engine.topology import Node
 
 # local
-from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift, \
-    interpn, volshape_to_ndgrid
+from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
 
 
 class SpatialTransformer(Layer):
@@ -376,94 +375,6 @@ class Resize(Layer):
 
 # Zoom naming of resize, to match scipy's naming
 Zoom = Resize
-
-
-class MimicAcquisition(Layer):
-    """
-    Layer to mimick data that is acquired at another resolution that the input one.
-    The output is obtained by resampling twice the input:
-     - first at the specified acquisition resolution,
-     - then at the output resolution (specified output shape).
-    """
-
-    def __init__(self, volume_res, subsample_res_init, blur_range, resample_shape, **kwargs):
-
-        # resolutions and dimensions
-        self.volume_res = volume_res
-        self.subsample_res_init = subsample_res_init
-        self.ndims = len(self.volume_res)
-
-        # input and output shapes
-        self.inshape = None
-        self.resample_shape = resample_shape
-
-        # max blurring coef
-        self.blur_range = blur_range
-        self.random_coef = None
-
-        # upsampling and downsampling factors
-        self.down_tensor_shape = None
-        self.down_zoom_factor = None
-        self.up_zoom_factor = None
-
-        # meshgrids for resampling
-        self.down_grid_list = None
-        self.up_grid_list = None
-
-        # tensors with interpolation locations
-        self.down_loc = None
-        self.up_loc = None
-
-        super(MimicAcquisition, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-
-        # set up input shape and acquisistion shape
-        self.inshape = input_shape[0]
-        self.down_tensor_shape = [int(self.inshape[i + 1] * self.volume_res[i] * self.blur_range /
-                                  self.subsample_res_init[i]) for i in range(self.ndims)]
-
-        # build interpolation meshgrids
-        self.down_grid_list = volshape_to_ndgrid(self.down_tensor_shape)
-        self.up_grid_list = volshape_to_ndgrid(self.resample_shape)
-
-        # confirm built
-        self.built = True
-
-        super(MimicAcquisition, self).build(input_shape)
-
-    def call(self, inputs):
-
-        # sort inputs
-        assert len(inputs) == 2, 'inputs must have two items, the tensor to resample, and the random coefficients'
-        vol = inputs[0]
-        self.random_coef = inputs[1]
-        vol = K.reshape(vol, [-1, *self.inshape[1:]])  # necessary for multi_gpu models...
-
-        # get downsampling and upsampling factors
-        subsample_res = tf.convert_to_tensor(self.subsample_res_init, dtype='float32') * self.random_coef
-        self.down_zoom_factor = tf.convert_to_tensor(self.volume_res, dtype='float32') / subsample_res
-        down_shape = tf.convert_to_tensor(self.inshape[1:-1], dtype='float32') * self.down_zoom_factor
-        self.up_zoom_factor = tf.convert_to_tensor(self.resample_shape, dtype='float32') / down_shape
-
-        # downsample
-        down_loc = [tf.cast(self.down_grid_list[i], 'float32') / self.down_zoom_factor[i] for i in range(self.ndims)]
-        down_loc = [K.clip(down_loc[i], 0, self.inshape[i + 1] - 1) for i in range(self.ndims)]
-        self.down_loc = tf.stack(down_loc, axis=-1)
-        vol = tf.map_fn(self._single_down_interpn, vol)
-
-        # upsample
-        up_loc = [tf.cast(self.up_grid_list[i], 'float32') / self.up_zoom_factor[i] for i in range(self.ndims)]
-        self.up_loc = tf.stack(up_loc, axis=-1)
-        vol = tf.map_fn(self._single_up_interpn, vol)
-
-        return vol
-
-    def _single_down_interpn(self, inputs):
-        return interpn(inputs, self.down_loc, interp_method='nearest')
-
-    def _single_up_interpn(self, inputs):
-        return interpn(inputs, self.up_loc)
 
 
 class SpatiallySparse_Dense(Layer):
