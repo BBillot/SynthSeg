@@ -59,7 +59,7 @@ import keras.layers as KL
 import keras.backend as K
 from keras.models import Model
 from scipy.ndimage.filters import convolve
-from scipy.ndimage.morphology import distance_transform_edt
+from scipy.ndimage.morphology import distance_transform_edt, binary_fill_holes
 from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
 
 # project imports
@@ -69,7 +69,8 @@ from .edit_tensors import get_gaussian_1d_kernels, blur_tensor, convert_labels
 
 # ---------------------------------------------------- edit volume -----------------------------------------------------
 
-def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, masking_value=0, return_mask=False):
+def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=False, masking_value=0,
+                return_mask=False):
     """Mask a volume, either with a given mask, or by keeping only the values above a threshold.
     :param volume: a numpy array, possibly with several channels
     :param mask: (optional) a numpy array to mask volume with.
@@ -79,6 +80,7 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, masking_val
     :param threshold: (optional) If mask is None, masking is performed by keeping thresholding the input.
     :param dilate: (optional) number of voxels by which to dilate the provided or computed mask.
     :param erode: (optional) number of voxels by which to erode the provided or computed mask.
+    :param fill_holes: (optional) whether to fill the holes in the provided or computed mask.
     :param masking_value: (optional) masking value
     :param return_mask: (optional) whether to return the applied mask
     :return: the masked volume, and the applied mask if return_mask is True.
@@ -103,6 +105,8 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, masking_val
         erode_struct = utils.build_binary_structure(erode, n_dims)
         mask_to_apply = binary_erosion(mask_to_apply, erode_struct)
     mask_to_apply = mask | mask_to_apply
+    if fill_holes:
+        mask_to_apply = binary_fill_holes(mask_to_apply)
 
     # replace values outside of mask by padding_char
     if mask_to_apply.shape == volume.shape:
@@ -690,8 +694,8 @@ def compute_distance_map(labels, masking_labels=None, crop_margin=None):
 
 # ------------------------------------------------- edit volumes in dir ------------------------------------------------
 
-def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dilate=0, erode=0, masking_value=0,
-                       write_mask=False, mask_result_dir=None, recompute=True):
+def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dilate=0, erode=0, fill_holes=False,
+                       masking_value=0, write_mask=False, mask_result_dir=None, recompute=True):
     """Mask all volumes in a folder, either with masks in a specified folder, or by keeping only the intensity values
     above a specified threshold.
     :param image_dir: path of directory with images to mask
@@ -703,6 +707,7 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
     :param threshold: (optional) If mask is None, masking is performed by keeping thresholding the input.
     :param dilate: (optional) number of voxels by which to dilate the provided or computed masks.
     :param erode: (optional) number of voxels by which to erode the provided or computed masks.
+    :param fill_holes: (optional) whether to fill the holes in the provided or computed masks.
     :param masking_value: (optional) masking value
     :param write_mask: (optional) whether to write the applied masks
     :param mask_result_dir: (optional) path of resulting masks, if write_mask is True
@@ -714,12 +719,14 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
     if mask_result_dir is not None:
         utils.mkdir(mask_result_dir)
 
-    # loop over images
+    # get path masks if necessary
     path_images = utils.list_images_in_folder(image_dir)
     if mask_dir is not None:
         path_masks = utils.list_images_in_folder(mask_dir)
     else:
         path_masks = [None] * len(path_images)
+
+    # loop over images
     for idx, (path_image, path_mask) in enumerate(zip(path_images, path_masks)):
         utils.print_loop_info(idx, len(path_images), 10)
 
@@ -731,7 +738,7 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
                 mask = utils.load_volume(path_mask)
             else:
                 mask = None
-            im = mask_volume(im, mask, threshold, dilate, erode, masking_value, write_mask)
+            im = mask_volume(im, mask, threshold, dilate, erode, fill_holes, masking_value, write_mask)
 
             # write mask if necessary
             if write_mask:
@@ -1773,13 +1780,15 @@ def check_images_and_labels(image_dir, labels_dir):
         if aff_lab_list != aff_im_list:
             print('aff mismatch :\n' + path_image)
             print(aff_im_list)
-            print('\n' + path_label)
+            print(path_label)
             print(aff_lab_list)
+            print('')
         if lab.shape != im.shape:
             print('shape mismatch :\n' + path_image)
             print(im.shape)
             print('\n' + path_label)
             print(lab.shape)
+            print('')
 
 
 def crop_dataset_to_minimum_size(labels_dir,
