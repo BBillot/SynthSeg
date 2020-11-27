@@ -57,8 +57,6 @@ def training(labels_dir,
              wl2_epochs=5,
              dice_epochs=100,
              steps_per_epoch=1000,
-             background_weight=1e-4,
-             include_background=True,
              loss_cropping=None,
              load_model_file=None,
              initial_epoch_wl2=0,
@@ -189,8 +187,6 @@ def training(labels_dir,
     :param dice_epochs: (optional) number of epochs with the soft Dice loss function. default is 100.
     :param steps_per_epoch: (optional) number of steps per epoch. Default is 1000. Since no online validation is
     possible, this is equivalent to the frequency at which the models are saved.
-    :param background_weight: (optional) weight of the background when computing loss. Default is 1e-4.
-    :param include_background: (optional) whether to include Dice of background when evaluating the loss function.
     :param loss_cropping: (optional) margin by which to crop the posteriors when evaluating the loss function.
     Can be an int, or the path to a 1d numpy array.
     :param load_model_file: (optional) path of an already saved model to load before starting the training.
@@ -291,7 +287,6 @@ def training(labels_dir,
                                                 input_model=wl2_model,
                                                 loss_cropping=loss_cropping,
                                                 metrics='wl2',
-                                                weight_background=background_weight,
                                                 name='metrics_model')
         if load_model_file is not None:
             print('loading', load_model_file)
@@ -305,7 +300,6 @@ def training(labels_dir,
                                                  segmentation_label_list=segmentation_labels,
                                                  input_model=unet_model,
                                                  loss_cropping=loss_cropping,
-                                                 include_background=include_background,
                                                  name='metrics_model')
         if wl2_epochs > 0:
             last_wl2_model_name = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)

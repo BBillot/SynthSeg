@@ -15,8 +15,6 @@ def metrics_model(input_shape,
                   input_model=None,
                   loss_cropping=None,
                   metrics='dice',
-                  weight_background=None,
-                  include_background=False,
                   name=None,
                   prefix=None,
                   validation_on_real_images=False):
@@ -84,11 +82,8 @@ def metrics_model(input_shape,
         last_tensor = KL.Lambda(lambda x: x[0] / K.maximum(x[1], 0.001), name='dice')([top, bottom])  # 1d vector
 
         # compute mean dice loss
-        if include_background:
-            w = np.ones([n_labels]) / n_labels
-        else:
-            w = np.ones([n_labels]) / (n_labels - 1)
-            w[0] = 0.0
+        w = np.ones([n_labels]) / n_labels
+        w[0] = 0.0
         last_tensor = KL.Lambda(lambda x: 1 - x, name='dice_loss')(last_tensor)
         last_tensor = KL.Lambda(lambda x: K.sum(x*tf.convert_to_tensor(w, dtype='float32'), axis=1),
                                 name='mean_dice_loss')(last_tensor)
@@ -97,7 +92,7 @@ def metrics_model(input_shape,
 
     elif metrics == 'wl2':
         # compute weighted l2 loss
-        weights = KL.Lambda(lambda x: K.expand_dims(1 - x[..., 0] + weight_background))(labels_gt)
+        weights = KL.Lambda(lambda x: K.expand_dims(1 - x[..., 0] + 1e-4))(labels_gt)  # 1e-4 = background weight
         normaliser = KL.Lambda(lambda x: K.sum(x[0]) * K.int_shape(x[1])[-1])([weights, last_tensor])
         # last_tensor = KL.Lambda(lambda x: K.sum(x[2] * K.square(x[1] - 15 * (2 * x[0] - 1))) / x[3])([
         #                         labels_gt, last_tensor, weights, normaliser])

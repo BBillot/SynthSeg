@@ -52,8 +52,6 @@ def supervised_training(image_dir,
                         wl2_epochs=5,
                         dice_epochs=100,
                         steps_per_epoch=1000,
-                        background_weight=1e-4,
-                        include_background=True,
                         load_model_file=None,
                         initial_epoch_wl2=0,
                         initial_epoch_dice=0):
@@ -133,7 +131,6 @@ def supervised_training(image_dir,
                                                 segmentation_label_list=label_list,
                                                 input_model=wl2_model,
                                                 metrics='wl2',
-                                                weight_background=background_weight,
                                                 name='metrics_model')
         if load_model_file is not None:
             print('loading ', load_model_file)
@@ -146,7 +143,6 @@ def supervised_training(image_dir,
         dice_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_labels],
                                                  segmentation_label_list=label_list,
                                                  input_model=unet_model,
-                                                 include_background=include_background,
                                                  name='metrics_model')
         if wl2_epochs > 0:
             last_wl2_model_name = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)

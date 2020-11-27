@@ -26,7 +26,6 @@ output_shape = 160  # tune this to the size of your GPU
 wl2_epochs = 5
 dice_epochs = 150
 steps_per_epoch = 1000
-include_background = True
 
 training(labels_dir=path_training_label_maps,
          model_dir=path_model_dir,
@@ -36,5 +35,4 @@ training(labels_dir=path_training_label_maps,
          output_shape=output_shape,
          wl2_epochs=wl2_epochs,
          dice_epochs=dice_epochs,
-         steps_per_epoch=steps_per_epoch,
-         include_background=include_background)
+         steps_per_epoch=steps_per_epoch)
