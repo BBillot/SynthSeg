@@ -24,7 +24,6 @@ def labels_to_image_model(labels_shape,
                           target_res,
                           output_shape=None,
                           output_div_by_n=None,
-                          padding_margin=None,
                           flipping=True,
                           aff=None,
                           apply_linear_trans=True,
@@ -78,9 +77,6 @@ def labels_to_image_model(labels_shape,
     Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites output_shape
     if necessary. Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.
-    :param padding_margin: (optional) margin by which to pad the input labels with zeros.
-    Padding is applied prior to any other operation.
-    Can be an integer (same padding in all dimensions), a sequence, or a 1d numpy array. Default is no padding.
     :param flipping: (optional) whether to introduce right/left random flipping
     :param aff: (optional) example of an (n_dims+1)x(n_dims+1) affine matrix of one of the input label map.
     Used to find brain's right/left axis. Should be given if flipping is True.
@@ -139,8 +135,7 @@ def labels_to_image_model(labels_shape,
     thickness = utils.reformat_to_n_channels_array(thickness, n_dims=n_dims, n_channels=n_channels)
 
     # get shapes
-    crop_shape, output_shape, padding_margin = get_shapes(labels_shape, output_shape, atlas_res, target_res,
-                                                          padding_margin, output_div_by_n)
+    crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
     # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
     n_generation_labels = generation_labels.shape[0]
@@ -159,12 +154,6 @@ def labels_to_image_model(labels_shape,
 
     # convert labels to new_label_list
     labels = l2i_et.convert_labels(labels_input, lut)
-
-    # pad labels
-    if padding_margin is not None:
-        pad = np.transpose(np.array([[0] + padding_margin + [0]] * 2))
-        labels = KL.Lambda(lambda x: tf.pad(x, tf.cast(tf.convert_to_tensor(pad), dtype='int32')), name='pad')(labels)
-        labels_shape = labels.get_shape().as_list()[1:n_dims+1]
 
     # deform labels
     if apply_linear_trans | apply_nonlin_trans:
@@ -262,17 +251,12 @@ def labels_to_image_model(labels_shape,
     return brain_model
 
 
-def get_shapes(labels_shape, output_shape, atlas_res, target_res, padding_margin, output_div_by_n):
+def get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n):
 
     # reformat resolutions to lists
     atlas_res = utils.reformat_to_list(atlas_res)
     n_dims = len(atlas_res)
     target_res = utils.reformat_to_list(target_res)
-
-    # get new labels shape if padding
-    if padding_margin is not None:
-        padding_margin = utils.reformat_to_list(padding_margin, length=n_dims, dtype='int')
-        labels_shape = [labels_shape[i] + 2 * padding_margin[i] for i in range(n_dims)]
 
     # get resampling factor
     if atlas_res != target_res:
@@ -331,4 +315,4 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, padding_margin
             else:
                 output_shape = cropping_shape
 
-    return cropping_shape, output_shape, padding_margin
+    return cropping_shape, output_shape

@@ -56,7 +56,6 @@ def training(labels_dir,
              wl2_epochs=5,
              dice_epochs=100,
              steps_per_epoch=1000,
-             loss_cropping=None,
              load_model_file=None,
              initial_epoch_wl2=0,
              initial_epoch_dice=0):
@@ -185,8 +184,6 @@ def training(labels_dir,
     :param dice_epochs: (optional) number of epochs with the soft Dice loss function. default is 100.
     :param steps_per_epoch: (optional) number of steps per epoch. Default is 1000. Since no online validation is
     possible, this is equivalent to the frequency at which the models are saved.
-    :param loss_cropping: (optional) margin by which to crop the posteriors when evaluating the loss function.
-    Can be an int, or the path to a 1d numpy array.
     :param load_model_file: (optional) path of an already saved model to load before starting the training.
     :param initial_epoch_wl2: (optional) initial epoch for wl2 training. Useful for resuming training.
     :param initial_epoch_dice: (optional) initial epoch for dice training. Useful for resuming training.
@@ -214,18 +211,11 @@ def training(labels_dir,
     log_dir = os.path.join(model_dir, 'logs')
     utils.mkdir(log_dir)
 
-    # compute padding_margin
-    if loss_cropping is not None:
-        padding_margin = utils.get_padding_margin(output_shape, loss_cropping)
-    else:
-        padding_margin = None
-
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
                                      generation_labels=generation_labels,
                                      output_labels=segmentation_labels,
                                      n_neutral_labels=n_neutral_labels,
-                                     padding_margin=padding_margin,
                                      batchsize=batchsize,
                                      n_channels=n_channels,
                                      target_res=target_res,
@@ -279,7 +269,6 @@ def training(labels_dir,
         wl2_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_segmentation_labels],
                                                 segmentation_label_list=segmentation_labels,
                                                 input_model=wl2_model,
-                                                loss_cropping=loss_cropping,
                                                 metrics='wl2',
                                                 name='metrics_model')
         if load_model_file is not None:
@@ -293,7 +282,6 @@ def training(labels_dir,
         dice_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_segmentation_labels],
                                                  segmentation_label_list=segmentation_labels,
                                                  input_model=unet_model,
-                                                 loss_cropping=loss_cropping,
                                                  name='metrics_model')
         if wl2_epochs > 0:
             last_wl2_model_name = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)

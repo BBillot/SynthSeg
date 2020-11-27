@@ -16,7 +16,6 @@ class BrainGenerator:
                  generation_labels=None,
                  output_labels=None,
                  n_neutral_labels=None,
-                 padding_margin=None,
                  batchsize=1,
                  n_channels=1,
                  target_res=None,
@@ -70,10 +69,6 @@ class BrainGenerator:
         By default output labels are equal to generation labels.
         :param n_neutral_labels: (optional) number of non-sided generation labels.
         Default is total number of label values.
-        :param padding_margin: (optional) margin by which to pad the input labels with zeros.
-        Padding is applied prior to any other operation.
-        Can be an integer (same padding in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy
-        array. Default is no padding.
 
         # output-related parameters
         :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
@@ -208,7 +203,6 @@ class BrainGenerator:
         self.target_res = utils.load_array_if_path(target_res)
         self.batchsize = batchsize
         # preliminary operations
-        self.padding_margin = utils.load_array_if_path(padding_margin)
         self.flipping = flipping
         self.output_shape = utils.load_array_if_path(output_shape)
         self.output_div_by_n = output_div_by_n
@@ -267,7 +261,6 @@ class BrainGenerator:
                                                 target_res=self.target_res,
                                                 output_shape=self.output_shape,
                                                 output_div_by_n=self.output_div_by_n,
-                                                padding_margin=self.padding_margin,
                                                 flipping=self.flipping,
                                                 aff=np.eye(4),
                                                 apply_linear_trans=self.apply_linear_trans,

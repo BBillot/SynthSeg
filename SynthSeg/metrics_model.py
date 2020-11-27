@@ -13,7 +13,6 @@ from ext.lab2im import edit_tensors as l2i_et
 def metrics_model(input_shape,
                   segmentation_label_list,
                   input_model=None,
-                  loss_cropping=None,
                   metrics='dice',
                   name=None,
                   prefix=None,
@@ -53,19 +52,6 @@ def metrics_model(input_shape,
     labels_gt = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels_gt)
     labels_gt = KL.Reshape(input_shape)(labels_gt)
     labels_gt = KL.Lambda(lambda x: K.clip(x / K.sum(x, axis=-1, keepdims=True), K.epsilon(), 1))(labels_gt)
-
-    # crop output to evaluate loss function in centre patch
-    if loss_cropping is not None:
-        # format loss_cropping
-        labels_shape = labels_gt.get_shape().as_list()[1:-1]
-        n_dims, _ = utils.get_dims(labels_shape)
-        loss_cropping = [-1] + utils.reformat_to_list(loss_cropping, length=n_dims) + [-1]
-        # perform cropping
-        begin_idx = [0] + [int((labels_shape[i] - loss_cropping[i]) / 2) for i in range(n_dims)] + [0]
-        labels_gt = KL.Lambda(lambda x: tf.slice(x, begin=tf.convert_to_tensor(begin_idx, dtype='int32'),
-                              size=tf.convert_to_tensor(loss_cropping, dtype='int32')))(labels_gt)
-        last_tensor = KL.Lambda(lambda x: tf.slice(x, begin=tf.convert_to_tensor(begin_idx, dtype='int32'),
-                                size=tf.convert_to_tensor(loss_cropping, dtype='int32')))(last_tensor)
 
     # metrics is computed as part of the model
     if metrics == 'dice':
