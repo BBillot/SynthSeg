@@ -39,7 +39,6 @@ parser.add_argument("--conv_size", type=int, dest="conv_size", default=3)
 parser.add_argument("--unet_feat", type=int, dest="unet_feat_count", default=24)
 parser.add_argument("--feat_mult", type=int, dest="feat_multiplier", default=2)
 parser.add_argument("--dropout", type=float, dest="dropout", default=0.)
-parser.add_argument("--no_batch_norm", action='store_true', dest="no_batch_norm")
 parser.add_argument("--activation", type=str, dest="activation", default='elu')
 
 # ------------------------------------------------- Training parameters ------------------------------------------------

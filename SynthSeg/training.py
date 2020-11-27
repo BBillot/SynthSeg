@@ -50,7 +50,6 @@ def training(labels_dir,
              unet_feat_count=24,
              feat_multiplier=2,
              dropout=0,
-             no_batch_norm=False,
              activation='elu',
              lr=1e-4,
              lr_decay=0,
@@ -176,7 +175,6 @@ def training(labels_dir,
     :param unet_feat_count: (optional) number of feature for the first layr of the Unet. Default is 24.
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 2.
     :param dropout: (optional) probability of drpout for the Unet. Deafult is 0, where no dropout is applied.
-    :param no_batch_norm: (optional) wheter to remove batch normalisation. Default is False, where BN is applied.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
 
     # ----------------------------------------------- Training parameters ----------------------------------------------
@@ -259,10 +257,6 @@ def training(labels_dir,
     unet_input_shape = brain_generator.model_output_shape
 
     # prepare the segmentation model
-    if no_batch_norm:
-        batch_norm_dim = None
-    else:
-        batch_norm_dim = -1
     unet_model = nrn_models.unet(nb_features=unet_feat_count,
                                  input_shape=unet_input_shape,
                                  nb_levels=n_levels,
@@ -271,7 +265,7 @@ def training(labels_dir,
                                  feat_mult=feat_multiplier,
                                  nb_conv_per_level=nb_conv_per_level,
                                  conv_dropout=dropout,
-                                 batch_norm=batch_norm_dim,
+                                 batch_norm=-1,
                                  activation=activation,
                                  input_model=labels_to_image_model)
 

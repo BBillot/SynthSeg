@@ -45,7 +45,6 @@ def supervised_training(image_dir,
                         unet_feat_count=24,
                         feat_multiplier=2,
                         dropout=0,
-                        no_batch_norm=False,
                         activation='elu',
                         lr=1e-4,
                         lr_decay=0,
@@ -108,10 +107,6 @@ def supervised_training(image_dir,
     training_generator = utils.build_training_generator(model_input_generator, batchsize)
 
     # prepare the segmentation model
-    if no_batch_norm:
-        batch_norm_dim = None
-    else:
-        batch_norm_dim = -1
     unet_model = nrn_models.unet(nb_features=unet_feat_count,
                                  input_shape=unet_input_shape,
                                  nb_levels=n_levels,
@@ -120,7 +115,7 @@ def supervised_training(image_dir,
                                  feat_mult=feat_multiplier,
                                  nb_conv_per_level=nb_conv_per_level,
                                  conv_dropout=dropout,
-                                 batch_norm=batch_norm_dim,
+                                 batch_norm=-1,
                                  activation=activation,
                                  input_model=augmentation_model)
 
