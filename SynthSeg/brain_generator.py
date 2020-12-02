@@ -29,9 +29,9 @@ class BrainGenerator:
                  mix_prior_and_random=False,
                  flipping=True,
                  apply_linear_trans=True,
-                 scaling_bounds=None,
-                 rotation_bounds=None,
-                 shearing_bounds=None,
+                 scaling_bounds=0.15,
+                 rotation_bounds=15,
+                 shearing_bounds=.012,
                  apply_nonlin_trans=True,
                  nonlin_std=3.,
                  nonlin_shape_factor=0.0625,
@@ -125,11 +125,12 @@ class BrainGenerator:
         3) a numpy array of shape (2, n_dims), in which case the scaling factor is sampled from the uniform distribution
          of bounds (scaling_bounds[0, i], scaling_bounds[1, i]) for the i-th dimension.
         4) the path to such a numpy array.
-        If None (default), scaling_range = 0.15
+        5) False, in which case scaling is completely turned off.
+        Default is scaling_bounds = 0.15 (case 1)
         :param rotation_bounds: (optional) same as scaling bounds but for the rotation angle, except that for cases 1
         and 2, the bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
-        If None (default), rotation_bounds = 15.
-        :param shearing_bounds: (optional) same as scaling bounds. If None (default), shearing_bounds = 0.01.
+        Default is rotation_bounds = 15.
+        :param shearing_bounds: (optional) same as scaling bounds. Default is shearing_bounds = 0.012.
         :param apply_nonlin_trans: (optional) whether to apply non linear elastic deformation.
         If true, a diffeomorphic deformation field is obtained by first sampling a small tensor from the normal
         distribution, resizing it to image size, and integrationg it. Default is True.

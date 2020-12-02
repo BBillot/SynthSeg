@@ -31,9 +31,9 @@ def training(labels_dir,
              use_specific_stats_for_channel=False,
              mix_prior_and_random=False,
              flipping=True,
-             scaling_bounds=None,
-             rotation_bounds=None,
-             shearing_bounds=None,
+             scaling_bounds=0.15,
+             rotation_bounds=15,
+             shearing_bounds=.012,
              nonlin_std=3.,
              nonlin_shape_factor=.04,
              blur_background=True,
@@ -126,11 +126,12 @@ def training(labels_dir,
     (1-scaling_bounds, 1+scaling_bounds) for each dimension.
     2) the path to a numpy array of shape (2, n_dims), in which case the scaling factor in dimension i is sampled from
     the uniform distribution of bounds (scaling_bounds[0, i], scaling_bounds[1, i]) for the i-th dimension.
-    If None (default), scaling_range = 0.15
+    3) False, in which case scaling is completely turned off.
+    Default is scaling_bounds = 0.15 (case 1)
     :param rotation_bounds: (optional) same as scaling bounds but for the rotation angle, except that for case 1 the
     bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
-    If None (default), rotation_bounds = 15.
-    :param shearing_bounds: (optional) same as scaling bounds. If None (default), shearing_bounds = 0.01.
+    Default is rotation_bounds = 15.
+    :param shearing_bounds: (optional) same as scaling bounds. Default is shearing_bounds = 0.012.
     :param nonlin_std: (optional) Standard deviation of the normal distribution from which we sample the first
     tensor for synthesising the deformation field.
     :param nonlin_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled

@@ -24,6 +24,7 @@
     -add_axis
     -get_padding_margin
 5- miscellaneous
+    -infer
     -print_loop_info
     -rearrange_label_list
     -build_training_generator
@@ -553,6 +554,20 @@ def get_padding_margin(cropping, loss_cropping):
 # --------------------------------------------------- miscellaneous ----------------------------------------------------
 
 
+def infer(x):
+    ''' Try to parse input to float. If it fails, tries boolean, and otherwise keep it as string '''
+    try:
+        x = float(x)
+    except ValueError:
+        if x == 'False':
+            x = False
+        elif x == 'True':
+            x = True
+        elif not isinstance(x, str):
+            raise TypeError('input should be an int/float/boolean/str, had {}'.format(type(x)))
+    return x
+
+
 def print_loop_info(idx, n_iterations, spacing):
     """Print loop iteration number.
     :param idx: iteration number
@@ -697,7 +712,12 @@ def draw_value_from_distribution(hyperparameter,
     :param default_range: (optional) default range to use if hyperparameter is None.
     :param positive_only: (optional) wheter to reset all negative values to zero.
     :return: a float, or a numpy 1d array if size > 1, or hyperparameter is itself a numpy array.
+    Returns None if hyperparmeter is False.
     """
+
+    # return False is hyperparameter is False
+    if hyperparameter is False:
+        return None
 
     # reformat parameter_range
     hyperparameter = load_array_if_path(hyperparameter, load_as_numpy=True)

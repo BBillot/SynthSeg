@@ -1,7 +1,7 @@
 # imports
 from argparse import ArgumentParser
 from SynthSeg.supervised_training import supervised_training
-
+from ext.lab2im.utils import infer
 
 parser = ArgumentParser()
 
@@ -19,9 +19,9 @@ parser.add_argument("--output_shape", type=int, dest="output_shape", default=Non
 # spatial deformation parameters
 parser.add_argument("--no_flipping", action='store_false', dest="flipping")
 parser.add_argument("--no_linear_trans", action='store_false', dest="apply_linear_trans")
-parser.add_argument("--scaling", dest="scaling_bounds", default=None)
-parser.add_argument("--rotation", dest="rotation_bounds", default=None)
-parser.add_argument("--shearing", dest="shearing_bounds", default=None)
+parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=0.15)
+parser.add_argument("--rotation", dest="rotation_bounds", type=infer, default=15)
+parser.add_argument("--shearing", dest="shearing_bounds", type=infer, default=.012)
 parser.add_argument("--no_nonlinear_trans", action='store_false', dest="apply_nonlin_trans")
 parser.add_argument("--nonlin_std", type=float, dest="nonlin_std", default=3.)
 parser.add_argument("--nonlin_shape_factor", type=float, dest="nonlin_shape_factor", default=.04)

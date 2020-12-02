@@ -78,9 +78,9 @@ bias_field_std = 0.4  # we increase the strength of the applied bias field (defa
 # output_divisible_by_n = 32  # make sure output shape is divisible by 32
 #
 # # spatial deformation parameters
-# scaling_bounds = None  # keep default value of [.85, 1.15]
-# rotation_bounds = None  # keep default value of [-15, 15]
-# shearing_bounds = None  # keep default value of [-.01, .01]
+# scaling_bounds = [.85, 1.15]
+# rotation_bounds = [-15, 15]
+# shearing_bounds = [-.012, .012]
 # nonlin_std = 3  # keep default value
 #
 # # blurring/resampling parameters
@@ -106,9 +106,9 @@ bias_field_std = 0.4  # we increase the strength of the applied bias field (defa
 # output_divisible_by_n = None
 #
 # # spatial deformation parameters (keep default values)
-# scaling_bounds = None
-# rotation_bounds = None
-# shearing_bounds = None
+# scaling_bounds = [.85, 1.15]
+# rotation_bounds = [-15, 15]
+# shearing_bounds = [-.012, .012]
 # nonlin_std = 3
 #
 # # blurring/resampling parameters

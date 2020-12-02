@@ -17,9 +17,9 @@ def build_model_inputs(path_label_maps,
                        use_specific_stats_for_channel=False,
                        mix_prior_and_random=False,
                        apply_linear_trans=True,
-                       scaling_bounds=None,
-                       rotation_bounds=None,
-                       shearing_bounds=None,
+                       scaling_bounds=0.15,
+                       rotation_bounds=15,
+                       shearing_bounds=.012,
                        background_paths=None):
     """
     This function builds a generator to be fed to the lab2im model. It enables to generate all the required inputs,
@@ -65,11 +65,12 @@ def build_model_inputs(path_label_maps,
     (1-scaling_bounds[i], 1+scaling_bounds[i]) for the i-th dimension.
     3) a numpy array of shape (2, n_dims), in which case the scaling factor is sampled from the uniform distribution
      of bounds (scaling_bounds[0, i], scaling_bounds[1, i]) for the i-th dimension.
-    If None (default), scaling_range = 0.15
+    4) False, in which case scaling is completely turned off.
+    Default is scaling_bounds = 0.15 (case 1)
     :param rotation_bounds: (optional) same as scaling bounds but for the rotation angle, except that for cases 1
     and 2, the bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
-    If None (default), rotation_bounds = 15.
-    :param shearing_bounds: (optional) same as scaling bounds. If None (default), shearing_bounds = 0.01.
+    Default is rotation_bounds = 15.
+    :param shearing_bounds: (optional) same as scaling bounds. Default is shearing_bounds = 0.012.
     :param background_paths: (optional) list of paths of label maps to replace the soft brain tissues (label 258) with.
     """
 
