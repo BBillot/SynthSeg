@@ -22,9 +22,9 @@ realistic/unrealistic, isotropic/anisotropic, uni-modal/multi-modal scans.
 ![Generation examples](data/README_figures/figure.png)
 \
 \
-The generated images are then usd to train a CNN for image segmentation. Because the parameters of the GMM (means and 
+The generated images are then used to train a CNN for image segmentation. Because the parameters of the GMM (means and 
 variances) are sampled at each minibatch from prior distributions, the network is exposed to images yielding differences
- in contrast (depending on the GMM priors), and learns robust features. An overvoew of the training process is 
+ in contrast (depending on the GMM priors), and learns robust features. An overview of the training process is 
 represented in the following figure:
 \
 \
