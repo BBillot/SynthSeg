@@ -5,7 +5,7 @@ from SynthSeg.estimate_priors import build_intensity_stats
 
 # ----------------------------------------------- simple uni-modal case ------------------------------------------------
 
-# paths of directories containing the images anc corresponding label maps
+# paths of directories containing the images and corresponding label maps
 image_dir = '/image_folder/t1'
 labels_dir = '/labels_folder'
 # list of labels from which we want to evaluate the GMM prior distributions

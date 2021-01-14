@@ -56,7 +56,6 @@ import shutil
 import numpy as np
 import tensorflow as tf
 import keras.layers as KL
-import keras.backend as K
 from keras.models import Model
 from scipy.ndimage.filters import convolve
 from scipy.ndimage.morphology import distance_transform_edt, binary_fill_holes
@@ -64,7 +63,8 @@ from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
 
 # project imports
 from . import utils
-from .edit_tensors import get_gaussian_1d_kernels, blur_tensor, convert_labels
+from .edit_tensors import convert_labels, blurring_sigma_for_downsampling
+from .layers import GaussianBlur
 
 
 # ---------------------------------------------------- edit volume -----------------------------------------------------
@@ -585,8 +585,7 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
             if gpu:
                 if model is None:
                     mask_in = KL.Input(shape=labels_shape + [1], dtype='float32')
-                    list_k = get_gaussian_1d_kernels([1] * 3)
-                    blurred_mask = blur_tensor(mask_in, list_k, n_dims=n_dims)
+                    blurred_mask = GaussianBlur([1] * 3)(mask_in)
                     model = Model(inputs=mask_in, outputs=blurred_mask)
                 eroded_mask = model.predict(utils.add_axis(np.float32(mask), axis=[0, -1]))
             else:
@@ -1023,19 +1022,14 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
             if gpu:
                 if (im_shape != previous_model_input_shape) | (model is None):
                     previous_model_input_shape = im_shape
-                    image_in = [KL.Input(shape=im_shape + [1])]
+                    inputs = [KL.Input(shape=im_shape + [1])]
                     sigma = utils.reformat_to_list(sigma, length=n_dims)
-                    kernels_list = get_gaussian_1d_kernels(sigma)
-                    image = blur_tensor(image_in[0], kernels_list, n_dims)
-                    if mask is not None:
-                        image_in.append(KL.Input(shape=im_shape + [1], dtype='float32'))  # mask
-                        masked_mask = KL.Lambda(lambda x: tf.where(tf.greater(x, 0), tf.ones_like(x, dtype='float32'),
-                                                                   tf.zeros_like(x, dtype='float32')))(image_in[1])
-                        blurred_mask = blur_tensor(masked_mask, kernels_list, n_dims)
-                        image = KL.Lambda(lambda x: x[0] / (x[1] + K.epsilon()))([image, blurred_mask])
-                        image = KL.Lambda(lambda x: tf.where(tf.cast(x[1], dtype='bool'), x[0],
-                                                             tf.zeros_like(x[0])))([image, masked_mask])
-                    model = Model(inputs=image_in, outputs=image)
+                    if mask is None:
+                        image = GaussianBlur(sigma=sigma)(inputs[0])
+                    else:
+                        inputs.append(KL.Input(shape=im_shape + [1], dtype='float32'))
+                        image = GaussianBlur(sigma=sigma, use_mask=True)(inputs)
+                    model = Model(inputs=inputs, outputs=image)
                 if mask is None:
                     im = np.squeeze(model.predict(utils.add_axis(im, axis=[0, -1])))
                 else:
@@ -1289,18 +1283,17 @@ def simulate_upsampled_anisotropic_images(image_dir,
         path_im_downsampled = os.path.join(downsample_image_result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_im_downsampled)) | recompute:
             im, im_shape, aff, n_dims, _, h, image_res = utils.get_volume_info(path_image, return_volume=True)
-            sigma = utils.get_std_blurring_mask_for_downsampling(data_res, image_res, thickness=slice_thickness)
+            sigma = blurring_sigma_for_downsampling(image_res, data_res, thickness=slice_thickness)
+            sigma = [0 if data_res[i] == image_res[i] else sigma[i] for i in range(n_dims)]
 
             # blur image
             if gpu:
                 if (im_shape != previous_model_input_shape) | (model is None):
                     previous_model_input_shape = im_shape
                     image_in = KL.Input(shape=im_shape + [1])
-                    kernels_list = get_gaussian_1d_kernels(sigma)
-                    kernels_list = [None if data_res[i] == image_res[i] else kernels_list[i] for i in range(n_dims)]
-                    image = blur_tensor(image_in, kernels_list, n_dims)
+                    image = GaussianBlur(sigma=sigma)(image_in)
                     model = Model(inputs=image_in, outputs=image)
-                im = np.squeeze(model.predict(utils.add_axis(im, -2)))
+                im = np.squeeze(model.predict(utils.add_axis(im, axis=[0, -1])))
             else:
                 im = blur_volume(im, sigma, mask=None)
             utils.save_volume(im, aff, h, path_im_downsampled)

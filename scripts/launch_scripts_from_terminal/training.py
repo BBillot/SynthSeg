@@ -39,9 +39,10 @@ parser.add_argument("--nonlin_std", type=float, dest="nonlin_std", default=3.)
 parser.add_argument("--nonlin_shape_factor", type=float, dest="nonlin_shape_factor", default=.04)
 
 # blurring/resampling parameters
-parser.add_argument("--no_background_blurring", action='store_false', dest="blur_background")
-parser.add_argument("--data_res", type=str, dest="data_res", default=None)
-parser.add_argument("--thickness", type=str, dest="thickness", default=None)
+parser.add_argument("--randomise_res", action='store_true', dest="randomise_res")
+parser.add_argument("--distance_maps", action='store_true', dest="buil_distance_maps")
+parser.add_argument("--data_res", dest="data_res", type=infer, default=None)
+parser.add_argument("--thickness", dest="thickness", type=infer, default=None)
 parser.add_argument("--downsample", action='store_true', dest="downsample")
 parser.add_argument("--blur_range", type=float, dest="blur_range", default=1.15)
 

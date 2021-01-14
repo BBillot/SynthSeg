@@ -1,202 +1,206 @@
-"""This file contains functions to edit keras/tensorflow tensors.
-A lot of them are used in lab2im_model, and we provide them here separately, so they can be re-used easily.
-The functions are classified in three categories:
-1- blurring functions: They contain functions to create blurring tensors and to apply the obtained kernels:
-    -blur_tensor
-    -get_gaussian_1d_kernels
-    -blur_channel
-2- resampling function: function to resample a tensor to a specified resolution.
-    -resample_tensor
-3- converting label values: these functions only apply to tensors with a limited set of integers as values (typically
-label map tensors). It contains:
-    -convert_labels
-    -reset_label_values_to_zero
-4- padding tensor
-    -pad_tensor
+"""This file contains functions to handle keras/tensorflow tensors.
+    - blurring_sigma_for_downsampling
+    - gaussian_kernel
+    - resample_tensor
+    - convert_labels
 """
 
 # python imports
-import math
+import numpy as np
 import tensorflow as tf
 import keras.layers as KL
 import keras.backend as K
-import tensorflow_probability as tfp
+from itertools import combinations
 
 # project imports
 from . import utils
 
 # third-party imports
 import ext.neuron.layers as nrn_layers
+from ext.neuron.utils import volshape_to_meshgrid
 
 
-# ------------------------------------------------- blurring functions -------------------------------------------------
-
-
-def blur_tensor(tensor, list_kernels, n_dims=3):
-    """Blur image with masks in list_kernels, if they are not None or do not contain NaN values."""
-    for kernel in list_kernels:
-        if kernel is not None:
-            tensor = KL.Lambda(lambda x: K.switch(tf.math.reduce_any(tf.math.is_nan(x[1])),
-                                                  x[0],
-                                                  tf.nn.convolution(x[0], x[1], padding='SAME',
-                                                                    strides=[1]*n_dims)))([tensor, kernel])
-    return tensor
-
-
-def get_gaussian_1d_kernels(sigma, blurring_range=None, return_rc=False):
-    """This function builds a list of 1d gaussian blurring kernels.
-    The produced tensors are designed to be used with tf.nn.convolution.
-    The number of dimensions of the image to blur is assumed to be the length of sigma.
-    :param sigma: std deviation of the gaussian kernels to build. Must be a sequence of size n_dims
-    (excluding batch and channel dimensions)
-    :param blurring_range: if not None, this introduces a randomness in the blurring kernels,
-    where sigma is now multiplied by a coefficient dynamically sampled from a uniform distribution with bounds
-    [1/blurring_range, blurring_range].
-    :return: a list of 1d blurring kernels
+def blurring_sigma_for_downsampling(current_res, downsample_res, mult_coef=None, thickness=None):
+    """Compute standard deviations of 1d gaussian masks for image blurring before downsampling.
+    :param downsample_res: resolution to downsample to. Can be a 1d numpy array or list, or a tensor.
+    :param current_res: resolution of the volume before downsampling.
+    Can be a 1d numpy array or list or tensor of the same length as downsample res.
+    :param thickness: (optional) slices thickness in each dimension.
+    Can be a 1d numpy array or list of the same length as downsample res.
+    :return: standard deviation of the blurring masks given as as the same type as downsample_res (list or tensor).
     """
 
-    sigma = utils.reformat_to_list(sigma)
-    n_dims = len(sigma)
+    if not tf.is_tensor(downsample_res):
 
-    kernels_list = list()
-    random_coefs_list = list()
-    for i in range(n_dims):
+        # get blurring resolution (min between downsample_res and thickness)
+        current_res = np.array(current_res)
+        downsample_res = np.array(downsample_res)
+        if thickness is not None:
+            downsample_res = np.minimum(downsample_res, np.array(thickness))
 
-        if (sigma[i] is None) or (sigma[i] == 0):
-            kernels_list.append(None)
-
+        # get std deviation for blurring kernels
+        if mult_coef is None:
+            sigma = 0.75 * downsample_res / current_res
+            sigma[downsample_res == current_res] = 0.5
         else:
-            # random_coef = draw_random_resolution_coefficient(blurring_range, n_dims)
-            # build kernel
-            if blurring_range is not None:
-                # if i == 2:
-                #     random_coef = KL.Lambda(lambda x: tf.convert_to_tensor([0.5]))([])
-                # else:
-                #     random_coef = KL.Lambda(lambda x: tf.convert_to_tensor([1.]))([])
-                # random_coef = KL.Lambda(lambda x: tf.convert_to_tensor([blurring_range*0.75]))([])
-                random_coef = KL.Lambda(lambda x: tf.random.uniform((1,), 1 / blurring_range, blurring_range))([])
-                size = int(math.ceil(2.5 * blurring_range * sigma[i]) / 2)
-                kernel = KL.Lambda(lambda x: tfp.distributions.Normal(0., x*sigma[i]).prob(tf.range(start=-size,
-                                   limit=size + 1, dtype=tf.float32)))(random_coef)
-                random_coefs_list.append(random_coef)
-            else:
-                size = int(math.ceil(2.5 * sigma[i]) / 2)
-                kernel = KL.Lambda(lambda x: tfp.distributions.Normal(0., sigma[i]).prob(tf.range(start=-size,
-                                   limit=size + 1, dtype=tf.float32)))([])
-                random_coefs_list.append(None)
-            kernel = KL.Lambda(lambda x: x / tf.reduce_sum(x))(kernel)
+            sigma = mult_coef * downsample_res / current_res
+        sigma[downsample_res == 0] = 0
 
-            # add dimensions
-            for j in range(n_dims):
-                if j < i:
-                    kernel = KL.Lambda(lambda x: tf.expand_dims(x, 0))(kernel)
-                elif j > i:
-                    kernel = KL.Lambda(lambda x: tf.expand_dims(x, -1))(kernel)
-            kernel = KL.Lambda(lambda x: tf.expand_dims(tf.expand_dims(x, -1), -1))(kernel)  # for tf.nn.convolution
-            kernels_list.append(kernel)
-
-    if return_rc:
-        random_coefs = KL.Lambda(lambda x: tf.concat(x, axis=0))(random_coefs_list)
-        return kernels_list, random_coefs
     else:
-        return kernels_list
+
+        # reformat data resolution at which we blur
+        if thickness is not None:
+            tmp_down_res = KL.Lambda(lambda x: tf.math.minimum(tf.convert_to_tensor(thickness, dtype='float32'),
+                                                                     x))(downsample_res)
+        else:
+            tmp_down_res = downsample_res
+
+        # get std deviation for blurring kernels
+        current_res = KL.Lambda(lambda x: tf.convert_to_tensor(current_res, dtype='float32'))([])
+        if mult_coef is None:
+            sigma = KL.Lambda(lambda x:
+                              tf.where(tf.math.equal(x[0], x[1]), 0.5, 0.75 * x[0] / x[1]))([tmp_down_res, current_res])
+        else:
+            sigma = KL.Lambda(lambda x: mult_coef * x[0] / x[1])([tmp_down_res, current_res])
+        sigma = KL.Lambda(lambda x: tf.where(tf.math.equal(x[0], 0.), 0., x[1]))([tmp_down_res, sigma])
+
+    return sigma
 
 
-def draw_random_resolution_coefficient(blurring_range, n_dims):
-
-    low_var_coefs = KL.Lambda(lambda x: tf.random.uniform([n_dims], -1.05, 1.05))([])
-    high_var_coefs = KL.Lambda(lambda x: tf.random.uniform([1], 1/blurring_range, blurring_range))([])
-    axis = KL.Lambda(lambda x: tf.random.uniform([1, 1], 0, n_dims-1, dtype='int32'))([])
-    return KL.Lambda(lambda x: tf.tensor_scatter_nd_update(x[0], x[1], x[2]))([low_var_coefs, axis, high_var_coefs])
-
-
-def blur_channel(tensor, mask, kernels_list, n_dims, blur_background=True):
-    """Blur a tensor with a list of kernels.
-    If blur_background is True, this function enforces a zero background after blurring in 20% of the cases.
-    If blur_background is False, this function corrects edge-blurring effects and replaces the zero-backgound by a low
-    intensity gaussian noise.
-    :param tensor: a input tensor
-    :param mask: mask of non-background regions in the input tensor
-    :param kernels_list: list of blurring 1d kernels
-    :param n_dims: number of dimensions of the initial image (excluding batch and channel dimensions)
-    :param blur_background: whether to correct for edge-blurring effects
-    :return: blurred tensor with background augmentation
+def gaussian_kernel(sigma, max_sigma=None, blur_range=None, separable=True):
+    """Build gaussian kernels of the specified standard deviation. The outputs are given as tensorflow tensors.
+    :param sigma: standard deviation of the tensors. Can be given as a list/numpy array or as tensors. In each case,
+    sigma must have the same length as the number of dimensions of the volume that will be blurred with the output
+    tensors (e.g. sigma must have 3 values for 3D volumes).
+    :param max_sigma:
+    :param blur_range:
+    :param separable:
+    :return:
     """
+    # convert sigma into a tensor
+    if not tf.is_tensor(sigma):
+        sigma_tens = KL.Lambda(lambda x: tf.convert_to_tensor(utils.reformat_to_list(sigma), dtype='float32'))([])
+    else:
+        assert max_sigma is not None, 'max_sigma must be provided when sigma is given as a tensor'
+        sigma_tens = sigma
+    shape = sigma_tens.get_shape().as_list()
 
-    # blur image
-    tensor = blur_tensor(tensor, kernels_list, n_dims)
+    # get n_dims and batchsize
+    if shape[0] is not None:
+        n_dims = shape[0]
+        batchsize = None
+    else:
+        n_dims = shape[1]
+        batchsize = tf.split(tf.shape(sigma_tens), [1, -1])[0]
 
-    if blur_background:  # background already blurred with the rest of the image
+    # reformat max_sigma
+    if max_sigma is not None:  # dynamic blurring
+        max_sigma = np.array(utils.reformat_to_list(max_sigma, length=n_dims))
+    else:  # sigma is fixed
+        max_sigma = np.array(utils.reformat_to_list(sigma, length=n_dims))
 
-        # enforce zero background in 20% of the cases
-        rand = KL.Lambda(lambda x: K.greater(tf.random.uniform((1, 1), 0, 1), 0.8))([])
-        tensor = KL.Lambda(lambda y: K.switch(tf.squeeze(y[0]),
-                                              KL.Lambda(lambda x: tf.where(tf.cast(x[1], dtype='bool'),
-                                                                           x[0], tf.zeros_like(x[0])))([y[1], y[2]]),
-                                              y[1]))([rand, tensor, mask])
+    # randomise the burring std dev and/or split it between dimensions
+    if blur_range is not None:
+        sigma_tens = sigma_tens * tf.random.uniform(tf.shape(sigma_tens), minval=1 / blur_range, maxval=blur_range)
 
-    else:  # correct for edge blurring effects
+    # get size of blurring kernels
+    windowsize = np.int32(np.ceil(2.5 * max_sigma) / 2) * 2 + 1
 
-        # blur mask and correct edge blurring effects
-        blurred_mask = blur_tensor(mask, kernels_list, n_dims)
-        tensor = KL.Lambda(lambda x: x[0] / (x[1] + K.epsilon()))([tensor, blurred_mask])
+    if separable:
 
-        # replace zero background by low intensity background in 50% of the cases
-        rand = KL.Lambda(lambda x: K.greater(tf.random.uniform((1, 1), 0, 1), 0.5))([])
-        bckgd_mean = KL.Lambda(lambda x: tf.random.uniform((1, 1), 0, 20))([])
-        bckgd_std = KL.Lambda(lambda x: tf.random.uniform((1, 1), 0, 10))([])
-        bckgd_mean = KL.Lambda(lambda y: K.switch(tf.squeeze(y[0]),
-                                                  KL.Lambda(lambda x: tf.zeros_like(x))(y[1]),
-                                                  y[1]))([rand, bckgd_mean])
-        bckgd_std = KL.Lambda(lambda y: K.switch(tf.squeeze(y[0]),
-                                                 KL.Lambda(lambda x: tf.zeros_like(x))(y[1]),
-                                                 y[1]))([rand, bckgd_std])
-        background = KL.Lambda(lambda x: x[1] + x[2]*tf.random.normal(tf.shape(x[0])))([tensor, bckgd_mean, bckgd_std])
-        background_kernels = get_gaussian_1d_kernels(sigma=[1] * 3)
-        background = blur_tensor(background, background_kernels, n_dims)
-        tensor = KL.Lambda(lambda x: tf.where(tf.cast(x[1], dtype='bool'), x[0], x[2]))([tensor, mask, background])
+        split_sigma = tf.split(sigma_tens, [1] * n_dims, axis=-1)
 
-    return tensor
+        kernels = list()
+        comb = np.array(list(combinations(list(range(n_dims)), n_dims - 1))[::-1])
+        for (i, wsize) in enumerate(windowsize):
 
+            if wsize > 1:
 
-# ------------------------------------------------ resampling functions ------------------------------------------------
+                # build meshgrid and replicate it along batch dim if dynamic blurring
+                locations = tf.cast(tf.range(0, wsize), 'float32') - (wsize - 1) / 2
+                if batchsize is not None:
+                    locations = tf.tile(tf.expand_dims(locations, axis=0),
+                                        tf.concat([batchsize, tf.ones(tf.shape(tf.shape(locations)), dtype='int32')],
+                                                  axis=0))
+                    comb[i] += 1
+
+                # compute gaussians
+                exp_term = -K.square(locations) / (2 * split_sigma[i] ** 2)
+                g = tf.exp(exp_term - tf.math.log(np.sqrt(2 * np.pi) * split_sigma[i]))
+                g = g / tf.reduce_sum(g)
+
+                for axis in comb[i]:
+                    g = tf.expand_dims(g, axis=axis)
+                kernels.append(tf.expand_dims(tf.expand_dims(g, -1), -1))
+
+            else:
+                kernels.append(None)
+
+    else:
+
+        # build meshgrid
+        mesh = [tf.cast(f, 'float32') for f in volshape_to_meshgrid(windowsize, indexing='ij')]
+        diff = tf.stack([mesh[f] - (windowsize[f] - 1) / 2 for f in range(len(windowsize))], axis=-1)
+
+        # replicate meshgrid to batch size and reshape sigma_tens
+        if batchsize is not None:
+            diff = tf.tile(tf.expand_dims(diff, axis=0),
+                           tf.concat([batchsize, tf.ones(tf.shape(tf.shape(diff)), dtype='int32')], axis=0))
+            for i in range(n_dims):
+                sigma_tens = tf.expand_dims(sigma_tens, axis=1)
+        else:
+            for i in range(n_dims):
+                sigma_tens = tf.expand_dims(sigma_tens, axis=0)
+
+        # compute gaussians
+        exp_term = -K.square(diff) / (2 * sigma_tens**2)
+        norms = exp_term - tf.math.log(np.sqrt(2 * np.pi) * sigma_tens)
+        kernels = K.sum(norms, -1)
+        kernels = tf.exp(kernels)
+        kernels /= tf.reduce_sum(kernels)
+        kernels = tf.expand_dims(tf.expand_dims(kernels, -1), -1)
+
+    return kernels
+
 
 def resample_tensor(tensor,
                     resample_shape,
                     interp_method='linear',
                     subsample_res=None,
-                    volume_res=None):
+                    volume_res=None,
+                    build_reliability_map=False):
     """This function resamples a volume to resample_shape. It does not apply any pre-filtering.
     A prior downsampling step can be added if subsample_res is specified. In this case, volume_res should also be
-    specified, in order to calculate the downsampling ratio.
+    specified, in order to calculate the downsampling ratio. A reliability map can also be returned to indicate which
+    slices were interpolated during resampling from the downsampled to final tensor.
     :param tensor: tensor
-    :param resample_shape: shape to resample the input tensor to. This can be a list or numpy array of size (n_dims,),
-    where n_dims excludes the batchsize and channels dimensions.
-    :param interp_method: interpolation method for resampling, 'linear' or 'nearest'
-    :param subsample_res: if not None, this triggers a downsampling of the volume, prior to the resampling step.
-    list or numpy array of size (n_dims,).
-    :param volume_res: if subsample_res is not None, this should be provided to compute downsampling ratio.
-     list or numpy array of size (n_dims,).
-    :return: resampled volume
+    :param resample_shape: list or numpy array of size (n_dims,)
+    :param interp_method: (optional) interpolation method for resampling, 'linear' (default) or 'nearest'
+    :param subsample_res: (optional) if not None, this triggers a downsampling of the volume, prior to the resampling
+    step. List or numpy array of size (n_dims,). Default si None.
+    :param volume_res: (optional) if subsample_res is not None, this should be provided to compute downsampling ratio.
+    list or numpy array of size (n_dims,). Default is None.
+    :param build_reliability_map: whether to return reliability map along with the resampled tensor. This map indicates
+    which slices of the resampled tensor are interpolated (0=interpolated, 1=real slice, in between=degree of realness).
+    :return: resampled volume, with reliability map if necessary.
     """
 
     # reformat resolutions to lists
     subsample_res = utils.reformat_to_list(subsample_res)
     volume_res = utils.reformat_to_list(volume_res)
+    n_dims = len(resample_shape)
+
+    # downsample image
+    tensor_shape = tensor.get_shape().as_list()[1:-1]
+    downsample_shape = tensor_shape  # will be modified if we actually downsample
+
     if subsample_res is not None:
         assert volume_res is not None, 'volume_res must be given when providing a subsampling resolution.'
         assert len(subsample_res) == len(volume_res), 'subsample_res and volume_res must have the same length, ' \
                                                       'had {0}, and {1}'.format(len(subsample_res), len(volume_res))
-    n_dims = len(resample_shape)
-
-    # downsample image
-    downsample_shape = None
-    tensor_shape = tensor.get_shape().as_list()[1:-1]
-    if subsample_res is not None:
         if subsample_res != volume_res:
 
             # get shape at which we downsample
-            assert volume_res is not None, 'if subsanple_res is specified, so should atlas_res be.'
             downsample_shape = [int(tensor_shape[i] * volume_res[i] / subsample_res[i]) for i in range(n_dims)]
 
             # downsample volume
@@ -204,11 +208,43 @@ def resample_tensor(tensor,
             tensor = nrn_layers.Resize(size=downsample_shape, interp_method='nearest')(tensor)
 
     # resample image at target resolution
-    if resample_shape != downsample_shape:
+    if resample_shape != downsample_shape:  # if we didn't dowmsample downsample_shape = tensor_shape
         tensor._keras_shape = tuple(tensor.get_shape().as_list())
         tensor = nrn_layers.Resize(size=resample_shape, interp_method=interp_method)(tensor)
 
-    return tensor
+    # compute reliability maps if necessary and return results
+    if build_reliability_map:
+
+        # compute maps only if we downsampled
+        if downsample_shape != tensor_shape:
+
+            # compute upsampling factors
+            upsampling_factors = np.array(resample_shape) / np.array(downsample_shape)
+
+            # build reliability map
+            reliability_map = 1
+            for i in range(n_dims):
+                loc_float = np.arange(0, resample_shape[i], upsampling_factors[i])
+                loc_floor = np.int32(np.floor(loc_float))
+                loc_ceil = np.int32(np.clip(loc_floor + 1, 0, resample_shape[i] - 1))
+                tmp_reliability_map = np.zeros(resample_shape[i])
+                tmp_reliability_map[loc_floor] = 1 - (loc_float - loc_floor)
+                tmp_reliability_map[loc_ceil] = tmp_reliability_map[loc_ceil] + (loc_float - loc_floor)
+                shape = [1, 1, 1]
+                shape[i] = resample_shape[i]
+                reliability_map = reliability_map * np.reshape(tmp_reliability_map, shape)
+            shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
+            mask = KL.Lambda(lambda x: tf.reshape(tf.convert_to_tensor(reliability_map, dtype='float32'),
+                                                  shape=x))(shape)
+
+        # otherwise just return an all-one tensor
+        else:
+            mask = KL.Lambda(lambda x: tf.ones_like(x))(tensor)
+
+        return tensor, mask
+
+    else:
+        return tensor
 
 
 def convert_labels(label_map, labels_list):

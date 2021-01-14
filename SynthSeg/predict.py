@@ -11,6 +11,7 @@ from SynthSeg import evaluate
 
 # third-party imports
 from ext.lab2im import utils
+from ext.lab2im import layers
 from ext.lab2im import edit_volumes
 from ext.neuron import layers as nrn_layers
 from ext.neuron import models as nrn_models
@@ -367,14 +368,10 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
         if resample is not None:
             last_tensor = nrn_layers.Resize(size=input_shape[:-1], name='post_resample')(last_tensor)
 
-        # smooth each posteriors map separately
+        # smooth posteriors
         if sigma_smoothing != 0:
-            kernels_list = l2i_et.get_gaussian_1d_kernels(utils.reformat_to_list(sigma_smoothing, length=n_dims))
-            split = KL.Lambda(lambda x: tf.split(x, [1] * n_lab, axis=-1), name='resample_split')(last_tensor)
-            last_tensor = l2i_et.blur_tensor(split[0], kernels_list, n_dims)
-            for i in range(1, n_lab):
-                temp_blurred = l2i_et.blur_tensor(split[i], kernels_list, n_dims)
-                last_tensor = KL.concatenate([last_tensor, temp_blurred], axis=-1, name='cat_blurring_%s' % i)
+            last_tensor._keras_shape = tuple(last_tensor.get_shape().as_list())
+            last_tensor = layers.GaussianBlur(sigma=sigma_smoothing)(last_tensor)
 
         # build model
         net = Model(inputs=input_tensor, outputs=last_tensor)

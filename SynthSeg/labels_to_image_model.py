@@ -2,7 +2,6 @@
 import numpy as np
 import tensorflow as tf
 import keras.layers as KL
-import keras.backend as K
 from keras.models import Model
 
 # third-party imports
@@ -10,10 +9,7 @@ from ext.lab2im import utils
 from ext.lab2im import layers
 from ext.neuron import layers as nrn_layers
 from ext.lab2im import edit_tensors as l2i_et
-from ext.lab2im import spatial_augmentation as l2i_sa
-from ext.lab2im import intensity_augmentation as l2i_ia
-
-from ext.neuron import layers as nrn_layers
+from ext.lab2im.edit_volumes import get_ras_axes
 
 
 def labels_to_image_model(labels_shape,
@@ -33,7 +29,8 @@ def labels_to_image_model(labels_shape,
                           translation_bounds=False,
                           nonlin_std=3.,
                           nonlin_shape_factor=.0625,
-                          blur_background=True,
+                          randomise_res=False,
+                          buil_distance_maps=False,
                           data_res=None,
                           thickness=None,
                           downsample=False,
@@ -112,13 +109,10 @@ def labels_to_image_model(labels_shape,
     is optional (see param downsample). Default for data_res is None, where images are slighlty blurred.
     If the generated images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d
     numpy array, or the path to a 1d numy array. In the multi-modal case, it should be given as a numpy array (or a
-    path) of size (n_mod, n_dims), where each row is the acquisition resolution of the correspionding chanel.
+    path) of size (n_mod, n_dims), where each row is the acquisition resolution of the corresponding channel.
     :param thickness: (optional) if data_res is provided, we can further specify the slice thickness of the low
-    resolution images to mimick.
-    If the generated images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d
-    numpy array, or the path to a 1d numy array. In the multi-modal case, it should be given as a numpy array (or a
-    path) of size (n_mod, n_dims), where each row is the acquisition resolution of the correspionding chanel.
-    :param downsample: (optional) whether to actually downsample the volume image to data_res.
+    resolution images to mimic. Must be provided in the same format as data_res. Default thickness = data_res.
+    :param downsample: (optional) whether to actually downsample the volume images to data_res after blurring.
     Default is False, except when thickness is provided, and thickness < data_res.
     :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
     or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
@@ -192,69 +186,39 @@ def labels_to_image_model(labels_shape,
     image = layers.IntensityAugmentation(0, clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
 
     # loop over channels
-    if n_channels > 1:
-        split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image)
-    else:
-        split = [image]
-    mask = KL.Lambda(lambda x: tf.where(tf.greater(x, 0), tf.ones_like(x, dtype='float32'),
-                                        tf.zeros_like(x, dtype='float32')))(labels)
-    processed_channels = list()
+    channels = list()
+    split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
     for i, channel in enumerate(split):
 
-        # reset edges of second channels to zero
-        if (crop_channel2 is not None) & (i == 1):  # randomly crop sides of second channel
-            channel, tmp_mask = l2i_sa.restrict_tensor(channel, axes=3, boundaries=crop_channel2)
+        channel._keras_shape = tuple(channel.get_shape().as_list())
+
+        if randomise_res:
+            max_res = np.array([9.] * 3)
+            resolution, blur_res = layers.SampleResolution(atlas_res, max_res, .05, return_thickness=True)(means_input)
+            sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, resolution, thickness=blur_res)
+            channel = layers.DynamicGaussianBlur(0.75 * max_res / np.array(atlas_res), blur_range)([channel, sigma])
+            if buil_distance_maps:
+                channel, dist = layers.MimicAcquisition(atlas_res, atlas_res, output_shape, True)([channel, resolution])
+                channels.extend([channel, dist])
+            else:
+                channel = layers.MimicAcquisition(atlas_res, atlas_res, output_shape, False)([channel, resolution])
+                channels.append(channel)
+
         else:
-            tmp_mask = None
-
-        # blur channel
-        if thickness is not None:
-            sigma = utils.get_std_blurring_mask_for_downsampling(data_res[i], atlas_res, thickness=thickness[i])
-        else:
-            sigma = utils.get_std_blurring_mask_for_downsampling(data_res[i], atlas_res)
-        kernels_list, random_coefs = l2i_et.get_gaussian_1d_kernels(sigma, blurring_range=blur_range, return_rc=True)
-        channel = l2i_et.blur_channel(channel, mask, kernels_list, n_dims, blur_background)
-        if (crop_channel2 is not None) & (i == 1):
-            channel = KL.multiply([channel, tmp_mask])
-
-        # resample channel
-        if downsample:
-            ###################################
-            # undo changes in resample tensor #
-            ###################################
-            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
-            # channel._keras_shape = tuple(channel.get_shape().as_list())
-            # channel = nrn_layers.MimicAcquisition(atlas_res, data_res[i], blur_range, output_shape)([channel,
-            #                                                                                          random_coefs])
-        elif thickness is not None:
-            diff = [thickness[i][dim_idx] - data_res[i][dim_idx] for dim_idx in range(n_dims)]
-            if min(diff) < 0:  # automatically downsample if data_res > thickness
-                channel = l2i_et.resample_tensor(channel, output_shape, 'linear', data_res[i], atlas_res)
-                # channel._keras_shape = tuple(channel.get_shape().as_list())
-                # channel = nrn_layers.MimicAcquisition(atlas_res, data_res[i], blur_range, output_shape)([channel,
-                #                                                                                          random_coefs])
-        elif output_shape != crop_shape:
-            channel = l2i_et.resample_tensor(channel, output_shape, 'linear', None, atlas_res)
-        channel = KL.Lambda(lambda x: tf.cast(x, 'float32'), name='resampled')(channel)
-
-        # apply bias field
-        if apply_bias_field:
-            channel = l2i_ia.bias_field_augmentation(channel, bias_field_std, bias_shape_factor)
-
-        # intensity augmentation
-        channel = KL.Lambda(lambda x: K.clip(x, 0, 300))(channel)
-        channel = l2i_ia.min_max_normalisation(channel)
-        processed_channels.append(l2i_ia.gamma_augmentation(channel, std=0.5))
+            sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
+            channel = layers.GaussianBlur(sigma, blur_range)(channel)
+            if downsample[i]:
+                resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
+                channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
+            elif output_shape != crop_shape:
+                channel = nrn_layers.Resize(size=output_shape)(channel)
+            channels.append(channel)
 
     # concatenate all channels back
-    if n_channels > 1:
-        image = KL.concatenate(processed_channels)
-    else:
-        image = processed_channels[0]
+    image = KL.Lambda(lambda x: tf.concat(x, -1))(channels) if len(channels) > 1 else channels[0]
 
     # resample labels at target resolution
     if crop_shape != output_shape:
-        labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
         labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
 
     # convert labels back to original values and reset unwanted labels to zero

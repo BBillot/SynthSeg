@@ -32,11 +32,6 @@ prior_distribution = 'normal'
 prior_means = '../../data/labels_classes_priors/prior_means.npy'  # the same prior will be used for all channels
 prior_stds = '../../data/labels_classes_priors/prior_stds.npy'
 
-# blurring parameter
-# Here we keep want to obtain images with realistic background, either full-zero or low-intenisty Gaussian.
-# This options also enable correction for edge bluring effects.
-background_blur = False
-
 # IMPORTANT !!!
 # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
 # these values refer to the RAS axes.
@@ -143,7 +138,6 @@ brain_generator = BrainGenerator(labels_dir=path_label_maps,
                                  rotation_bounds=rotation_bounds,
                                  shearing_bounds=shearing_bounds,
                                  nonlin_std=nonlin_std,
-                                 blur_background=background_blur,
                                  data_res=data_res,
                                  thickness=thickness,
                                  downsample=downsample,

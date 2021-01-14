@@ -1,17 +1,13 @@
 # python imports
-import keras
 import numpy as np
 import tensorflow as tf
 import keras.layers as KL
-import keras.backend as K
+from keras.models import Model
 
 # project imports
 from . import utils
-from .sample_gmm import sample_gmm_conditioned_on_labels
-from .spatial_augmentation import deform_tensor, random_cropping
-from .edit_tensors import convert_labels, reset_label_values_to_zero
-from .edit_tensors import blur_channel, get_gaussian_1d_kernels, resample_tensor
-from .intensity_augmentation import gamma_augmentation, bias_field_augmentation, min_max_normalisation
+from . import layers
+from .edit_tensors import convert_labels, resample_tensor, blurring_sigma_for_downsampling
 
 
 def lab2im_model(labels_shape,
@@ -22,7 +18,6 @@ def lab2im_model(labels_shape,
                  target_res,
                  output_shape=None,
                  output_div_by_n=None,
-                 blur_background=True,
                  blur_range=1.15):
     """
     This function builds a keras/tensorflow model to generate images from provided label maps.
@@ -53,9 +48,6 @@ def lab2im_model(labels_shape,
     Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.
     :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites output_shape
     if necessary. Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.
-    :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
-    zero with a probability of 0.2. If False, the background is not blurred (we apply an edge blurring correction), and
-    can be replaced by a low-intensity background.
     :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
     or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
     from a uniform distribution with bounds [1/blur_range, blur_range]. If None, no randomisation. Default is 1.15.
@@ -95,30 +87,14 @@ def lab2im_model(labels_shape,
     labels._keras_shape = tuple(labels.get_shape().as_list())
     image = layers.SampleConditionalGMM()([labels, means_input, stds_input])
 
-        sigma = utils.get_std_blurring_mask_for_downsampling(target_res, atlas_res)
-        kernels_list = get_gaussian_1d_kernels(sigma, blurring_range=blur_range)
-        channel = blur_channel(channel, mask, kernels_list, n_dims, blur_background)
+    # blur image
+    sigma = blurring_sigma_for_downsampling(atlas_res, target_res)
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.GaussianBlur(sigma=sigma, random_blur_range=blur_range)(image)
 
-        # resample channel
-        channel = resample_tensor(channel, output_shape, 'linear')
-
-        # apply bias field
-        channel = bias_field_augmentation(channel, bias_shape_factor=.025, bias_field_std=.3)
-
-        # intensity augmentation
-        channel = KL.Lambda(lambda x: K.clip(x, 0, 300))(channel)
-        channel = min_max_normalisation(channel)
-        processed_channels.append(gamma_augmentation(channel, std=0.2))
-
-    # concatenate all channels back
-    if n_channels > 1:
-        image = KL.concatenate(processed_channels)
-    else:
-        image = processed_channels[0]
-
-    # resample labels at target resolution
+    # resample to target res
     if crop_shape != output_shape:
-        labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
+        image = resample_tensor(image, output_shape, interp_method='linear')
         labels = resample_tensor(labels, output_shape, interp_method='nearest')
 
     # apply bias field

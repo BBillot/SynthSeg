@@ -24,7 +24,6 @@ class ImageGenerator:
                  prior_means=None,
                  prior_stds=None,
                  use_specific_stats_for_channel=False,
-                 blur_background=True,
                  blur_range=1.15):
         """
         This class is wrapper around the lab2im_model model. It contains the GPU model that generates images from labels
@@ -89,9 +88,6 @@ class ImageGenerator:
         only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
 
         # blurring parameters
-        :param blur_background: (optional) If True, the background is blurred with the other labels, and can be reset to
-        zero with a probability of 0.2. If False, the background is not blurred (we apply an edge blurring correction),
-        and can be replaced by a low-intensity background with a probability of 0.5.
         :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is
         given or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a c
         oefficient sampled from a uniform distribution with bounds [1/blur_range, blur_range].
@@ -138,7 +134,6 @@ class ImageGenerator:
         self.use_specific_stats_for_channel = use_specific_stats_for_channel
 
         # blurring parameters
-        self.blur_background = blur_background
         self.blur_range = blur_range
 
         # build transformation model
@@ -160,7 +155,6 @@ class ImageGenerator:
                                        target_res=self.target_res,
                                        output_shape=self.output_shape,
                                        output_div_by_n=self.output_div_by_n,
-                                       blur_background=self.blur_background,
                                        blur_range=self.blur_range)
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
