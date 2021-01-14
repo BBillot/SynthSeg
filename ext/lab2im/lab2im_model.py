@@ -65,10 +65,7 @@ def lab2im_model(labels_shape,
     labels_shape = utils.reformat_to_list(labels_shape)
     n_dims, _ = utils.get_dims(labels_shape)
     atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims=n_dims)[0]
-    if target_res is None:
-        target_res = atlas_res
-    else:
-        target_res = utils.reformat_to_n_channels_array(target_res, n_dims)[0]
+    target_res = atlas_res if (target_res is None) else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
 
     # get shapes
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
@@ -80,20 +77,20 @@ def lab2im_model(labels_shape,
     # define model inputs
     labels_input = KL.Input(shape=labels_shape+[1], name='labels_input')
     means_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='means_input')
-    std_devs_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='std_devs_input')
-    aff_in = KL.Input(shape=(n_dims + 1, n_dims + 1), name='aff_input')
-    list_inputs = [labels_input, means_input, std_devs_input, aff_in]
+    stds_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='stds_input')
 
     # convert labels to new_label_list
     labels = convert_labels(labels_input, lut)
 
     # deform labels
-    labels = deform_tensor(labels, affine_trans=aff_in, interp_method='nearest')
+    labels._keras_shape = tuple(labels.get_shape().as_list())
+    labels = layers.RandomSpatialDeformation(inter_method='nearest')(labels)
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'))(labels)
 
     # cropping
     if crop_shape != labels_shape:
-        labels, _ = random_cropping(labels, crop_shape, n_dims)
+        labels._keras_shape = tuple(labels.get_shape().as_list())
+        labels = layers.RandomCrop(crop_shape)(labels)
 
     # build synthetic image
     image = sample_gmm_conditioned_on_labels(labels, means_input, std_devs_input, n_generation_labels, n_channels)

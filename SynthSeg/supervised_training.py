@@ -28,11 +28,10 @@ def supervised_training(image_dir,
                         batchsize=1,
                         output_shape=None,
                         flipping=True,
-                        apply_linear_trans=True,
                         scaling_bounds=.015,
                         rotation_bounds=15,
                         shearing_bounds=.012,
-                        apply_nonlin_trans=True,
+                        translation_bounds=False,
                         nonlin_std=3.,
                         nonlin_shape_factor=.04,
                         crop_channel_2=None,
@@ -99,11 +98,7 @@ def supervised_training(image_dir,
 
     model_input_generator = build_model_inputs(path_images,
                                                path_labels,
-                                               batchsize=batchsize,
-                                               apply_linear_trans=apply_linear_trans,
-                                               scaling_bounds=scaling_bounds,
-                                               rotation_bounds=rotation_bounds,
-                                               shearing_bounds=shearing_bounds)
+                                               batchsize=batchsize)
     training_generator = utils.build_training_generator(model_input_generator, batchsize)
 
     # prepare the segmentation model
@@ -189,59 +184,32 @@ def labels_to_image_model(im_shape,
     labels = l2i_et.convert_labels(labels_input, lut)
 
     # deform labels
-    trans_inputs = list()
-    if apply_linear_trans | apply_nonlin_trans:
+    if (scaling_bounds is not False) | (rotation_bounds is not False) | (shearing_bounds is not False) | \
+       (translation_bounds is not False) | (nonlin_std is not False):
         labels._keras_shape = tuple(labels.get_shape().as_list())
-        labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
-        if apply_linear_trans:
-            trans_inputs.append(aff_in)
-        if apply_nonlin_trans:
-            small_shape = utils.get_resample_shape(im_shape, nonlin_shape_factor, n_dims)
-            nonlin_shape = [batchsize] + small_shape
-            nonlin_std_prior = KL.Lambda(lambda x: tf.random.uniform((1, 1), maxval=nonlin_std))([])
-            elastic_trans = KL.Lambda(lambda x: tf.random.normal(nonlin_shape, stddev=x))(nonlin_std_prior)
-            elastic_trans._keras_shape = tuple(elastic_trans.get_shape().as_list())
-            resize_shape = [max(int(im_shape[i]/2), small_shape[i]) for i in range(n_dims)]
-            nonlin_field = nrn_layers.Resize(size=resize_shape, interp_method='linear')(elastic_trans)
-            nonlin_field = nrn_layers.VecInt()(nonlin_field)
-            nonlin_field = nrn_layers.Resize(size=im_shape, interp_method='linear')(nonlin_field)
-            trans_inputs.append(nonlin_field)
-        labels = nrn_layers.SpatialTransformer(interp_method='nearest')([labels] + trans_inputs)
-        labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'))(labels)
-        image = nrn_layers.SpatialTransformer(interp_method='linear')([image_input] + trans_inputs)
+        labels, image = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
+                                                        rotation_bounds=rotation_bounds,
+                                                        shearing_bounds=shearing_bounds,
+                                                        translation_bounds=translation_bounds,
+                                                        nonlin_std=nonlin_std,
+                                                        nonlin_shape_factor=nonlin_shape_factor,
+                                                        inter_method=['nearest', 'linear'])([labels, image_input])
     else:
         image = image_input
 
     # crop labels
     if crop_shape != im_shape:
-        labels, crop_idx = l2i_sa.random_cropping(labels, crop_shape, n_dims)
-        image = KL.Lambda(lambda x: tf.slice(x[0], begin=tf.cast(x[1], dtype='int32'),
-                          size=tf.convert_to_tensor([-1] + crop_shape + [-1], dtype='int32')))([image, crop_idx])
+        labels._keras_shape = tuple(labels.get_shape().as_list())
+        image._keras_shape = tuple(image.get_shape().as_list())
+        labels, image = layers.RandomCrop(crop_shape)([labels, image])
 
     # flip labels
-    ras_axes = edit_volumes.get_ras_axes(aff, n_dims)
-    flip_axis = [ras_axes[0] + 1]
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
-        labels, flip = l2i_sa.label_map_random_flipping(labels, new_segmentation_label_list, n_neutral_labels, aff,
-                                                        n_dims)
-        image = KL.Lambda(lambda y: K.switch(tf.squeeze(y[0]),
-                                             KL.Lambda(lambda x: K.reverse(x, axes=flip_axis))(y[1]),
-                                             y[1]))([flip, image])
-
-    # loop over channels
-    if n_channels > 1:
-        split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image)
-    else:
-        split = [image]
-
-    processed_channels = list()
-    for i, channel in enumerate(split):
-
-        # reset edges of second channels to zero
-        if (crop_channel2 is not None) & (i == 1):  # randomly crop sides of second channel
-            crop_channel2 = utils.load_array_if_path(crop_channel2)
-            channel, _ = l2i_sa.restrict_tensor(channel, axes=3, boundaries=crop_channel2)
+        labels._keras_shape = tuple(labels.get_shape().as_list())
+        image._keras_shape = tuple(image.get_shape().as_list())
+        labels, image = layers.RandomFlip(flip_axis=get_ras_axes(aff, n_dims)[0], swap_labels=[True, False],
+                                          label_list=new_seg_labels, n_neutral_labels=n_neutral_labels)([labels, image])
 
         # apply bias field
         if apply_bias_field:
@@ -270,11 +238,7 @@ def labels_to_image_model(im_shape,
 
 def build_model_inputs(path_images,
                        path_label_maps,
-                       batchsize=1,
-                       apply_linear_trans=True,
-                       scaling_bounds=None,
-                       rotation_bounds=None,
-                       shearing_bounds=None):
+                       batchsize=1):
 
     # get label info
     _, _, n_dims, n_channels, _, _ = utils.get_volume_info(path_images[0])
@@ -288,7 +252,6 @@ def build_model_inputs(path_images,
         # initialise input lists
         list_images = list()
         list_label_maps = list()
-        list_affine_transforms = list()
 
         for idx in indices:
 
@@ -301,27 +264,11 @@ def build_model_inputs(path_images,
 
             # add labels
             labels = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
-            list_label_maps.append(utils.add_axis(labels, axis=-2))
-
-            # add linear transform to inputs
-            if apply_linear_trans:
-                # get affine transformation: rotate, scale, shear (translation done during random cropping)
-                scaling = utils.draw_value_from_distribution(scaling_bounds, size=n_dims, centre=1, default_range=.15)
-                if n_dims == 2:
-                    rotation = utils.draw_value_from_distribution(rotation_bounds, default_range=15.0)
-                else:
-                    rotation = utils.draw_value_from_distribution(rotation_bounds, size=n_dims, default_range=15.0)
-                shearing = utils.draw_value_from_distribution(shearing_bounds, size=n_dims**2-n_dims, default_range=.01)
-                affine_transform = utils.create_affine_transformation_matrix(n_dims, scaling, rotation, shearing)
-                list_affine_transforms.append(utils.add_axis(affine_transform))
+            list_label_maps.append(utils.add_axis(labels, axis=[0, -1]))
 
         # build list of inputs of augmentation model
         list_inputs = [list_images, list_label_maps]
-        if apply_linear_trans:
-            list_inputs.append(list_affine_transforms)
-
-        # concatenate individual input types if batchsize > 1
-        if batchsize > 1:
+        if batchsize > 1:  # concatenate individual input types if batchsize > 1
             list_inputs = [np.concatenate(item, 0) for item in list_inputs]
         else:
             list_inputs = [item[0] for item in list_inputs]

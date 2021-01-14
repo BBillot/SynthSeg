@@ -34,6 +34,7 @@ def training(labels_dir,
              scaling_bounds=0.15,
              rotation_bounds=15,
              shearing_bounds=.012,
+             translation_bounds=False,
              nonlin_std=3.,
              nonlin_shape_factor=.04,
              blur_background=True,
@@ -91,6 +92,7 @@ def training(labels_dir,
     Can be a number (isotropic resolution), or the path to a 1d numpy array.
     :param output_shape: (optional) desired shape of the output image, obtained by randomly cropping the generated image
     Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
+    Default is None, where no cropping is performed.
 
     # GMM-sampling parameters
     :param path_generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
@@ -100,7 +102,7 @@ def training(labels_dir,
     :param prior_distributions: (optional) type of distribution from which we sample the GMM parameters.
     Can either be 'uniform', or 'normal'. Default is 'uniform'.
     :param prior_means: (optional) hyperparameters controlling the prior distributions of the GMM means. Because
-    these prior distributions are uniform or normal, they require by 2 hyperparameters. Can be:
+    these prior distributions are uniform or normal, they require by 2 hyperparameters. Can be a path to:
     1) an array of shape (2, K), where K is the number of classes (K=len(generation_labels) if generation_classes is
     not given). The mean of the Gaussian distribution associated to class k in [0, ...K-1] is sampled at each mini-batch
     from U(prior_means[0,k], prior_means[1,k]) if prior_distributions is uniform, and from
@@ -132,8 +134,10 @@ def training(labels_dir,
     bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
     Default is rotation_bounds = 15.
     :param shearing_bounds: (optional) same as scaling bounds. Default is shearing_bounds = 0.012.
+    :param translation_bounds: (optional) same as scaling bounds. Default is translation_bounds = False, but we
+    encourage using it when cropping is deactivated (i.e. when output_shape=None).
     :param nonlin_std: (optional) Standard deviation of the normal distribution from which we sample the first
-    tensor for synthesising the deformation field.
+    tensor for synthesising the deformation field. Set to False to completely deactivate elastic deformation.
     :param nonlin_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled
     tensor for synthesising the elastic deformation field.
 
@@ -174,7 +178,7 @@ def training(labels_dir,
     :param conv_size: (optional) size of the convolution kernels. Default is 2.
     :param unet_feat_count: (optional) number of feature for the first layr of the Unet. Default is 24.
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 2.
-    :param dropout: (optional) probability of drpout for the Unet. Deafult is 0, where no dropout is applied.
+    :param dropout: (optional) probability of dropout for the Unet. Deafult is 0, where no dropout is applied.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
 
     # ----------------------------------------------- Training parameters ----------------------------------------------
@@ -232,6 +236,7 @@ def training(labels_dir,
                                      scaling_bounds=scaling_bounds,
                                      rotation_bounds=rotation_bounds,
                                      shearing_bounds=shearing_bounds,
+                                     translation_bounds=translation_bounds,
                                      nonlin_std=nonlin_std,
                                      nonlin_shape_factor=nonlin_shape_factor,
                                      blur_background=blur_background,

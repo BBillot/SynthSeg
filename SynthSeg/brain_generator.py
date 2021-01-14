@@ -28,11 +28,10 @@ class BrainGenerator:
                  use_specific_stats_for_channel=False,
                  mix_prior_and_random=False,
                  flipping=True,
-                 apply_linear_trans=True,
                  scaling_bounds=0.15,
                  rotation_bounds=15,
                  shearing_bounds=.012,
-                 apply_nonlin_trans=True,
+                 translation_bounds=False,
                  nonlin_std=3.,
                  nonlin_shape_factor=0.0625,
                  blur_background=True,
@@ -78,6 +77,7 @@ class BrainGenerator:
         Can be a number (isotropic resolution), a sequence, a 1d numpy array, or the path to a 1d numpy array.
         :param output_shape: (optional) shape of the output image, obtained by randomly cropping the generated image.
         Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
+        Default is None, where no cropping is performed.
         :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites
         output_shape if necessary. Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or
         the path to a 1d numpy array.
@@ -115,29 +115,27 @@ class BrainGenerator:
 
         # spatial deformation parameters
         :param flipping: (optional) whether to introduce right/left random flipping. Default is True.
-        :param apply_linear_trans: (optional) whether to apply affine deformation. Default is True.
-        :param scaling_bounds: (optional) if apply_linear_trans is True, the scaling factor for each dimension is
-        sampled from a uniform distribution of predefined bounds. Can either be:
+        :param scaling_bounds: (optional) range of the random saling to apply at each mini-batch. The scaling factor for
+        each dimension is sampled from a uniform distribution of predefined bounds. Can either be:
         1) a number, in which case the scaling factor is independently sampled from the uniform distribution of bounds
-        (1-scaling_bounds, 1+scaling_bounds) for each dimension.
+        [1-scaling_bounds, 1+scaling_bounds] for each dimension.
         2) a sequence, in which case the scaling factor is sampled from the uniform distribution of bounds
         (1-scaling_bounds[i], 1+scaling_bounds[i]) for the i-th dimension.
         3) a numpy array of shape (2, n_dims), in which case the scaling factor is sampled from the uniform distribution
          of bounds (scaling_bounds[0, i], scaling_bounds[1, i]) for the i-th dimension.
-        4) the path to such a numpy array.
-        5) False, in which case scaling is completely turned off.
+        4) False, in which case scaling is completely turned off.
         Default is scaling_bounds = 0.15 (case 1)
         :param rotation_bounds: (optional) same as scaling bounds but for the rotation angle, except that for cases 1
-        and 2, the bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
+        and 2, the bounds are centred on 0 rather than 1, i.e. [0+rotation_bounds[i], 0-rotation_bounds[i]].
         Default is rotation_bounds = 15.
         :param shearing_bounds: (optional) same as scaling bounds. Default is shearing_bounds = 0.012.
-        :param apply_nonlin_trans: (optional) whether to apply non linear elastic deformation.
-        If true, a diffeomorphic deformation field is obtained by first sampling a small tensor from the normal
-        distribution, resizing it to image size, and integrationg it. Default is True.
-        :param nonlin_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the
-        normal distribution from which we sample the first tensor for synthesising the deformation field.
-        :param nonlin_shape_factor: (optional) If apply_nonlin_trans is True, ratio between the size of the input label
-        maps and the size of the sampled tensor for synthesising the deformation field.
+        :param translation_bounds: (optional) same as scaling bounds. Default is translation_bounds = False, but we
+        encourage using it when cropping is deactivated (i.e. when output_shape=None in BrainGenerator).
+        :param nonlin_std: (optional) Maximum value for the standard deviation of the normal distribution from which we
+        sample the first tensor for synthesising the deformation field. Set to False if you wish to completely turn the
+        elastic deformation off.
+        :param nonlin_shape_factor: (optional) if nonlin_std is not False, factor between the shapes of the input label
+        maps and the shape of the input non-linear tensor.
 
         # blurring/resampling parameters
         :param blur_background: (optional) whether to produce an unrealistic background or not.
@@ -218,12 +216,11 @@ class BrainGenerator:
         self.prior_stds = utils.load_array_if_path(prior_stds)
         self.use_specific_stats_for_channel = use_specific_stats_for_channel
         # linear transformation parameters
-        self.apply_linear_trans = apply_linear_trans
         self.scaling_bounds = utils.load_array_if_path(scaling_bounds)
         self.rotation_bounds = utils.load_array_if_path(rotation_bounds)
         self.shearing_bounds = utils.load_array_if_path(shearing_bounds)
+        self.translation_bounds = utils.load_array_if_path(translation_bounds)
         # elastic transformation parameters
-        self.apply_nonlin_trans = apply_nonlin_trans
         self.nonlin_std = nonlin_std
         self.nonlin_shape_factor = nonlin_shape_factor
         # blurring parameters
@@ -260,8 +257,10 @@ class BrainGenerator:
                                                 output_div_by_n=self.output_div_by_n,
                                                 flipping=self.flipping,
                                                 aff=np.eye(4),
-                                                apply_linear_trans=self.apply_linear_trans,
-                                                apply_nonlin_trans=self.apply_nonlin_trans,
+                                                scaling_bounds=self.scaling_bounds,
+                                                rotation_bounds=self.rotation_bounds,
+                                                shearing_bounds=self.shearing_bounds,
+                                                translation_bounds=self.translation_bounds,
                                                 nonlin_std=self.nonlin_std,
                                                 nonlin_shape_factor=self.nonlin_shape_factor,
                                                 blur_background=self.blur_background,
@@ -287,11 +286,7 @@ class BrainGenerator:
                                                     prior_stds=self.prior_stds,
                                                     prior_distributions=self.prior_distributions,
                                                     use_specific_stats_for_channel=self.use_specific_stats_for_channel,
-                                                    mix_prior_and_random=mix_prior_and_random,
-                                                    apply_linear_trans=self.apply_linear_trans,
-                                                    scaling_bounds=self.scaling_bounds,
-                                                    rotation_bounds=self.rotation_bounds,
-                                                    shearing_bounds=self.shearing_bounds)
+                                                    mix_prior_and_random=mix_prior_and_random)
         return model_inputs_generator
 
     def _build_brain_generator(self):
