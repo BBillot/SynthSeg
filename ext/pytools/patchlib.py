@@ -16,11 +16,9 @@ import random
 import numpy as np
 
 # local
-import ext.pynd.ndutils as nd
+from ext.pynd import ndutils as nd
 from imp import reload
 reload(nd)
-
-
 
 
 def quilt(patches,

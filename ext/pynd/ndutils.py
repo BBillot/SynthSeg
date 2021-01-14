@@ -7,9 +7,7 @@ Contact: adalca@csail.mit.edu
 
 import builtins
 import numpy as np
-import scipy as sp
 import scipy.ndimage
-from scipy.spatial import ConvexHull
 
 
 def boundingbox(bwvol):

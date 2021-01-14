@@ -5,10 +5,7 @@ Contact: adalca@csail.mit.edu
 '''
 
 import numpy as np
-try:
-    from . import ndutils as nd
-except ImportError:
-    from ext.pynd import ndutils as nd
+from . import ndutils as nd
 
 
 def seg2contour(seg, exclude_zero=True, contour_type='inner', thickness=1):

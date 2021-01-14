@@ -14,6 +14,7 @@ TODO: see
 # we'll need python's ini parser: 'configparser'
 import configparser
 
+
 def ini_to_struct(file):
     """
     very simple ini parser that expands on configparser
