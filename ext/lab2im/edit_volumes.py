@@ -1231,7 +1231,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
                                           downsample_labels_result_dir=None,
                                           slice_thickness=None,
                                           path_freesurfer='/usr/local/freesurfer/',
-                                          gpu=False,
+                                          gpu=True,
                                           recompute=True):
     """This function takes as input a set of HR images and creates two datasets with it:
     1) a set of LR images obtained by downsampling the HR images with nearest neighbour interpolation,
@@ -1259,14 +1259,11 @@ def simulate_upsampled_anisotropic_images(image_dir,
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
     os.system(os.path.join(path_freesurfer, 'SetUpFreeSurfer.sh'))
-    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert.bin') + ' '
+    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert') + ' '
 
     # list images and labels
     path_images = utils.list_images_in_folder(image_dir)
-    if labels_dir is not None:
-        path_labels = utils.list_images_in_folder(labels_dir)
-    else:
-        path_labels = [None] * len(path_images)
+    path_labels = [None] * len(path_images) if labels_dir is None else utils.list_images_in_folder(labels_dir)
 
     # initialisation
     _, _, n_dims, _, _, image_res = utils.get_volume_info(path_images[0], return_volume=False)
@@ -1576,7 +1573,7 @@ def upsample_labels_in_dir(labels_dir,
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
     os.system(os.path.join(path_freesurfer, 'SetUpFreeSurfer.sh'))
-    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert.bin')
+    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert')
 
     # list label maps
     path_labels = utils.list_images_in_folder(labels_dir)

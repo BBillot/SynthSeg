@@ -1,7 +1,9 @@
-# This script shows typical parameters used for image generation in SynthSeg:
-# A Learning Strategy for Contrast-agnostic MRI Segmentation, MIDL 2020
-# Benjamin Billot, Douglas N. Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca*
-# *contributed equally
+""" This script shows typical parameters used for image generation in SynthSeg:
+A Learning Strategy for Contrast-agnostic MRI Segmentation, MIDL 2020
+Benjamin Billot, Douglas N. Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca*
+*contributed equally
+
+"""
 
 # python imports
 import os

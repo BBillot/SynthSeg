@@ -124,7 +124,7 @@ def predict(path_images,
         if (idx == 0) | (previous_model_input_shape != model_input_shape):
 
             # check for image size compatibility
-            if (idx != 0) & (previous_model_input_shape != model_input_shape):
+            if (idx != 0) & (previous_model_input_shape != model_input_shape) & verbose:
                 print('image of different shape as previous ones, redefining network')
             previous_model_input_shape = model_input_shape
 
@@ -306,10 +306,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
                 im[..., i] = (channel - m) / (M - m)
 
     # add batch and channel axes
-    if n_channels > 1:
-        im = utils.add_axis(im)
-    else:
-        im = utils.add_axis(im, axis=[0, -1])
+    im = utils.add_axis(im) if n_channels > 1 else utils.add_axis(im, axis=[0, -1])
 
     return im, aff, header, im_res, n_channels, n_dims, shape, pad_shape, crop_shape, crop_idx
 

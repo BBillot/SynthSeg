@@ -410,14 +410,29 @@ if __name__ == '__main__':
 
     # --------------------------- downsample/resample Buckner40 images T1-spacing experiment ---------------------------
 
+    # # image and labels folders
+    # image_folder = '/home/benjamin/data/Buckner40/images/orig_training'
+    # lab_folder = '/home/benjamin/data/Buckner40/labels/training/extra_cerebral_generation_rl_regrouped'
+    # # result folders
+    # im_results_folder = '/home/benjamin/data/mit/Buckner40/images/orig_training_resampled'
+    # downsample_result_dir = '/home/benjamin/data/mit/Buckner40/images/orig_training_downsampled'
+    # lab_result_folder = '/home/benjamin/data/mit/Buckner40/labels/training/' \
+    #                     'extra_cerebral_segmentation_rl_regrouped_downsampled'
+    # # downsample/resample images
+    # prepare_anisotropic_dataset(image_dir=image_folder,
+    #                             list_synth_res=[3, 6, 9],
+    #                             downsample_image_result_dir=downsample_result_dir,
+    #                             resample_image_result_dir=im_results_folder,
+    #                             labels_dir=lab_folder,
+    #                             downsample_labels_result_dir=lab_result_folder,
+    #                             recompute=False)
     # image and labels folders
-    image_folder = '/home/benjamin/data/mit/Buckner40/images/orig_training'
-    lab_folder = '/home/benjamin/data/mit/Buckner40/labels/training/extra_cerebral_generation_rl_regrouped'
+    image_folder = '/home/benjamin/data/Buckner40/images/orig_testing'
+    lab_folder = '/home/benjamin/data/Buckner40/labels/testing/segmentation_rl_regrouped'
     # result folders
-    im_results_folder = '/home/benjamin/data/mit/Buckner40/images/orig_training_resampled'
-    downsample_result_dir = '/home/benjamin/data/mit/Buckner40/images/orig_training_downsampled'
-    lab_result_folder = '/home/benjamin/data/mit/Buckner40/labels/training/' \
-                        'extra_cerebral_segmentation_rl_regrouped_downsampled'
+    im_results_folder = '/home/benjamin/data/Buckner40/images/orig_testing_resampled_little_test'
+    downsample_result_dir = '/home/benjamin/data/Buckner40/images/orig_testing_downsampled_little_test'
+    lab_result_folder = '/home/benjamin/data/Buckner40/labels/testing/segmentation_rl_regrouped_downsampled_little_test'
     # downsample/resample images
     prepare_anisotropic_dataset(image_dir=image_folder,
                                 list_synth_res=[3, 6, 9],
