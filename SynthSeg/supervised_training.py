@@ -34,8 +34,6 @@ def supervised_training(image_dir,
                         translation_bounds=False,
                         nonlin_std=3.,
                         nonlin_shape_factor=.04,
-                        crop_channel_2=None,
-                        apply_bias_field=True,
                         bias_field_std=.3,
                         bias_shape_factor=.025,
                         n_levels=5,
@@ -77,23 +75,22 @@ def supervised_training(image_dir,
 
     # create augmentation model and input generator
     im_shape, _, _, n_channels, _, _ = utils.get_volume_info(path_images[0], aff_ref=np.eye(4))
-    augmentation_model = labels_to_image_model(im_shape,
-                                               batchsize,
-                                               n_channels,
-                                               label_list,
-                                               n_neutral_labels,
-                                               output_shape=output_shape,
-                                               output_div_by_n=2 ** n_levels,
-                                               flipping=flipping,
-                                               aff=np.eye(4),
-                                               apply_linear_trans=apply_linear_trans,
-                                               apply_nonlin_trans=apply_nonlin_trans,
-                                               nonlin_std=nonlin_std,
-                                               nonlin_shape_factor=nonlin_shape_factor,
-                                               crop_channel2=crop_channel_2,
-                                               apply_bias_field=apply_bias_field,
-                                               bias_field_std=bias_field_std,
-                                               bias_shape_factor=bias_shape_factor)
+    augmentation_model = build_augmentation_model(im_shape,
+                                                  n_channels,
+                                                  label_list,
+                                                  n_neutral_labels,
+                                                  output_shape=output_shape,
+                                                  output_div_by_n=2 ** n_levels,
+                                                  flipping=flipping,
+                                                  aff=np.eye(4),
+                                                  scaling_bounds=scaling_bounds,
+                                                  rotation_bounds=rotation_bounds,
+                                                  shearing_bounds=shearing_bounds,
+                                                  translation_bounds=translation_bounds,
+                                                  nonlin_std=nonlin_std,
+                                                  nonlin_shape_factor=nonlin_shape_factor,
+                                                  bias_field_std=bias_field_std,
+                                                  bias_shape_factor=bias_shape_factor)
     unet_input_shape = augmentation_model.output[0].get_shape().as_list()[1:]
 
     model_input_generator = build_model_inputs(path_images,
@@ -144,23 +141,22 @@ def supervised_training(image_dir,
                     'dice', initial_epoch_dice)
 
 
-def labels_to_image_model(im_shape,
-                          batchsize,
-                          n_channels,
-                          segmentation_labels,
-                          n_neutral_labels,
-                          output_shape=None,
-                          output_div_by_n=None,
-                          flipping=True,
-                          aff=None,
-                          apply_linear_trans=True,
-                          apply_nonlin_trans=True,
-                          nonlin_std=3.,
-                          nonlin_shape_factor=.0625,
-                          crop_channel2=None,
-                          apply_bias_field=True,
-                          bias_field_std=.3,
-                          bias_shape_factor=.025):
+def build_augmentation_model(im_shape,
+                             n_channels,
+                             segmentation_labels,
+                             n_neutral_labels,
+                             output_shape=None,
+                             output_div_by_n=None,
+                             flipping=True,
+                             aff=None,
+                             scaling_bounds=0.15,
+                             rotation_bounds=15,
+                             shearing_bounds=0.012,
+                             translation_bounds=False,
+                             nonlin_std=3.,
+                             nonlin_shape_factor=.0625,
+                             bias_field_std=.3,
+                             bias_shape_factor=.025):
 
     # reformat resolutions and get shapes
     im_shape = utils.reformat_to_list(im_shape)
@@ -168,17 +164,11 @@ def labels_to_image_model(im_shape,
     crop_shape = get_shapes(im_shape, output_shape, output_div_by_n)
 
     # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
-    new_segmentation_label_list, lut = utils.rearrange_label_list(segmentation_labels)
+    new_seg_labels, lut = utils.rearrange_label_list(segmentation_labels)
 
     # define model inputs
     image_input = KL.Input(shape=im_shape+[n_channels], name='image_input')
     labels_input = KL.Input(shape=im_shape + [1], name='labels_input')
-    list_inputs = [image_input, labels_input]
-    if apply_linear_trans:
-        aff_in = KL.Input(shape=(n_dims + 1, n_dims + 1), name='aff_input')
-        list_inputs.append(aff_in)
-    else:
-        aff_in = None
 
     # convert labels to new_label_list
     labels = l2i_et.convert_labels(labels_input, lut)
@@ -211,19 +201,16 @@ def labels_to_image_model(im_shape,
         labels, image = layers.RandomFlip(flip_axis=get_ras_axes(aff, n_dims)[0], swap_labels=[True, False],
                                           label_list=new_seg_labels, n_neutral_labels=n_neutral_labels)([labels, image])
 
-        # apply bias field
-        if apply_bias_field:
-            channel = l2i_ia.bias_field_augmentation(channel, bias_field_std, bias_shape_factor)
+    # apply bias field
+    if bias_field_std > 0:
+        image._keras_shape = tuple(image.get_shape().as_list())
+        image = layers.BiasFieldCorruption(bias_field_std, bias_shape_factor, False)(image)
+        image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_biased')(image)
 
-        # intensity augmentation
-        channel = l2i_ia.min_max_normalisation(channel)
-        processed_channels.append(l2i_ia.gamma_augmentation(channel, std=0.5))
-
-    # concatenate all channels back
-    if n_channels > 1:
-        image = KL.concatenate(processed_channels)
-    else:
-        image = processed_channels[0]
+    # intensity augmentation
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.IntensityAugmentation(0, clip=False, normalise=True, gamma_std=.5, separate_channels=True)(image)
+    image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_augmented')(image)
 
     # convert labels back to original values and reset unwanted labels to zero
     labels = l2i_et.convert_labels(labels, segmentation_labels)

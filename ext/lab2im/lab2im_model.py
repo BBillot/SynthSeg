@@ -93,17 +93,8 @@ def lab2im_model(labels_shape,
         labels = layers.RandomCrop(crop_shape)(labels)
 
     # build synthetic image
-    image = sample_gmm_conditioned_on_labels(labels, means_input, std_devs_input, n_generation_labels, n_channels)
-
-    # loop over channels
-    if n_channels > 1:
-        split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image)
-    else:
-        split = [image]
-    mask = KL.Lambda(lambda x: tf.where(tf.greater(x, 0), tf.ones_like(x, dtype='float32'),
-                                        tf.zeros_like(x, dtype='float32')))(labels)
-    processed_channels = list()
-    for i, channel in enumerate(split):
+    labels._keras_shape = tuple(labels.get_shape().as_list())
+    image = layers.SampleConditionalGMM()([labels, means_input, stds_input])
 
         sigma = utils.get_std_blurring_mask_for_downsampling(target_res, atlas_res)
         kernels_list = get_gaussian_1d_kernels(sigma, blurring_range=blur_range)
@@ -130,6 +121,16 @@ def lab2im_model(labels_shape,
     if crop_shape != output_shape:
         labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
         labels = resample_tensor(labels, output_shape, interp_method='nearest')
+
+    # apply bias field
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.BiasFieldCorruption(.3, .025, same_bias_for_all_channels=False)(image)
+
+    # intensity augmentation
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.IntensityAugmentation(noise_std=0, clip=None, normalise=True, gamma_std=.2,
+                                         separate_channels=True)(image)
+
     # convert labels back to original values and reset unwanted labels to zero
     labels = convert_labels(labels, generation_labels)
     labels_to_reset = [lab for lab in generation_labels if lab not in output_labels]

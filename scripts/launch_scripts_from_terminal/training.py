@@ -44,13 +44,12 @@ parser.add_argument("--data_res", type=str, dest="data_res", default=None)
 parser.add_argument("--thickness", type=str, dest="thickness", default=None)
 parser.add_argument("--downsample", action='store_true', dest="downsample")
 parser.add_argument("--blur_range", type=float, dest="blur_range", default=1.15)
-parser.add_argument("--crop_channel_2", type=str, dest="crop_channel_2", default=None)
 
 # bias field parameters
 parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.3)
 parser.add_argument("--bias_shape_factor", type=float, dest="bias_shape_factor", default=.025)
 
-# ------------------------------------------ UNet architecture parameters ------------------------------------------
+# -------------------------------------------- UNet architecture parameters --------------------------------------------
 parser.add_argument("--n_levels", type=int, dest="n_levels", default=5)
 parser.add_argument("--conv_per_level", type=int, dest="nb_conv_per_level", default=2)
 parser.add_argument("--conv_size", type=int, dest="conv_size", default=3)
@@ -59,7 +58,7 @@ parser.add_argument("--feat_mult", type=int, dest="feat_multiplier", default=2)
 parser.add_argument("--dropout", type=float, dest="dropout", default=0.)
 parser.add_argument("--activation", type=str, dest="activation", default='elu')
 
-# ----------------------------------------------- Training parameters ----------------------------------------------
+# ------------------------------------------------- Training parameters ------------------------------------------------
 parser.add_argument("--lr", type=float, dest="lr", default=1e-4)
 parser.add_argument("--lr_decay", type=float, dest="lr_decay", default=0)
 parser.add_argument("--wl2_epochs", type=int, dest="wl2_epochs", default=5)

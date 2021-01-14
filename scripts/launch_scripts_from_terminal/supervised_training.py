@@ -24,10 +24,8 @@ parser.add_argument("--shearing", dest="shearing_bounds", type=infer, default=.0
 parser.add_argument("--translation", dest="translation_bounds", type=infer, default=False)
 parser.add_argument("--nonlin_std", type=float, dest="nonlin_std", default=3.)
 parser.add_argument("--nonlin_shape_factor", type=float, dest="nonlin_shape_factor", default=.04)
-parser.add_argument("--crop_channel_2", type=str, dest="crop_channel_2", default=None)
 
 # bias field parameters
-parser.add_argument("--no_bias_field", action='store_false', dest="apply_bias_field")
 parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.3)
 parser.add_argument("--bias_shape_factor", type=float, dest="bias_shape_factor", default=.025)
 

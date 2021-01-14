@@ -7,7 +7,8 @@ from keras.models import Model
 
 # third-party imports
 from ext.lab2im import utils
-from ext.lab2im import sample_gmm as l2i_gmm
+from ext.lab2im import layers
+from ext.neuron import layers as nrn_layers
 from ext.lab2im import edit_tensors as l2i_et
 from ext.lab2im import spatial_augmentation as l2i_sa
 from ext.lab2im import intensity_augmentation as l2i_ia
@@ -37,8 +38,6 @@ def labels_to_image_model(labels_shape,
                           thickness=None,
                           downsample=False,
                           blur_range=1.15,
-                          crop_channel2=None,
-                          apply_bias_field=True,
                           bias_field_std=.3,
                           bias_shape_factor=.025):
     """
@@ -77,6 +76,7 @@ def labels_to_image_model(labels_shape,
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
     :param output_shape: (optional) desired shape of the output image, obtained by randomly cropping the generated image
     Can be an integer (same size in all dimensions), a sequence, a 1d numpy array, or the path to a 1d numpy array.
+    Default is None, where no cropping is performed.
     :param output_div_by_n: (optional) forces the output shape to be divisible by this value. It overwrites output_shape
     if necessary. Can be an integer (same size in all dimensions), a sequence, or a 1d numpy array.
     :param flipping: (optional) whether to introduce right/left random flipping
@@ -123,15 +123,12 @@ def labels_to_image_model(labels_shape,
     :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
     or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
     from a uniform distribution with bounds [1/blur_range, blur_range]. If None, no randomisation. Default is 1.15.
-    :param crop_channel2: (optional) stats for cropping second channel along the anterior-posterior axis.
-    Should be a vector of length 4, with bounds of uniform distribution for cropping the front and back of the image
-    (in percentage). None is no croppping.
-    :param apply_bias_field: (optional) whether to apply a bias field to the generated image.
-    If true, the model will take an additional input of size batch*(dim_1*...*dim_n)*1. Default is True.
-    :param bias_field_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the
-    normal distribution from which we sample the first tensor for synthesising the deformation field.
-    :param bias_shape_factor: (optional) if apply_bias_field is True, factor between the shapes of the
-    input label maps and the shape of the input bias field tensor.
+    :param bias_field_std: (optional) If strictly positive, this triggers the corruption of synthesised images with a
+    bias field. It is obtained by sampling a first small tensor from a normal distribution, resizing it to full size,
+    and rescaling it to positive values by taking the voxel-wise exponential. bias_field_std designates the std dev of
+    the normal distribution from which we sample the first tensor. Set to False to deactivate biad field corruption.
+    :param bias_shape_factor: (optional) If bias_field_std is not False, this designates the ratio between the size
+    of the input label maps and the size of the first sampled tensor for synthesising the bias field.
     """
 
     # reformat resolutions
@@ -148,8 +145,7 @@ def labels_to_image_model(labels_shape,
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
     # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
-    n_generation_labels = generation_labels.shape[0]
-    new_generation_label_list, lut = utils.rearrange_label_list(generation_labels)
+    new_generation_labels, lut = utils.rearrange_label_list(generation_labels)
 
     # define model inputs
     labels_input = KL.Input(shape=labels_shape + [1], name='labels_input')
@@ -183,8 +179,17 @@ def labels_to_image_model(labels_shape,
         labels = layers.RandomFlip(get_ras_axes(aff, n_dims)[0], True, new_generation_labels, n_neutral_labels)(labels)
 
     # build synthetic image
-    image = l2i_gmm.sample_gmm_conditioned_on_labels(labels, means_input, std_devs_input, n_generation_labels,
-                                                     n_channels)
+    labels._keras_shape = tuple(labels.get_shape().as_list())
+    image = layers.SampleConditionalGMM()([labels, means_input, stds_input])
+
+    # apply bias field
+    if bias_field_std > 0:
+        image._keras_shape = tuple(image.get_shape().as_list())
+        image = layers.BiasFieldCorruption(bias_field_std, bias_shape_factor, False)(image)
+
+    # intensity augmentation
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.IntensityAugmentation(0, clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
 
     # loop over channels
     if n_channels > 1:

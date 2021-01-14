@@ -39,8 +39,6 @@ class BrainGenerator:
                  thickness=None,
                  downsample=False,
                  blur_range=1.15,
-                 crop_channel_2=None,
-                 apply_bias_field=True,
                  bias_field_std=0.3,
                  bias_shape_factor=0.025):
         """
@@ -162,18 +160,14 @@ class BrainGenerator:
         given or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a
         coefficient sampled from a uniform distribution with bounds [1/blur_range, blur_range].
         If None, no randomisation. Default is 1.15.
-        :param crop_channel_2: (optional) stats for cropping second channel along the anterior-posterior axis.
-        Should be a vector of length 4, with bounds of uniform distribution for cropping the front and back of the image
-        (in percentage). None is no croppping.
 
         # bias field parameters
-        :param apply_bias_field: (optional) whether to apply a bias field to the final image. Default is True.
-        If True, the bias field is obtained by sampling a first tensor from normal distribution, resizing it to image
-        size, and rescaling the values to positive number by taking the voxel-wise exponential. Default is True.
-        :param bias_field_std: (optional) If apply_nonlin_trans is True, maximum value for the standard deviation of the
-        normal distribution from which we sample the first tensor for synthesising the bias field.
-        :param bias_shape_factor: (optional) If apply_bias_field is True, ratio between the size of the input
-        label maps and the size of the sampled tensor for synthesising the bias field.
+        :param bias_field_std: (optional) If strictly positive, this triggers the corruption of synthesised images with
+        a bias field. It is obtained by sampling a first small tensor from a normal distribution, resizing it to full
+        size, and rescaling it to positive values by taking the voxel-wise exponential. bias_field_std designates the
+        std dev of the normal distribution from which we sample the first tensor. Set to False to deactivate biad field.
+        :param bias_shape_factor: (optional) If bias_field_std is not False, this designates the ratio between the size
+        of the input label maps and the size of the first sampled tensor for synthesising the bias field.
         """
 
         # prepare data files
@@ -229,9 +223,7 @@ class BrainGenerator:
         self.thickness = utils.load_array_if_path(thickness)
         self.downsample = downsample
         self.blur_range = blur_range
-        self.crop_second_channel = utils.load_array_if_path(crop_channel_2)
         # bias field parameters
-        self.apply_bias_field = apply_bias_field
         self.bias_field_std = bias_field_std
         self.bias_shape_factor = bias_shape_factor
 
@@ -268,8 +260,6 @@ class BrainGenerator:
                                                 thickness=self.thickness,
                                                 downsample=self.downsample,
                                                 blur_range=self.blur_range,
-                                                crop_channel2=self.crop_second_channel,
-                                                apply_bias_field=self.apply_bias_field,
                                                 bias_field_std=self.bias_field_std,
                                                 bias_shape_factor=self.bias_shape_factor)
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]

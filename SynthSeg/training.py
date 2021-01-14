@@ -42,7 +42,6 @@ def training(labels_dir,
              thickness=None,
              downsample=False,
              blur_range=1.15,
-             crop_channel_2=None,
              bias_field_std=.3,
              bias_shape_factor=.025,
              n_levels=5,
@@ -162,13 +161,10 @@ def training(labels_dir,
     :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
     or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
     from a uniform distribution with bounds [1/blur_range, blur_range]. If None, no randomisation. Default is 1.15.
-    :param crop_channel_2: (optional) stats for cropping second channel along the anterior-posterior axis.
-    Should be the path to a 1d numpy array of length 4, with bounds of uniform distribution for cropping the front and
-    back of the image (in percentage). None is no croppping.
 
     # bias field parameters
     :param bias_field_std: (optional) Standard deviation of the normal distribution from which we sample the first
-    tensor for synthesising the bias field.
+    tensor for synthesising the bias field. Set to False to completely deactivate bias field corruption.
     :param bias_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled
     tensor for synthesising the bias field.
 
@@ -244,7 +240,6 @@ def training(labels_dir,
                                      thickness=thickness,
                                      downsample=downsample,
                                      blur_range=blur_range,
-                                     crop_channel_2=crop_channel_2,
                                      bias_field_std=bias_field_std,
                                      bias_shape_factor=bias_shape_factor)
 
