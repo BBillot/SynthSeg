@@ -2,7 +2,6 @@
 import os
 import csv
 import numpy as np
-import tensorflow as tf
 import keras.layers as KL
 from keras.models import Model
 from scipy.ndimage import label
@@ -15,7 +14,6 @@ from ext.lab2im import utils
 from ext.lab2im import edit_volumes
 from ext.neuron import layers as nrn_layers
 from ext.neuron import models as nrn_models
-from ext.lab2im import edit_tensors as l2i_et
 
 
 def predict(path_images,
@@ -24,7 +22,6 @@ def predict(path_images,
             path_segmentations=None,
             path_posteriors=None,
             path_volumes=None,
-            skip_background_volume=True,
             padding=None,
             cropping=None,
             resample=None,
@@ -36,7 +33,6 @@ def predict(path_images,
             nb_conv_per_level=2,
             unet_feat_count=24,
             feat_multiplier=2,
-            no_batch_norm=False,
             activation='elu',
             gt_folder=None,
             evaluation_label_list=None,
@@ -58,8 +54,6 @@ def predict(path_images,
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
-    :param skip_background_volume: (optional) whether to skip computing the volume of the background. This assumes the
-    background correspond to the first value in label list.
     :param padding: (optional) crop the images to the specified shape before predicting the segmentation maps.
     If padding and cropping are specified, images are padded before being cropped.
     Can be an int, a sequence or a 1d numpy array.
@@ -79,7 +73,6 @@ def predict(path_images,
     :param nb_conv_per_level: (optional) number of convolution layers per level. Default is 2.
     :param unet_feat_count: (optional) number of features for the first layer of the unet. Default is 24.
     :param feat_multiplier: (optional) multiplicative factor for the number of feature for each new level. Default is 2.
-    :param no_batch_norm: (optional) whether to deactivate batch norm. Default is False.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
     :param gt_folder: (optional) folder containing ground truth files for evaluation.
     A numpy array containing all dice scores (labels in rows, subjects in columns) will be writen either at
@@ -106,10 +99,7 @@ def predict(path_images,
 
     # prepare volume file if needed
     if path_volumes is not None:
-        if skip_background_volume:
-            csv_header = [['subject'] + [str(lab) for lab in label_list[1:]]]
-        else:
-            csv_header = [['subject'] + [str(lab) for lab in label_list]]
+        csv_header = [['subject'] + [str(lab) for lab in label_list[1:]]]
         with open(path_volumes, 'w') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(csv_header)
@@ -139,8 +129,7 @@ def predict(path_images,
 
             # build network
             net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
-                              nb_conv_per_level, unet_feat_count, feat_multiplier, no_batch_norm, activation,
-                              sigma_smoothing)
+                              nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
 
         # predict posteriors
         prediction_patch = net.predict(image)
@@ -151,10 +140,7 @@ def predict(path_images,
 
         # compute volumes
         if path_volumes is not None:
-            if skip_background_volume:
-                volumes = np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1)))
-            else:
-                volumes = np.sum(posteriors, axis=tuple(range(0, len(posteriors.shape) - 1)))
+            volumes = np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1)))
             volumes = np.around(volumes * np.prod(im_res), 3)
             row = [os.path.basename(path_image).replace('.nii.gz', '')] + [str(vol) for vol in volumes]
             row += [np.sum(volumes[:int(len(volumes) / 2)]), np.sum(volumes[int(len(volumes) / 2):])]
@@ -328,11 +314,11 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
 
 def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv_size, nb_conv_per_level,
-                unet_feat_count, feat_multiplier, no_batch_norm, activation, sigma_smoothing):
+                unet_feat_count, feat_multiplier, activation, sigma_smoothing):
 
     # initialisation
     net = None
-    n_dims, n_channels = utils.get_dims(input_shape, max_channels=3)
+    n_dims, n_channels = utils.get_dims(input_shape, max_channels=10)
     resample = utils.reformat_to_list(resample, length=n_dims)
 
     # build preprocessing model
@@ -346,10 +332,6 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
         input_shape = resample_shape + [n_channels]
 
     # build UNet
-    if no_batch_norm:
-        batch_norm_dim = None
-    else:
-        batch_norm_dim = -1
     net = nrn_models.unet(nb_features=unet_feat_count,
                           input_shape=input_shape,
                           nb_levels=n_levels,
@@ -370,7 +352,7 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
                           add_prior_layer_reg=0,
                           layer_nb_feats=None,
                           conv_dropout=0,
-                          batch_norm=batch_norm_dim,
+                          batch_norm=-1,
                           input_model=net)
     net.load_weights(model_file, by_name=True)
 

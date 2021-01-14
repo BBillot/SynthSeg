@@ -27,6 +27,7 @@ def validate_training(image_dir,
                       conv_size=3,
                       n_levels=5,
                       nb_conv_per_level=2,
+                      unet_feat_count=24,
                       feat_multiplier=2,
                       activation='elu',
                       recompute=True):
@@ -51,6 +52,7 @@ def validate_training(image_dir,
     :param n_levels: (optional) number of level for the Unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
     :param conv_size: (optional) size of the convolution kernels. Default is 2.
+    :param unet_feat_count: (optional) number of feature maps for the first level. Default is 24.
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 1.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
     :param recompute: (optional) whether to recompute result files even if they already exists."""
@@ -80,6 +82,7 @@ def validate_training(image_dir,
                     conv_size=conv_size,
                     n_levels=n_levels,
                     nb_conv_per_level=nb_conv_per_level,
+                    unet_feat_count=unet_feat_count,
                     feat_multiplier=feat_multiplier,
                     activation=activation,
                     gt_folder=gt_dir,
@@ -134,7 +137,7 @@ def plot_validation_curves(list_net_validation_dirs, fontsize=18, size_max_circl
             epoch_max_score = list_epochs[np.argmax(list_net_dice_scores)]
             print('\n'+net_name)
             print('epoch max score: %d' % epoch_max_score)
-            print('max score: %0.2f' % max_score)
+            print('max score: %0.3f' % max_score)
             plt.plot(list_epochs, list_net_dice_scores, label=net_name)
             plt.scatter(epoch_max_score, max_score, s=size_max_circle)
 

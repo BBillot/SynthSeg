@@ -23,13 +23,18 @@ def fast_dice(x, y, labels):
         label_edges = np.concatenate([labels[0:1] - 0.5, labels + 0.5])
         hst = np.histogram2d(x.flatten(), y.flatten(), bins=label_edges)
         c = hst[0]
-        dice = np.diag(c) * 2 / (np.sum(c, 0) + np.sum(c, 1) + 1e-5)
+        dice_score = np.diag(c) * 2 / (np.sum(c, 0) + np.sum(c, 1) + 1e-5)
     else:
         x = (x == labels[0]) * 1
         y = (y == labels[0]) * 1
-        dice = 2 * np.sum(x * y) / (np.sum(x) + np.sum(y))
+        dice_score = 2 * np.sum(x * y) / (np.sum(x) + np.sum(y))
 
-    return dice
+    return dice_score
+
+
+def dice(x, y):
+    """Implementation of dice scores ofr 0/1 numy array"""
+    return 2 * np.sum(x*y) / (np.sum(x) + np.sum(y))
 
 
 def surface_distances(x, y):
