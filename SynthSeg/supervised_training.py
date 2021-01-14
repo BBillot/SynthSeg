@@ -297,7 +297,7 @@ def build_model_inputs(path_images,
             if n_channels > 1:
                 list_images.append(utils.add_axis(image, axis=0))
             else:
-                list_images.append(utils.add_axis(image, axis=-2))
+                list_images.append(utils.add_axis(image, axis=[0, -1]))
 
             # add labels
             labels = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))

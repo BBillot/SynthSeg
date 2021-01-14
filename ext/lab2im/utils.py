@@ -30,7 +30,6 @@
     -build_training_generator
     -find_closest_number_divisible_by_m
     -build_binary_structure
-    -build_gaussian_kernel
     -get_std_blurring_mask_for_downsampling
     -draw_value_from_distribution
     -create_affine_transformation_matrix
@@ -43,6 +42,9 @@ import math
 import pickle
 import numpy as np
 import nibabel as nib
+import tensorflow as tf
+import keras.layers as KL
+import keras.backend as K
 from scipy.ndimage.morphology import distance_transform_edt
 
 
@@ -196,13 +198,8 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     # compute label list from all label files
     elif labels_dir is not None:
         print('Compiling list of unique labels')
-        # prepare data files
-        if ('.nii.gz' in labels_dir) | ('.nii' in labels_dir) | ('.mgz' in labels_dir) | ('.npz' in labels_dir):
-            labels_paths = [labels_dir]
-        else:
-            labels_paths = list_images_in_folder(labels_dir)
-        assert len(labels_paths) > 0, "Could not find any training data"
         # go through all labels files and compute unique list of labels
+        labels_paths = list_images_in_folder(labels_dir)
         label_list = np.empty(0)
         for lab_idx, path in enumerate(labels_paths):
             print_loop_info(lab_idx, len(labels_paths), 10)
@@ -295,13 +292,15 @@ def reformat_to_list(var, length=None, load_as_numpy=False, dtype=None):
     if var is None:
         return None
     var = load_array_if_path(var, load_as_numpy=load_as_numpy)
-    if isinstance(var, (int, float)):
+    if isinstance(var, (int, float, np.int, np.int32, np.int64, np.float, np.float32, np.float64)):
         var = [var]
     elif isinstance(var, tuple):
         var = list(var)
     elif isinstance(var, np.ndarray):
         var = np.squeeze(var).tolist()
     elif isinstance(var, str):
+        var = [var]
+    elif isinstance(var, bool):
         var = [var]
     if isinstance(var, list):
         if length is not None:
@@ -334,7 +333,7 @@ def reformat_to_n_channels_array(var, n_dims=3, n_channels=1):
     If resolution is a numpy array, it will be checked to have shape (n_channels, n_dims).
     Finally if resolution is None, this function returns None as well."""
     if var is None:
-        return None
+        return [None] * n_channels
     if isinstance(var, str):
         var = np.load(var)
     # convert to numpy array
@@ -358,12 +357,16 @@ def reformat_to_n_channels_array(var, n_dims=3, n_channels=1):
 # ----------------------------------------------- path-related functions -----------------------------------------------
 
 
-def list_images_in_folder(path_dir):
+def list_images_in_folder(path_dir, include_single_image=True):
     """List all files with extension nii, nii.gz, mgz, or npz whithin a folder."""
-    list_images = sorted(glob.glob(os.path.join(path_dir, '*nii.gz')) +
-                         glob.glob(os.path.join(path_dir, '*nii')) +
-                         glob.glob(os.path.join(path_dir, '*.mgz')) +
-                         glob.glob(os.path.join(path_dir, '*.npz')))
+    if include_single_image & \
+       (('.nii.gz' in path_dir) | ('.nii' in path_dir) | ('.mgz' in path_dir) | ('.npz' in path_dir)):
+        list_images = [path_dir]
+    else:
+        list_images = sorted(glob.glob(os.path.join(path_dir, '*nii.gz')) +
+                             glob.glob(os.path.join(path_dir, '*nii')) +
+                             glob.glob(os.path.join(path_dir, '*.mgz')) +
+                             glob.glob(os.path.join(path_dir, '*.npz')))
     assert len(list_images) > 0, 'no nii, nii.gz, mgz or npz could be found in %s' % path_dir
     return list_images
 
@@ -523,16 +526,12 @@ def get_resample_shape(patch_shape, factor, n_channels=None):
 
 
 def add_axis(x, axis=0):
-    """Add axis to a numpy array. The new axis can be added to the first dimension (axis=0), to the last dimension
-    (axis=-1), or to both (axis=-2)."""
-    if axis == 0:
-        return x[np.newaxis, ...]
-    elif axis == -1:
-        return x[..., np.newaxis]
-    elif axis == -2:
-        return x[np.newaxis, ..., np.newaxis]
-    else:
-        raise Exception('axis should be 0 (first), -1 (last), or -2 (first and last)')
+    """Add axis to a numpy array.
+    :param axis: index of the new axis to add. Can also be a list of indices to add several axes at the same time."""
+    axis = reformat_to_list(axis)
+    for ax in axis:
+        x = np.expand_dims(x, axis=ax)
+    return x
 
 
 def get_padding_margin(cropping, loss_cropping):
@@ -596,9 +595,9 @@ def build_training_generator(gen, batchsize):
     while True:
         inputs = next(gen)
         if batchsize > 1:
-            target = np.concatenate([add_axis(np.zeros(1))] * batchsize, 0)
+            target = np.concatenate([np.zeros((1, 1))] * batchsize, 0)
         else:
-            target = add_axis(np.zeros(1))
+            target = np.zeros((1, 1))
         yield inputs, target
 
 
@@ -632,66 +631,14 @@ def build_binary_structure(connectivity, n_dims):
     return struct
 
 
-def build_gaussian_kernel(sigma, n_dims):
-    """This function builds a gaussian kernel of specified std deviation for a given number of dimensions.
-    :param sigma: standard deviation. Can be a number, a sequence or a 1d numpy array.
-    :param n_dims: number of dimension for the returned Gaussian kernel.
-    :return: a gaussian kernel of dimension n_dims and of specified std deviation in each direction.
-    """
-    sigma = reformat_to_list(sigma, length=n_dims, dtype='float')
-    shape = [math.ceil(2.5*s) for s in sigma]
-    shape = [s + 1 if s % 2 == 0 else s for s in shape]
-    if n_dims == 2:
-        m, n = [(ss-1.)/2. for ss in shape]
-        x, y = np.ogrid[-m:m+1, -n:n+1]
-        h = np.exp(-(x*x/(sigma[0]**2) + y*y/(sigma[1]**2)) / 2)
-    elif n_dims == 3:
-        m, n, p = [(ss-1.)/2. for ss in shape]
-        x, y, z = np.ogrid[-m:m+1, -n:n+1, -p:p+1]
-        h = np.exp(-(x*x/(sigma[0]**2) + y*y/(sigma[1])**2 + z*z/(sigma[2]**2)) / 2)
-    else:
-        raise Exception('dimension > 3 not supported')
-    h[h < np.finfo(h.dtype).eps*h.max()] = 0
-    sumh = h.sum()
-    if sumh != 0:
-        h /= sumh
-    return h
-
-
-def get_std_blurring_mask_for_downsampling(downsample_res, current_res, thickness=None):
-    """Compute standard deviations of 1d gaussian masks for image blurring before downsampling.
-    :param downsample_res: resolution to downsample to. Can be a 1d numpy array or list.
-    :param current_res: resolution of the volume before downsampling.
-    Can be a 1d numpy array or list of the same length as downsample res.
-    :param thickness: slices thickness in each dimension.
-    Can be a 1d numpy array or list of the same length as downsample res.
-    :return: standard deviation of the blurring masks
-    """
-    # reformat data resolution at which we blur
-    n_dims = len(downsample_res)
-    if thickness is not None:
-        downsample_res = [min(downsample_res[i], thickness[i]) for i in range(n_dims)]
-
-    # build 1d blurring kernels for each direction
-    sigma = [0] * n_dims
-    for i in range(n_dims):
-        # define sigma
-        if downsample_res[i] == 0:
-            sigma[i] = 0
-        elif current_res[i] == downsample_res[i]:
-            sigma[i] = np.float32(0.5)
-        else:
-            sigma[i] = np.float32(0.75 * np.around(downsample_res[i] / current_res[i], 3))
-
-    return sigma
-
-
 def draw_value_from_distribution(hyperparameter,
                                  size=1,
                                  distribution='uniform',
                                  centre=0.,
                                  default_range=10.0,
-                                 positive_only=False):
+                                 positive_only=False,
+                                 return_as_tensor=False,
+                                 batchsize=None):
     """Sample values from a uniform, or normal distribution of given hyper-parameters.
     These hyper-parameters are to the number of 2 in both uniform and normal cases.
     :param hyperparameter: values of the hyper-parameters. Can either be:
@@ -705,6 +652,7 @@ def draw_value_from_distribution(hyperparameter,
     5) a numpy array of size (2*n, m). Same as 4) but we first randomly select a block of two rows among the
     n possibilities.
     6) the path to a numpy array corresponding to case 4 or 5.
+    7) False, in which case this function returns None.
     :param size: (optional) number of values to sample. All values are sampled independently.
     Used only if hyperparameter is not a numpy array.
     :param distribution: (optional) the distribution type. Can be 'uniform' or 'normal'. Default is 'uniform'.
@@ -737,16 +685,36 @@ def draw_value_from_distribution(hyperparameter,
         modality_idx = 2 * np.random.randint(n_modalities)
         hyperparameter = hyperparameter[modality_idx: modality_idx + 2, :]
 
-    # draw values
-    if distribution == 'uniform':
-        parameter_value = np.random.uniform(low=hyperparameter[0, :], high=hyperparameter[1, :])
-    elif distribution == 'normal':
-        parameter_value = np.random.normal(loc=hyperparameter[0, :], scale=hyperparameter[1, :])
-    else:
-        raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
+    # draw values as tensor
+    if return_as_tensor:
+        shape = KL.Lambda(lambda x: tf.convert_to_tensor(hyperparameter.shape[1], 'int32'))([])
+        if batchsize is not None:
+            shape = KL.Lambda(lambda x: tf.concat([x[0], tf.expand_dims(x[1], axis=0)], axis=0))([batchsize, shape])
+        if distribution == 'uniform':
+            parameter_value = KL.Lambda(lambda x: tf.random.uniform(shape=x,
+                                                                    minval=hyperparameter[0, :],
+                                                                    maxval=hyperparameter[1, :]))(shape)
+        elif distribution == 'normal':
+            parameter_value = KL.Lambda(lambda x: tf.random.normal(shape=x,
+                                                                   mean=hyperparameter[0, :],
+                                                                   stddev=hyperparameter[1, :]))(shape)
+        else:
+            raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
 
-    if positive_only:
-        parameter_value[parameter_value < 0] = 0
+        if positive_only:
+            parameter_value = KL.Lambda(lambda x: K.clip(x, 0, None))(parameter_value)
+
+    # draw values as numpy array
+    else:
+        if distribution == 'uniform':
+            parameter_value = np.random.uniform(low=hyperparameter[0, :], high=hyperparameter[1, :])
+        elif distribution == 'normal':
+            parameter_value = np.random.normal(loc=hyperparameter[0, :], scale=hyperparameter[1, :])
+        else:
+            raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
+
+        if positive_only:
+            parameter_value[parameter_value < 0] = 0
 
     return parameter_value
 

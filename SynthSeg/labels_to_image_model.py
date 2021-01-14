@@ -122,17 +122,12 @@ def labels_to_image_model(labels_shape,
     # reformat resolutions
     labels_shape = utils.reformat_to_list(labels_shape)
     n_dims, _ = utils.get_dims(labels_shape)
-    atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims=n_dims, n_channels=n_channels)
-    if data_res is None:  # data_res assumed to be the same as the atlas
-        data_res = atlas_res
-    else:
-        data_res = utils.reformat_to_n_channels_array(data_res, n_dims=n_dims, n_channels=n_channels)
+    atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims, n_channels)
+    data_res = atlas_res if (data_res is None) else utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
+    thickness = data_res if (thickness is None) else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
+    downsample = utils.reformat_to_list(downsample, n_channels) if downsample else (np.min(thickness - data_res, 1) < 0)
     atlas_res = atlas_res[0]
-    if target_res is None:
-        target_res = atlas_res
-    else:
-        target_res = utils.reformat_to_n_channels_array(target_res, n_dims)[0]
-    thickness = utils.reformat_to_n_channels_array(thickness, n_dims=n_dims, n_channels=n_channels)
+    target_res = atlas_res if (target_res is None) else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
 
     # get shapes
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)

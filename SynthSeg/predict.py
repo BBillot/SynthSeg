@@ -308,7 +308,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
     if n_channels > 1:
         im = utils.add_axis(im)
     else:
-        im = utils.add_axis(im, -2)
+        im = utils.add_axis(im, axis=[0, -1])
 
     return im, aff, header, im_res, n_channels, n_dims, shape, pad_shape, crop_shape, crop_idx
 

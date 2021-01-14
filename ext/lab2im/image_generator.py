@@ -207,7 +207,7 @@ class ImageGenerator:
 
                 # load label in identity space, and add them to inputs
                 y = utils.load_volume(self.labels_paths[idx], dtype='int', aff_ref=np.eye(4))
-                list_label_maps.append(utils.add_axis(y, axis=-2))
+                list_label_maps.append(utils.add_axis(y, axis=[0, -1]))
 
                 # add means and standard deviations to inputs
                 means = np.empty((n_labels, 0))

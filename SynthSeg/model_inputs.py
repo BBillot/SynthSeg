@@ -96,19 +96,8 @@ def build_model_inputs(path_label_maps,
         for idx in indices:
 
             # add labels to inputs
-            y = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
-            if background_paths is not None:
-                idx_258 = np.where(y == 258)
-                if np.any(idx_258):
-                    background = utils.load_volume(background_paths[npr.randint(len(background_paths))],
-                                                   dtype='int', aff_ref=np.eye(4))
-                    background_shape = background.shape
-                    if np.all(np.array(background_shape) == background_shape[0]):  # flip if same dimensions
-                        background = np.flip(background, tuple([i for i in range(3) if np.random.normal() > 0]))
-                    assert background.shape == y.shape, 'background patches should have same shape than training ' \
-                                                        'labels. Had {0} and {1}'.format(background.shape, y.shape)
-                    y[idx_258] = background[idx_258]
-            list_label_maps.append(utils.add_axis(y, axis=-2))
+            lab = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
+            list_label_maps.append(utils.add_axis(lab, axis=[0, -1]))
 
             # add means and standard deviations to inputs
             means = np.empty((n_labels, 0))

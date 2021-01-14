@@ -583,7 +583,7 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
                     list_k = get_gaussian_1d_kernels([1] * 3)
                     blurred_mask = blur_tensor(mask_in, list_k, n_dims=n_dims)
                     model = Model(inputs=mask_in, outputs=blurred_mask)
-                eroded_mask = model.predict(utils.add_axis(np.float32(mask), -2))
+                eroded_mask = model.predict(utils.add_axis(np.float32(mask), axis=[0, -1]))
             else:
                 eroded_mask = blur_volume(np.array(mask, dtype='float32'), 1)
             eroded_mask = np.squeeze(eroded_mask) > erosion_factor
@@ -1032,9 +1032,9 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
                                                              tf.zeros_like(x[0])))([image, masked_mask])
                     model = Model(inputs=image_in, outputs=image)
                 if mask is None:
-                    im = np.squeeze(model.predict(utils.add_axis(im, -2)))
+                    im = np.squeeze(model.predict(utils.add_axis(im, axis=[0, -1])))
                 else:
-                    im = np.squeeze(model.predict([utils.add_axis(im, -2), utils.add_axis(mask, -2)]))
+                    im = np.squeeze(model.predict([utils.add_axis(im, [0, -1]), utils.add_axis(mask, [0, -1])]))
             else:
                 im = blur_volume(im, sigma, mask=mask)
             utils.save_volume(im, aff, h, path_result)
@@ -1203,10 +1203,9 @@ def samseg_images_in_dir(image_dir,
 
         # build path_result
         path_im_result_dir = os.path.join(result_dir, utils.strip_extension(os.path.basename(path_image)))
-        path_samseg_result = os.path.join(path_im_result_dir, ''.join(
-            os.path.basename(path_image).split('.')[:-1]) + '_crispSegmentation.nii')
+        path_samseg_result = os.path.join(path_im_result_dir, 'seg.mgz')
         if keep_segm_only:
-            path_result = os.path.join(result_dir, os.path.basename(path_image))
+            path_result = os.path.join(result_dir, utils.strip_extension(os.path.basename(path_image)) + '_seg.mgz')
         else:
             path_result = path_samseg_result
 
@@ -1513,7 +1512,7 @@ def smoothing_gpu_model(label_shape, label_list):
     # count neighbouring voxels
     n_dims, _ = utils.get_dims(label_shape)
     kernel = KL.Lambda(lambda x: tf.convert_to_tensor(
-        utils.add_axis(utils.add_axis(np.ones(tuple([n_dims] * n_dims)).astype('float32'), -1), -1)))([])
+        utils.add_axis(np.ones(tuple([n_dims] * n_dims)).astype('float32'), axis=[-1, -1])))([])
     split = KL.Lambda(lambda x: tf.split(x, [1] * n_labels, axis=-1))(labels)
     labels = KL.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME'))([split[0], kernel])
     for i in range(1, n_labels):
@@ -1798,7 +1797,7 @@ def crop_dataset_to_minimum_size(labels_dir,
                                  margin=5):
     """Crop all label maps in a directory to the minimum possible common size, with a margin.
     This is achieved by cropping each label map individually to the minimum size, and by padding all the cropped maps to
-    the same size (taken to be the maximum size of hte cropped maps).
+    the same size (taken to be the maximum size of the cropped maps).
     If images are provided, they undergo the same transformations as their corresponding label maps.
     :param labels_dir: path of directory with input label maps
     :param result_dir: path of directory where cropped label maps will be writen
