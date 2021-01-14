@@ -14,17 +14,15 @@ We'd like the following callback actions for neuron:
 
 '''
 import sys
+import collections
 
 import keras
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 from imp import reload
-import ext.pytools.timer as timer
-
-# the neuron folder should be on the path
-sys.path.append('/home/benjamin/PycharmProjects/hypothalamus_seg/ext/neuron')
-from ext import neuron as nrn_utils, neuron as nrn_sandbox
+from ext.pytools import timer
+from ext.neuron import utils as nrn_utils
 
 
 class ModelWeightCheck(keras.callbacks.Callback):
@@ -202,6 +200,7 @@ class PlotTestSlices(keras.callbacks.Callback):
         # import neuron sandbox
         # has to be here, can't be at the top, due to cyclical imports (??)
         # TODO: should just pass the function to compute the figures given the model and generator
+        from ext import neuron as nrn_sandbox
         reload(nrn_sandbox)
 
         with timer.Timer('plot callback', self.verbose):
@@ -615,7 +614,7 @@ def _generate_predictions(model, data_generator, batch_size, nb_samples, vol_par
             vol_pred, vol_true = nrn_utils.next_label(model, data_generator)
             yield (vol_true, vol_pred)
 
-import collections
+
 def _flatten(l):
     # https://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists
     for el in l:

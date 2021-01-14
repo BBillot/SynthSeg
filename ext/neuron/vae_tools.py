@@ -17,7 +17,8 @@ from IPython.display import Image
 
 
 # project imports
-from ext import neuron as nrn_utils, neuron as nrn_plt
+from ext import neuron as nrn_plt
+from ext.neuron import utils as nrn_utils
 
 
 def extract_z_dec(model, sample_layer_name, vis=False, wt_chk=False):

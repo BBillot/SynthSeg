@@ -1,7 +1,6 @@
 ''' initializations for the neuron project '''
 
 # general imports
-import os
 import numpy as np
 import keras.backend as K
 

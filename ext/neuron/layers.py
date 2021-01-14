@@ -140,11 +140,12 @@ class SpatialTransformer(Layer):
         trf = [trf[i] for i in ind_nonlinear_linear]
 
         # go from affine to deformation field
-        if len(self.is_affine) == 1 and self.is_affine[0]:
-            trf = tf.map_fn(lambda x: self._single_aff_to_shift(x, vol.shape[1:-1]), trf[0], dtype=tf.float32)
-
+        if len(trf) == 1:
+            trf = trf[0]
+            if self.is_affine[0]:
+                trf = tf.map_fn(lambda x: self._single_aff_to_shift(x, vol.shape[1:-1]), trf, dtype=tf.float32)
         # combine non linear and affine to obtain a single deformation field
-        if len(self.is_affine) == 2:
+        elif len(trf) == 2:
             trf = tf.map_fn(lambda x: self._non_linear_and_aff_to_shift(x, vol.shape[1:-1]), trf, dtype=tf.float32)
 
         # prepare location shift

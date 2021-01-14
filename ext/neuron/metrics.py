@@ -19,6 +19,7 @@ import tensorflow as tf
 # local
 from . import utils
 
+
 class CategoricalCrossentropy(object):
     """
     Categorical crossentropy with optional categorical weights and spatial prior

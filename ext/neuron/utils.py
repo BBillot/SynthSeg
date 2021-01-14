@@ -24,10 +24,8 @@ import numpy as np
 from tqdm import tqdm_notebook as tqdm
 from pprint import pformat
 
-import ext.pytools.patchlib as pl
-import ext.pytools.timer as timer
-
-# local imports
+from ext.pytools import timer
+from ext.pytools import patchlib as pl
 
 # often changed file
 from imp import reload

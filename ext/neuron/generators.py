@@ -12,9 +12,9 @@ import scipy
 from keras.utils import np_utils
 
 # local packages
-import ext.pynd.ndutils as nd
-import ext.pytools.patchlib as pl
-import ext.pytools.timer as timer
+from ext.pynd import ndutils as nd
+from ext.pytools import patchlib as pl
+from ext.pytools import timer
 
 # reload patchlib (it's often updated right now...)
 from imp import reload

@@ -17,6 +17,7 @@ import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable # plotting
 
+
 def slices(slices_in,           # the 2D slices
            titles=None,         # list of titles
            cmaps=None,          # list of colormaps
