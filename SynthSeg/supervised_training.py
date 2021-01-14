@@ -213,12 +213,12 @@ def build_augmentation_model(im_shape,
     image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_augmented')(image)
 
     # convert labels back to original values and reset unwanted labels to zero
-    labels = l2i_et.convert_labels(labels, segmentation_labels)
-    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
+    labels = convert_labels(labels, segmentation_labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
+    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = Model(inputs=list_inputs, outputs=[image, labels])
+    brain_model = Model(inputs=[image_input, labels_input], outputs=[image, labels])
 
     return brain_model
 

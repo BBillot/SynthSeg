@@ -138,8 +138,10 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.02, max_perc
         intensities = np.sort(volume.flatten())
 
     # define robust max and min
-    robust_min = np.maximum(0, intensities[int(intensities.shape[0] * min_percentile)])
-    robust_max = intensities[int(intensities.shape[0] * max_percentile)]
+    idx_min = max(int(intensities.shape[0] * min_percentile), 0)
+    robust_min = np.maximum(0, intensities[idx_min])
+    idx_max = min(int(intensities.shape[0] * max_percentile), intensities.shape[0] - 1)
+    robust_max = intensities[idx_max]
 
     # trim values outside range
     volume = np.clip(volume, robust_min, robust_max)
@@ -226,7 +228,7 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
     # find cropping indices
     indices = np.nonzero(mask)
     min_idx = np.maximum(np.array([np.min(idx) for idx in indices]) - margin, 0)
-    max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(volume.shape))
+    max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(volume.shape[:n_dims]))
     cropping = np.concatenate([min_idx, max_idx])
 
     # crop volume
@@ -238,6 +240,8 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
         raise ValueError('cannot crop volumes with more than 3 dimensions')
 
     if aff is not None:
+        if n_dims == 2:
+            min_idx = np.append(min_idx, 0)
         aff[0:3, -1] = aff[0:3, -1] + aff[:3, :3] @ min_idx
         return volume, cropping, aff
     else:
@@ -279,23 +283,24 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None):
     """
     # get info
     vol_shape = volume.shape
-    n_dims, _ = utils.get_dims(vol_shape)
-    n_channels = len(vol_shape) - len(vol_shape[:n_dims])
+    n_dims, n_channels = utils.get_dims(vol_shape)
     padding_shape = utils.reformat_to_list(padding_shape, length=n_dims, dtype='int')
 
     # get padding margins
-    min_pad_margins = np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)) / 2))
-    max_pad_margins = np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)) / 2))
+    min_pad_margins = np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2))
+    max_pad_margins = np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2))
     if (min_pad_margins < 0).any():
         raise ValueError('volume is bigger than provided shape')
     pad_margins = tuple([(min_pad_margins[i], max_pad_margins[i]) for i in range(n_dims)])
     if n_channels > 1:
-        pad_margins += [[0, 0]]
+        pad_margins = tuple(list(pad_margins) + [[0, 0]])
 
     # pad volume
     volume = np.pad(volume, pad_margins, mode='constant', constant_values=padding_value)
 
     if aff is not None:
+        if n_dims == 2:
+            min_pad_margins = np.append(min_pad_margins, 0)
         aff[:-1, -1] = aff[:-1, -1] - aff[:-1, :-1] @ min_pad_margins
         return volume, aff
     else:

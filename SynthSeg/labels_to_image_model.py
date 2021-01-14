@@ -256,15 +256,16 @@ def labels_to_image_model(labels_shape,
     if crop_shape != output_shape:
         labels = KL.Lambda(lambda x: tf.cast(x, dtype='float32'))(labels)
         labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
+
     # convert labels back to original values and reset unwanted labels to zero
     labels = l2i_et.convert_labels(labels, generation_labels)
-    labels_to_reset = [lab for lab in generation_labels if lab not in output_labels]
-    labels = l2i_et.reset_label_values_to_zero(labels, labels_to_reset)
-    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
+    labels._keras_shape = tuple(labels.get_shape().as_list())
+    reset_values = [v for v in generation_labels if v not in output_labels]
+    labels = layers.ResetValuesToZero(reset_values, name='labels_out')(labels) if reset_values else labels
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = Model(inputs=list_inputs, outputs=[image, labels])
+    brain_model = Model(inputs=[labels_input, means_input, stds_input], outputs=[image, labels])
 
     return brain_model
 

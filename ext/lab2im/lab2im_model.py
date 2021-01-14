@@ -71,7 +71,6 @@ def lab2im_model(labels_shape,
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
     # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
-    n_generation_labels = generation_labels.shape[0]
     new_generation_label_list, lut = utils.rearrange_label_list(generation_labels)
 
     # define model inputs
@@ -133,13 +132,13 @@ def lab2im_model(labels_shape,
 
     # convert labels back to original values and reset unwanted labels to zero
     labels = convert_labels(labels, generation_labels)
-    labels_to_reset = [lab for lab in generation_labels if lab not in output_labels]
-    labels = reset_label_values_to_zero(labels, labels_to_reset)
-    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
+    labels._keras_shape = tuple(labels.get_shape().as_list())
+    labels = layers.ResetValuesToZero([lab for lab in generation_labels if lab not in output_labels])(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
+    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = keras.Model(inputs=list_inputs, outputs=[image, labels])
+    brain_model = Model(inputs=[labels_input, means_input, stds_input], outputs=[image, labels])
 
     return brain_model
 

@@ -211,50 +211,14 @@ def resample_tensor(tensor,
     return tensor
 
 
-# ------------------------------------------------ convert label values ------------------------------------------------
-
 def convert_labels(label_map, labels_list):
     """Change all labels in label_map by the values in labels_list"""
     return KL.Lambda(lambda x: tf.gather(tf.convert_to_tensor(labels_list, dtype='int32'),
                                          tf.cast(x, dtype='int32')))(label_map)
 
 
-def reset_label_values_to_zero(label_map, labels_to_reset):
-    """Reset to zero all occurences in label_map of the values contained in labels_to_remove.
-    :param label_map: tensor
-    :param labels_to_reset: list of values to reset to zero
-    """
-    for lab in labels_to_reset:
-        label_map = KL.Lambda(lambda x: tf.where(tf.equal(tf.cast(x, dtype='int32'),
-                                                          tf.cast(tf.convert_to_tensor(lab), dtype='int32')),
-                                                 tf.zeros_like(x, dtype='int32'),
-                                                 tf.cast(x, dtype='int32')))(label_map)
-    return label_map
-
-
-# ---------------------------------------------------- pad tensors -----------------------------------------------------
-
-def pad_tensor(tensor, padding_shape=None, pad_value=0):
-    """Pad tensor to specified shape.
-    :param tensor: tensor to pad
-    :param padding_shape: shape of the returned padded tensor. Can be a list or a numy 1d array, of the same length as
-    the numbe of dimensions of the tensor (including batch and channel dimensions).
-    :param pad_value: value by which to pad the tensor. Default is 0.
-    """
-
-    # get shapes and padding margins
-    tensor_shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
-    padding_shape = KL.Lambda(lambda x: tf.math.maximum(tf.cast(x, dtype='int32'),
-                              tf.convert_to_tensor(padding_shape, dtype='int32')))(tensor_shape)
-
-    # build padding margins
-    min_margins = KL.Lambda(lambda x: tf.cast((x[0] - x[1]) / 2, dtype='int32'))([padding_shape, tensor_shape])
-    max_margins = KL.Lambda(lambda x: tf.cast((x[0] - x[1]) - x[2], dtype='int32'))([padding_shape, tensor_shape,
-                                                                                     min_margins])
-    margins = KL.Lambda(lambda x: tf.stack([tf.cast(x[0], dtype='int32'),
-                                            tf.cast(x[1], dtype='int32')], axis=-1))([min_margins, max_margins])
-
-    # pad tensor
-    padded_tensor = KL.Lambda(lambda x: tf.pad(x[0], tf.cast(x[1], dtype='int32'), mode='CONSTANT',
-                                               constant_values=pad_value))([tensor, margins])
-    return padded_tensor
+def expand_dims(tensor, axis=0):
+    axis = utils.reformat_to_list(axis)
+    for ax in axis:
+        tensor = tf.expand_dims(tensor, axis=ax)
+    return tensor
