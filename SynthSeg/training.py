@@ -267,28 +267,19 @@ def training(labels_dir,
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
     if wl2_epochs > 0:
         wl2_model = Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
-        wl2_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_segmentation_labels],
-                                                segmentation_label_list=segmentation_labels,
-                                                input_model=wl2_model,
-                                                metrics='wl2',
-                                                name='metrics_model')
+        wl2_model = metrics_model.metrics_model(label_list=segmentation_labels, input_model=wl2_model, metrics='wl2')
         if load_model_file is not None:
-            print('loading', load_model_file)
             wl2_model.load_weights(load_model_file)
         train_model(wl2_model, training_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, log_dir,
                     'wl2', initial_epoch_wl2)
 
     # fine-tuning with dice metric
     if dice_epochs > 0:
-        dice_model = metrics_model.metrics_model(input_shape=unet_input_shape[:-1] + [n_segmentation_labels],
-                                                 segmentation_label_list=segmentation_labels,
-                                                 input_model=unet_model,
-                                                 name='metrics_model')
+        dice_model = metrics_model.metrics_model(label_list=segmentation_labels, input_model=unet_model)
         if wl2_epochs > 0:
             last_wl2_model_name = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
             dice_model.load_weights(last_wl2_model_name, by_name=True)
         elif load_model_file is not None:
-            print('loading', load_model_file)
             dice_model.load_weights(load_model_file)
         train_model(dice_model, training_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, log_dir,
                     'dice', initial_epoch_dice)
@@ -296,7 +287,7 @@ def training(labels_dir,
 
 def train_model(model,
                 generator,
-                lr,
+                learning_rate,
                 lr_decay,
                 n_epochs,
                 n_steps,
@@ -307,15 +298,20 @@ def train_model(model,
 
     # model saving callback
     save_file_name = os.path.join(model_dir, '%s_{epoch:03d}.h5' % metric_type)
-    callbacks = [ModelCheckpoint(save_file_name, save_weights_only=True, verbose=1)]
+    callbacks = [KC.ModelCheckpoint(save_file_name, save_weights_only=True, verbose=1)]
 
     # TensorBoard callback
     if metric_type == 'dice':
-        callbacks.append(TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False))
+        callbacks.append(KC.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False))
 
     # compile
-    model.compile(optimizer=Adam(lr=lr, decay=lr_decay), loss=metrics_model.IdentityLoss().loss, loss_weights=[1.0])
+    model.compile(optimizer=Adam(lr=learning_rate, decay=lr_decay),
+                  loss=metrics_model.IdentityLoss().loss,
+                  loss_weights=[1.0])
 
     # fit
-    model.fit_generator(generator, epochs=n_epochs, steps_per_epoch=n_steps, callbacks=callbacks,
+    model.fit_generator(generator,
+                        epochs=n_epochs,
+                        steps_per_epoch=n_steps,
+                        callbacks=callbacks,
                         initial_epoch=initial_epoch)
