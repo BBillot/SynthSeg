@@ -112,24 +112,22 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None
 
 def dice_evaluation(gt_dir,
                     seg_dir,
-                    path_label_list,
-                    path_result_dice_array,
+                    label_list,
+                    path_result_dice_array=None,
                     cropping_margin_around_gt=10,
                     verbose=True):
     """Computes Dice scores for all labels contained in path_segmentation_label_list. Files in gt_folder and seg_folder
     are matched by sorting order.
     :param gt_dir: folder containing ground truth files.
     :param seg_dir: folder containing evaluation files.
-    :param path_label_list: path of numpy vector containing all labels to compute the Dice for.
+    :param label_list: path of numpy vector containing all labels to compute the Dice for.
     :param path_result_dice_array: path where the resulting Dice will be writen as numpy array.
+    Default is None, where the array is not saved.
     :param cropping_margin_around_gt: (optional) margin by which to crop around the gt volumes.
     If None, no cropping is performed.
     :param verbose: (optional) whether to print out info about the remaining number of cases.
     :return: numpy array containing all dice scores (labels in rows, subjects in columns).
     """
-
-    # create result folder
-    utils.mkdir(os.path.dirname(path_result_dice_array))
 
     # get list label maps to compare
     path_gt_labels = utils.list_images_in_folder(gt_dir)
@@ -138,7 +136,7 @@ def dice_evaluation(gt_dir,
         print('different number of files in data folders, had {} and {}'.format(len(path_gt_labels), len(path_segs)))
 
     # load labels list
-    label_list, neutral_labels = utils.get_list_labels(label_list=path_label_list, FS_sort=True, labels_dir=gt_dir)
+    label_list, neutral_labels = utils.get_list_labels(label_list=label_list, FS_sort=True, labels_dir=gt_dir)
     label_list_sorted = np.sort(label_list)
 
     # initialise result matrix
@@ -164,6 +162,8 @@ def dice_evaluation(gt_dir,
             dice_coefs[:, idx] = tmp_dice
 
     # write dice results
-    np.save(path_result_dice_array, dice_coefs)
+    if path_result_dice_array is not None:
+        utils.mkdir(os.path.dirname(path_result_dice_array))
+        np.save(path_result_dice_array, dice_coefs)
 
     return dice_coefs

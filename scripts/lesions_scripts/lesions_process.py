@@ -599,7 +599,7 @@ if __name__ == '__main__':
     gt_folder = '/home/benjamin/data/lesions/ISBI_longitudinal/labels/lesion_masks/lesion_mask1_2.2_only'
     seg_dir = '/home/benjamin/data/lesions/ISBI_longitudinal/labels/lesion_masks/lesion_mask2_2.2_only'
     path_result_dice = '/home/benjamin/data/lesions/ISBI_longitudinal/labels/lesion_masks/dice_1_vs_2_2.2_only.npy'
-    dice_evaluation(gt_dir=gt_folder, seg_dir=seg_dir, path_label_list=[1], path_result_dice_array=path_result_dice,
+    dice_evaluation(gt_dir=gt_folder, seg_dir=seg_dir, label_list=[1], path_result_dice_array=path_result_dice,
                     cropping_margin_around_gt=None)
 
     # ---------------------------------------------- preprocess MSSeg asegs --------------------------------------------
