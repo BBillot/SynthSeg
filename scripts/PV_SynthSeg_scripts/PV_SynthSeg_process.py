@@ -17,6 +17,8 @@ def prepare_anisotropic_dataset(image_dir,
                                 downsample_labels_result_dir=None,
                                 native_resolution=1,
                                 slice_thickness=4,
+                                build_dist_map=False,
+                                gpu=True,
                                 recompute=True):
     """
     This function takes as input a set of isotropic HR images (e.g. 1mm) and a list of resolutions.
@@ -74,6 +76,8 @@ def prepare_anisotropic_dataset(image_dir,
                                                                labels_dir=labels_dir,
                                                                downsample_labels_result_dir=labels_results_dir,
                                                                slice_thickness=thickness,
+                                                               build_dist_map=build_dist_map,
+                                                               gpu=gpu,
                                                                recompute=recompute)
 
 
@@ -411,13 +415,12 @@ if __name__ == '__main__':
     # --------------------------- downsample/resample Buckner40 images T1-spacing experiment ---------------------------
 
     # # image and labels folders
-    # image_folder = '/home/benjamin/data/Buckner40/images/orig_training'
-    # lab_folder = '/home/benjamin/data/Buckner40/labels/training/extra_cerebral_generation_rl_regrouped'
+    # image_folder = '/home/benjamin/data/Buckner40/images/orig_testing'
+    # lab_folder = '/home/benjamin/data/Buckner40/labels/testing/segmentation_rl_regrouped'
     # # result folders
-    # im_results_folder = '/home/benjamin/data/mit/Buckner40/images/orig_training_resampled'
-    # downsample_result_dir = '/home/benjamin/data/mit/Buckner40/images/orig_training_downsampled'
-    # lab_result_folder = '/home/benjamin/data/mit/Buckner40/labels/training/' \
-    #                     'extra_cerebral_segmentation_rl_regrouped_downsampled'
+    # im_results_folder = '/data/Buckner40/images/orig_testing_resampled_dist_maps'
+    # downsample_result_dir = '/data/Buckner40/images/orig_testing_downsampled_dist_maps'
+    # lab_result_folder = '/data/Buckner40/labels/testing/segmentation_rl_regrouped_downsampled_dist_maps'
     # # downsample/resample images
     # prepare_anisotropic_dataset(image_dir=image_folder,
     #                             list_synth_res=[3, 6, 9],
@@ -426,45 +429,42 @@ if __name__ == '__main__':
     #                             labels_dir=lab_folder,
     #                             downsample_labels_result_dir=lab_result_folder,
     #                             recompute=False)
-    # image and labels folders
-    image_folder = '/home/benjamin/data/Buckner40/images/orig_testing'
-    lab_folder = '/home/benjamin/data/Buckner40/labels/testing/segmentation_rl_regrouped'
-    # result folders
-    im_results_folder = '/home/benjamin/data/Buckner40/images/orig_testing_resampled_little_test'
-    downsample_result_dir = '/home/benjamin/data/Buckner40/images/orig_testing_downsampled_little_test'
-    lab_result_folder = '/home/benjamin/data/Buckner40/labels/testing/segmentation_rl_regrouped_downsampled_little_test'
-    # downsample/resample images
-    prepare_anisotropic_dataset(image_dir=image_folder,
-                                list_synth_res=[3, 6, 9],
-                                downsample_image_result_dir=downsample_result_dir,
-                                resample_image_result_dir=im_results_folder,
-                                labels_dir=lab_folder,
-                                downsample_labels_result_dir=lab_result_folder,
-                                recompute=False)
+    #
+    # # ----------------------------- preprocess atlases for hippocampal subfields experiment ----------------------------
+    #
+    # labels_folder = '/data/CobraLab/hippo/full_labels'
+    # result_folder = '/data/CobraLab/hippo/atlases_labels'
+    # image_folder = '/data/CobraLab/hippo/full_images'
+    # image_result_folder = '/data/CobraLab/hippo/atlases_images'
+    # prepare_hippo_training_atlases(labels_folder,
+    #                                result_folder,
+    #                                image_dir=image_folder,
+    #                                image_result_dir=image_result_folder,
+    #                                smooth=True,
+    #                                crop_margin=35,
+    #                                recompute=True)
+    #
+    # # ------------------------------ preprocess ADNI scans of the hippocampus for testing ------------------------------
+    #
+    # main_folder = '/data/ADNI/subjects_t1_t2_aseg/'
+    # main_result_folder = '/data/ADNI/subjects_hippos_0.4'
+    # prepare_hippo_testing_images(main_folder,
+    #                              main_result_folder,
+    #                              target_res=0.4,
+    #                              padding_margin=85,
+    #                              delete_intermediate_files=True,
+    #                              path_freesurfer='/usr/local/freesurfer/',
+    #                              verbose=True,
+    #                              recompute=True)
 
-    # ----------------------------- preprocess atlases for hippocampal subfields experiment ----------------------------
-
-    labels_folder = '/data/CobraLab/hippo/full_labels'
-    result_folder = '/data/CobraLab/hippo/atlases_labels'
-    image_folder = '/data/CobraLab/hippo/full_images'
-    image_result_folder = '/data/CobraLab/hippo/atlases_images'
-    prepare_hippo_training_atlases(labels_folder,
-                                   result_folder,
-                                   image_dir=image_folder,
-                                   image_result_dir=image_result_folder,
-                                   smooth=True,
-                                   crop_margin=35,
-                                   recompute=True)
-
-    # ------------------------------ preprocess ADNI scans of the hippocampus for testing ------------------------------
-
-    main_folder = '/data/ADNI/subjects_t1_t2_aseg/'
-    main_result_folder = '/data/ADNI/subjects_hippos_0.4'
-    prepare_hippo_testing_images(main_folder,
-                                 main_result_folder,
-                                 target_res=0.4,
-                                 padding_margin=85,
-                                 delete_intermediate_files=True,
-                                 path_freesurfer='/usr/local/freesurfer/',
-                                 verbose=True,
-                                 recompute=True)
+    prepare_anisotropic_dataset(image_dir='/home/benjamin/data/fsm/dbs/cropped_new',
+                                list_synth_res=[6.],
+                                downsample_image_result_dir='/home/benjamin/data/fsm/dbs/cropped_new_downsampled',
+                                resample_image_result_dir='/home/benjamin/data/fsm/dbs/cropped_new_resampled',
+                                labels_dir=None,  # '/home/benjamin/data/fsm/labels/aseg_cropped_new_rl_regrouped',
+                                downsample_labels_result_dir=None,  # '/home/benjamin/data/fsm/labels/aseg_cropped_new_rl_regrouped_downsampled',
+                                native_resolution=1,
+                                slice_thickness=4,
+                                build_dist_map=True,
+                                gpu=True,
+                                recompute=True)
