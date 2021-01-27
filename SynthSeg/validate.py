@@ -19,10 +19,12 @@ def validate_training(image_dir,
                       validation_main_dir,
                       segmentation_label_list,
                       evaluation_label_list=None,
+                      dist_map=False,
                       step_eval=1,
                       aff_ref='FS',
                       sigma_smoothing=0,
                       keep_biggest_component=False,
+                      padding=None,
                       cropping=None,
                       conv_size=3,
                       n_levels=5,
@@ -42,11 +44,15 @@ def validate_training(image_dir,
     :param segmentation_label_list: path of the numpy array containing all the segmentation labels used during training.
     :param evaluation_label_list: (optional) label values to validate on. Must be a subset of the segmentation labels.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array. Default is the same as segmentation_label_list
+    :param dist_map: (optional) whether the input will contain distance maps channels (between each intenisty channels)
+    Default is False.
     :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
     :param aff_ref: (optional) affine matrix with which the models were trained. Can be 'FS' (default), or 'identity.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
+    :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
+    Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) whether to crop the input to smaller size while being run through the network.
     The result is then given in the original image space. Can be an int, a sequence, or a 1d numpy array.
     :param n_levels: (optional) number of level for the Unet. Default is 5.
@@ -74,7 +80,9 @@ def validate_training(image_dir,
             predict(path_images=image_dir,
                     path_model=path_model,
                     segmentation_label_list=segmentation_label_list,
+                    dist_map=dist_map,
                     path_segmentations=model_val_dir,
+                    padding=padding,
                     cropping=cropping,
                     aff_ref=aff_ref,
                     sigma_smoothing=sigma_smoothing,
@@ -142,6 +150,7 @@ def plot_validation_curves(list_net_validation_dirs, fontsize=18, size_max_circl
             plt.scatter(epoch_max_score, max_score, s=size_max_circle)
 
     # finalise plot
+    plt.grid()
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.ylabel('Dice scores', fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
@@ -181,6 +190,6 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, fontsize=18)
     plt.xlabel('Epochs', fontsize=fontsize)
     plt.ylabel('Soft Dice scores', fontsize=fontsize)
     plt.tick_params(axis='both', labelsize=fontsize)
-    plt.title('Validation curves', fontsize=fontsize)
-    plt.tight_layout(pad=0)
+    plt.title('Learning curves', fontsize=fontsize)
+    plt.tight_layout(pad=1)
     plt.show()
