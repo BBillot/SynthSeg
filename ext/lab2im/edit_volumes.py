@@ -58,13 +58,14 @@ import tensorflow as tf
 import keras.layers as KL
 from keras.models import Model
 from scipy.ndimage.filters import convolve
+from scipy.ndimage import label as scipy_label
 from scipy.ndimage.morphology import distance_transform_edt, binary_fill_holes
 from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
 
 # project imports
 from . import utils
-from .edit_tensors import convert_labels, blurring_sigma_for_downsampling
 from .layers import GaussianBlur
+from .edit_tensors import convert_labels, blurring_sigma_for_downsampling
 
 
 # ---------------------------------------------------- edit volume -----------------------------------------------------
@@ -152,7 +153,7 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.02, max_perc
     return volume
 
 
-def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None):
+def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, return_crop_idx=False):
     """Crop volume by a given margin, or to a given shape.
     :param volume: 2d or 3d numpy array (possibly with multiple channels)
     :param cropping_margin: (optional) margin by which to crop the volume. Can be an int, sequence or 1d numpy array of
@@ -161,7 +162,9 @@ def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None):
     array of size n_dims. Should be given if cropping_margin is None.
     :param aff: (optional) affine matrix of the input volume.
     If not None, this function also returns an updated version of the affine matrix for the cropped volume.
-    :return: cropped volume, and corresponding affine matrix if aff is not None.
+    :param return_crop_idx: (optional) whether to return the cropping indices used to crop the given volume.
+    :return: cropped volume, corresponding affine matrix if aff is not None, and cropping indices if return_crop_idx is
+    True (in that order).
     """
 
     assert (cropping_margin is not None) | (cropping_shape is not None), \
@@ -192,11 +195,14 @@ def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None):
     elif n_dims == 3:
         volume = volume[crop_idx[0]: crop_idx[3], crop_idx[1]: crop_idx[4], crop_idx[2]: crop_idx[5], ...]
 
+    # sort outputs
+    output = [volume]
     if aff is not None:
         aff[0:3, -1] = aff[0:3, -1] + aff[:3, :3] @ np.array(min_crop_idx)
-        return volume, aff
-    else:
-        return volume
+        output.append(aff)
+    if return_crop_idx:
+        output.append(crop_idx)
+    return output[0] if len(output) == 1 else tuple(output)
 
 
 def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=None, margin=0, aff=None):
@@ -258,7 +264,7 @@ def crop_volume_with_idx(volume, crop_idx, aff=None):
     """
 
     # crop image
-    n_dims = int(crop_idx.shape[0] / 2)
+    n_dims = int(np.array(crop_idx).shape[0] / 2)
     if n_dims == 2:
         volume = volume[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3], ...]
     elif n_dims == 3:
@@ -287,10 +293,10 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None):
     padding_shape = utils.reformat_to_list(padding_shape, length=n_dims, dtype='int')
 
     # get padding margins
-    min_pad_margins = np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2))
-    max_pad_margins = np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2))
-    if (min_pad_margins < 0).any():
-        raise ValueError('volume is bigger than provided shape')
+    min_pad_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
+    max_pad_margins = np.maximum(np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
+    if (min_pad_margins == 0).all():
+        return volume
     pad_margins = tuple([(min_pad_margins[i], max_pad_margins[i]) for i in range(n_dims)])
     if n_channels > 1:
         pad_margins = tuple(list(pad_margins) + [[0, 0]])
@@ -424,73 +430,127 @@ def blur_volume(volume, sigma, mask=None):
 
 # --------------------------------------------------- edit label map ---------------------------------------------------
 
-def correct_label_map(labels, list_incorrect_labels, list_correct_labels, smooth=False):
-    """This function corrects specified label values in a label map by other given values.
+def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, use_nearest_label=False,
+                      remove_zero=False, smooth=False):
+    """This function corrects specified label values in a label map by either a list of given values, or by the nearest
+    label.
     :param labels: a 2d or 3d label map
     :param list_incorrect_labels: list of all label values to correct (eg [1, 2, 3]). Can also be a path to such a list.
-    :param list_correct_labels: list of correct label values.
+    :param list_correct_labels: (optional) list of correct label values to replace the incorrect ones.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
     each voxel to correct. In that case, the different correct values must be specified inside a list whithin
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
+    :param use_nearest_label: (optional) whether to correct the incoorect lavel values with the nearest labels.
+    :param remove_zero: (optional) if use_nearest_label is True, set to True not to consider zero among the potential
+    candidates for the nearest neighbour.
     :param smooth: (optional) whether to smooth the corrected label map
     :return: corrected label map
     """
 
+    assert (list_correct_labels is not None) | use_nearest_label, \
+        'please provide a list of correct labels, or set use_nearest_label to True.'
+    assert (list_correct_labels is None) | (not use_nearest_label), \
+        'cannot provide a list of correct values and set use_nearest_label to True'
+
     # initialisation
-    list_incorrect_labels = utils.load_array_if_path(list_incorrect_labels)
-    list_correct_labels = utils.load_array_if_path(list_correct_labels)
-    volume_labels = np.unique(labels)
-    n_dims, _ = utils.get_dims(labels.shape)
+    new_labels = labels.copy()
+    list_incorrect_labels = utils.reformat_to_list(utils.load_array_if_path(list_incorrect_labels))
+    volume_labels = np.unique(new_labels)
+    n_dims, _ = utils.get_dims(new_labels.shape)
     previous_correct_labels = None
     distance_map_list = None
 
-    # loop over label values
-    for incorrect_label, correct_label in zip(list_incorrect_labels, list_correct_labels):
-        if incorrect_label in volume_labels:
+    # use list of correct values
+    if list_correct_labels is not None:
+        list_correct_labels = utils.reformat_to_list(utils.load_array_if_path(list_correct_labels))
 
-            # only one possible value to replace with
-            if isinstance(correct_label, (int, float, np.int64, np.int32, np.int16, np.int8)):
-                incorrect_voxels = np.where(labels == incorrect_label)
-                labels[incorrect_voxels] = correct_label
+        # loop over label values
+        for incorrect_label, correct_label in zip(list_incorrect_labels, list_correct_labels):
+            if incorrect_label in volume_labels:
 
-            # several possibilities
-            elif isinstance(correct_label, (tuple, list)):
-                mask = np.zeros(labels.shape, dtype='bool')
+                # only one possible value to replace with
+                if isinstance(correct_label, (int, float, np.int64, np.int32, np.int16, np.int8)):
+                    incorrect_voxels = np.where(new_labels == incorrect_label)
+                    new_labels[incorrect_voxels] = correct_label
 
-                # crop around label to correct
-                for lab in correct_label:
-                    mask = mask | (labels == lab)
-                _, cropping = crop_volume_around_region(mask, margin=10)
-                if n_dims == 2:
-                    tmp_im = labels[cropping[0]:cropping[2], cropping[1]:cropping[3], ...]
-                elif n_dims == 3:
-                    tmp_im = labels[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5], ...]
-                else:
-                    raise ValueError('cannot correct volumes with more than 3 dimensions')
+                # several possibilities
+                elif isinstance(correct_label, (tuple, list)):
+                    mask = np.zeros(new_labels.shape, dtype='bool')
 
-                # calculate distance maps for all new label candidates
-                incorrect_voxels = np.where(tmp_im == incorrect_label)
-                if correct_label != previous_correct_labels:
-                    distance_map_list = [distance_transform_edt(np.logical_not(tmp_im == lab))
-                                         for lab in correct_label]
-                    previous_correct_labels = correct_label
-                distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
+                    # crop around label to correct
+                    for lab in correct_label:
+                        mask = mask | (new_labels == lab)
+                    _, crop = crop_volume_around_region(mask, margin=10)
+                    if n_dims == 2:
+                        tmp_labels = new_labels[crop[0]:crop[2], crop[1]:crop[3], ...]
+                    elif n_dims == 3:
+                        tmp_labels = new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...]
+                    else:
+                        raise ValueError('cannot correct volumes with more than 3 dimensions')
 
-                # select nearest value
-                idx_correct_lab = np.argmin(distances_correct, axis=0)
-                tmp_im[incorrect_voxels] = np.array(correct_label)[idx_correct_lab]
-                if n_dims == 2:
-                    labels[cropping[0]:cropping[2], cropping[1]:cropping[3], ...] = tmp_im
-                else:
-                    labels[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5], ...] = tmp_im
+                    # calculate distance maps for all new label candidates
+                    incorrect_voxels = np.where(tmp_labels == incorrect_label)
+                    if correct_label != previous_correct_labels:
+                        distance_map_list = [distance_transform_edt(np.logical_not(tmp_labels == lab))
+                                             for lab in correct_label]
+                        previous_correct_labels = correct_label
+                    distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
+
+                    # select nearest value
+                    idx_correct_lab = np.argmin(distances_correct, axis=0)
+                    tmp_labels[incorrect_voxels] = np.array(correct_label)[idx_correct_lab]
+
+                    # paste back
+                    if n_dims == 2:
+                        new_labels[crop[0]:crop[2], crop[1]:crop[3], ...] = tmp_labels
+                    else:
+                        new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...] = tmp_labels
+
+    # use nearest label
+    else:
+
+        # loop over label values
+        for incorrect_label in list_incorrect_labels:
+            if incorrect_label in volume_labels:
+
+                # loop around regions
+                components, n_components = scipy_label(new_labels == incorrect_label)
+                for i in range(1, n_components + 1):
+                    utils.print_loop_info(i, n_components + 1, 100)
+
+                    # crop each region
+                    _, crop = crop_volume_around_region(components, masking_labels=i, margin=1)
+                    tmp_labels = crop_volume_with_idx(new_labels, crop)
+                    correct_label = np.delete(np.unique(tmp_labels), np.where(np.unique(tmp_labels) == incorrect_label))
+
+                    if len(correct_label) == 1:
+                        tmp_labels = correct_label[0] * np.ones_like(tmp_labels)
+                    else:
+                        if remove_zero:
+                            correct_label = np.delete(correct_label, np.where(correct_label == 0))
+
+                        # calculate distance maps for all new label candidates
+                        incorrect_voxels = np.where(tmp_labels == incorrect_label)
+                        distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_label]
+                        distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
+
+                        # select nearest value
+                        idx_correct_lab = np.argmin(distances_correct, axis=0)
+                        tmp_labels[incorrect_voxels] = np.array(correct_label)[idx_correct_lab]
+
+                    # paste back
+                    if n_dims == 2:
+                        new_labels[crop[0]:crop[2], crop[1]:crop[3], ...] = tmp_labels
+                    else:
+                        new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...] = tmp_labels
 
     # smoothing
     if smooth:
         kernel = np.ones(tuple([3] * n_dims))
-        labels = smooth_label_map(labels, kernel)
+        new_labels = smooth_label_map(new_labels, kernel)
 
-    return labels
+    return new_labels
 
 
 def mask_label_map(labels, masking_values, masking_value=0, return_mask=False):
@@ -506,7 +566,7 @@ def mask_label_map(labels, masking_values, masking_value=0, return_mask=False):
     # build mask and mask labels
     mask = np.zeros(labels.shape, dtype=bool)
     masked_labels = labels.copy()
-    for value in masking_values:
+    for value in utils.reformat_to_list(masking_values):
         mask = mask | (labels == value)
     masked_labels[np.logical_not(mask)] = masking_value
 
@@ -517,7 +577,7 @@ def mask_label_map(labels, masking_values, masking_value=0, return_mask=False):
         return masked_labels
 
 
-def smooth_label_map(labels, kernel, print_progress=0):
+def smooth_label_map(labels, kernel, labels_list=None, print_progress=0):
     """This function smooth an input label map by replacing each voxel by the value of its most numerous neigbour.
     :param labels: input label map
     :param kernel: kernel when counting neighbours. Must contain only zeros or ones.
@@ -526,14 +586,20 @@ def smooth_label_map(labels, kernel, print_progress=0):
     """
     # get info
     labels_shape = labels.shape
-    label_list = np.unique(labels).astype('int32')
+    unique_labels = np.unique(labels).astype('int32')
+    if labels_list is None:
+        labels_list = unique_labels
+        new_labels = mask_new_labels = None
+    else:
+        labels_to_keep = [lab for lab in unique_labels if lab not in labels_list]
+        new_labels, mask_new_labels = mask_label_map(labels, labels_to_keep, return_mask=True)
 
     # loop through label values
     count = np.zeros(labels_shape)
     labels_smoothed = np.zeros(labels_shape, dtype='int')
-    for la, label in enumerate(label_list):
+    for la, label in enumerate(labels_list):
         if print_progress:
-            utils.print_loop_info(la, len(label_list), print_progress)
+            utils.print_loop_info(la, len(labels_list), print_progress)
 
         # count neigbours with same value
         mask = (labels == label) * 1
@@ -545,7 +611,12 @@ def smooth_label_map(labels, kernel, print_progress=0):
         labels_smoothed[idx] = label
         labels_smoothed = labels_smoothed.astype('int32')
 
-    return labels_smoothed
+    if new_labels is None:
+        new_labels = labels_smoothed
+    else:
+        new_labels = np.where(mask_new_labels, new_labels, labels_smoothed)
+
+    return new_labels
 
 
 def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, model=None, return_model=False):
@@ -885,7 +956,7 @@ def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, re
 
     # loop over label maps
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 5)
+        utils.print_loop_info(idx, len(path_images), 10)
 
         # pad map
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -1041,7 +1112,7 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
 
 def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
     """This function forms multimodal images by stacking channels located in different folders.
-    :param list_channel_dir: list of all directories, each containing the same channel for allimages.
+    :param list_channel_dir: list of all directories, each containing the same channel for all images.
     Channels are matched between folders by sorting order.
     :param result_dir: path of directory where multimodal images will be writen
     :param recompute: (optional) whether to recompute result files even if they already exists
@@ -1050,8 +1121,7 @@ def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
     # create result dir
     utils.mkdir(result_dir)
 
-    if not isinstance(list_channel_dir, list):
-        raise TypeError('list_channel_dir should be a list')
+    assert isinstance(list_channel_dir, (list, tuple)), 'list_channel_dir should be a list or a tuple'
 
     # gather path of all images for all channels
     list_channel_paths = [utils.list_images_in_folder(d) for d in list_channel_dir]
@@ -1223,6 +1293,65 @@ def samseg_images_in_dir(image_dir,
                 shutil.rmtree(path_im_result_dir)
 
 
+def upsample_anisotropic_images(image_dir,
+                                resample_image_result_dir,
+                                resample_like_dir,
+                                path_freesurfer='/usr/local/freesurfer/',
+                                recompute=True):
+
+    # create result dir
+    utils.mkdir(resample_image_result_dir)
+
+    # set up FreeSurfer
+    os.environ['FREESURFER_HOME'] = path_freesurfer
+    os.system(os.path.join(path_freesurfer, 'SetUpFreeSurfer.sh'))
+    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert') + ' '
+
+    # list images and labels
+    path_images = utils.list_images_in_folder(image_dir)
+    path_ref_images = utils.list_images_in_folder(resample_like_dir)
+    assert len(path_images) == len(path_ref_images), \
+        'the folders containing the images and their references are not the same size'
+
+    # loop over images
+    for idx, (path_image, path_ref) in enumerate(zip(path_images, path_ref_images)):
+        utils.print_loop_info(idx, len(path_images), 10)
+
+        # upsample image
+        _, _, n_dims, _, _, image_res = utils.get_volume_info(path_image, return_volume=False)
+        image_res = np.array(image_res)
+        path_im_upsampled = os.path.join(resample_image_result_dir, os.path.basename(path_image))
+        if (not os.path.isfile(path_im_upsampled)) | recompute:
+            cmd = mri_convert + path_image + ' ' + path_im_upsampled + ' -rl ' + path_ref + ' -odt float'
+            os.system(cmd)
+
+        path_dist_map = os.path.join(resample_image_result_dir, 'dist_map_' + os.path.basename(path_image))
+        if (not os.path.isfile(path_dist_map)) | recompute:
+            im, aff, h = utils.load_volume(path_image, im_only=False)
+            dist_map = np.meshgrid(*[np.arange(s) for s in im.shape], indexing='ij')
+            tmp_dir = utils.strip_extension(path_im_upsampled) + '_meshes'
+            utils.mkdir(tmp_dir)
+            path_meshes_up = list()
+            for (i, maps) in enumerate(dist_map):
+                path_mesh = os.path.join(tmp_dir, '%s_' % i + os.path.basename(path_image))
+                path_mesh_up = os.path.join(tmp_dir, 'up_%s_' % i + os.path.basename(path_image))
+                utils.save_volume(maps, aff, h, path_mesh)
+                cmd = mri_convert + path_mesh + ' ' + path_mesh_up + ' -rl ' + path_im_upsampled + ' -odt float'
+                os.system(cmd)
+                path_meshes_up.append(path_mesh_up)
+            mesh_up_0, aff, h = utils.load_volume(path_meshes_up[0], im_only=False)
+            mesh_up = np.stack([mesh_up_0] + [utils.load_volume(p) for p in path_meshes_up[1:]], -1)
+            shutil.rmtree(tmp_dir)
+
+            floor = np.floor(mesh_up)
+            ceil = np.ceil(mesh_up)
+            f_dist = mesh_up - floor
+            c_dist = ceil - mesh_up
+            dist = np.minimum(f_dist, c_dist) * utils.add_axis(image_res, axis=[0] * n_dims)
+            dist = np.sqrt(np.sum(dist ** 2, axis=-1))
+            utils.save_volume(dist, aff, h, path_dist_map)
+
+
 def simulate_upsampled_anisotropic_images(image_dir,
                                           downsample_image_result_dir,
                                           resample_image_result_dir,
@@ -1230,6 +1359,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
                                           labels_dir=None,
                                           downsample_labels_result_dir=None,
                                           slice_thickness=None,
+                                          build_dist_map=False,
                                           path_freesurfer='/usr/local/freesurfer/',
                                           gpu=True,
                                           recompute=True):
@@ -1244,6 +1374,8 @@ def simulate_upsampled_anisotropic_images(image_dir,
     :param labels_dir: (optional) path of directory with label maps corresponding to input images
     :param downsample_labels_result_dir: (optional) path of directory where downsampled label maps will be writen
     :param slice_thickness: (optional) thickness of slices to simulate. Can be a number, a list or a numpy array.
+    :param build_dist_map: (optional) whether to return the resampled images with an additional channel indicating the
+    distace of each voxel to the nearest acquired voxel. Default is False.
     :param path_freesurfer: (optional) path freesurfer home, as this function uses mri_convert
     :param gpu: (optional) whether to use a fast gpu model for blurring
     :param recompute: (optional) whether to recompute result files even if they already exists
@@ -1316,6 +1448,33 @@ def simulate_upsampled_anisotropic_images(image_dir,
             cmd = mri_convert + path_im_downsampled + ' ' + path_im_upsampled + ' -rl ' + path_image + ' -odt float'
             os.system(cmd)
 
+        if build_dist_map:
+            path_dist_map = os.path.join(resample_image_result_dir, 'dist_map_' + os.path.basename(path_image))
+            if (not os.path.isfile(path_dist_map)) | recompute:
+                im, aff, h = utils.load_volume(path_im_downsampled, im_only=False)
+                dist_map = np.meshgrid(*[np.arange(s) for s in im.shape], indexing='ij')
+                tmp_dir = utils.strip_extension(path_im_downsampled) + '_meshes'
+                utils.mkdir(tmp_dir)
+                path_meshes_up = list()
+                for (i, d_map) in enumerate(dist_map):
+                    path_mesh = os.path.join(tmp_dir, '%s_' % i + os.path.basename(path_image))
+                    path_mesh_up = os.path.join(tmp_dir, 'up_%s_' % i + os.path.basename(path_image))
+                    utils.save_volume(d_map, aff, h, path_mesh)
+                    cmd = mri_convert + path_mesh + ' ' + path_mesh_up + ' -rl ' + path_image + ' -odt float'
+                    os.system(cmd)
+                    path_meshes_up.append(path_mesh_up)
+                mesh_up_0, aff, h = utils.load_volume(path_meshes_up[0], im_only=False)
+                mesh_up = np.stack([mesh_up_0] + [utils.load_volume(p) for p in path_meshes_up[1:]], -1)
+                shutil.rmtree(tmp_dir)
+
+                floor = np.floor(mesh_up)
+                ceil = np.ceil(mesh_up)
+                f_dist = mesh_up - floor
+                c_dist = ceil - mesh_up
+                dist = np.minimum(f_dist, c_dist) * utils.add_axis(data_res, axis=[0] * n_dims)
+                dist = np.sqrt(np.sum(dist ** 2, axis=-1))
+                utils.save_volume(dist, aff, h, path_dist_map)
+
 
 def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
     """Check if all volumes within the same folder share the same characteristics: shape, affine matrix, resolution.
@@ -1358,17 +1517,20 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
 
 # ----------------------------------------------- edit label maps in dir -----------------------------------------------
 
-def correct_labels_in_dir(labels_dir, list_incorrect_labels, list_correct_labels, results_dir, smooth=False,
-                          recompute=True):
-    """This function corrects label values for all labels in a folder.
+def correct_labels_in_dir(labels_dir, results_dir, list_incorrect_labels, list_correct_labels=None,
+                          use_nearest_label=False, smooth=False, recompute=True):
+    """This function corrects label values for all label maps in a folder with either
+    - a list a given values,
+    - or with the nearest label value.
     :param labels_dir: path of directory with input label maps
+    :param results_dir: path of directory where corrected label maps will be writen
     :param list_incorrect_labels: list of all label values to correct (e.g. [1, 2, 3, 4]).
-    :param list_correct_labels: list of correct label values.
+    :param list_correct_labels: (optional) list of correct label values to replace the incorrect ones.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
     each voxel to correct. In that case, the different correct values must be specified inside a list whithin
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
-    :param results_dir: path of directory where corrected label maps will be writen
+    :param use_nearest_label: (optional) whether to correct the incoorect lavel values with the nearest labels.
     :param smooth: (optional) whether to smooth the corrected label maps
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
@@ -1385,7 +1547,7 @@ def correct_labels_in_dir(labels_dir, list_incorrect_labels, list_correct_labels
         path_result = os.path.join(results_dir, os.path.basename(path_label))
         if (not os.path.isfile(path_result)) | recompute:
             im, aff, h = utils.load_volume(path_label, im_only=False, dtype='int32')
-            im = correct_label_map(im, list_incorrect_labels, list_correct_labels, smooth=smooth)
+            im = correct_label_map(im, list_incorrect_labels, list_correct_labels, use_nearest_label, smooth)
             utils.save_volume(im, aff, h, path_result)
 
 
@@ -1405,10 +1567,7 @@ def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, 
         utils.mkdir(mask_result_dir)
 
     # reformat values to keep
-    if isinstance(values_to_keep, (int, float)):
-        values_to_keep = [values_to_keep]
-    elif not isinstance(values_to_keep, (tuple, list)):
-        raise TypeError('values to keep should be int, float, tuple, or list')
+    values_to_keep = utils.reformat_to_list(values_to_keep, load_as_numpy=True)
 
     # loop over labels
     path_labels = utils.list_images_in_folder(labels_dir)
@@ -1434,13 +1593,14 @@ def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, 
             utils.save_volume(labels, aff, h, path_result)
 
 
-def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, path_label_list=None, recompute=True):
+def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, connectivity=1, recompute=True):
     """Smooth all label maps in a folder by replacing each voxel by the value of its most numerous neigbours.
     :param labels_dir: path of directory with input label maps
     :param result_dir: path of directory where smoothed label maps will be writen
     :param gpu: (optional) whether to use a gpu implementation for faster processing
-    :param path_label_list: (optionnal) if gpu is True, path of numpy array with all label values.
+    :param labels_list: (optionnal) if gpu is True, path of numpy array with all label values.
     Automatically computed if not provided.
+    :param connectivity: (optional) connectivity to use when smoothing the label maps
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
 
@@ -1452,7 +1612,7 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, path_label_list=None
 
     if gpu:
         # initialisation
-        label_list, _ = utils.get_list_labels(label_list=path_label_list, labels_dir=labels_dir, FS_sort=True)
+        label_list, _ = utils.get_list_labels(label_list=labels_list, labels_dir=labels_dir, FS_sort=True)
         previous_model_input_shape = None
         smoothing_model = None
 
@@ -1466,14 +1626,21 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, path_label_list=None
                 labels, label_shape, aff, n_dims, _, h, _ = utils.get_volume_info(path_label, return_volume=True)
                 if label_shape != previous_model_input_shape:
                     previous_model_input_shape = label_shape
-                    smoothing_model = smoothing_gpu_model(label_shape, label_list)
-                labels = smoothing_model.predict(utils.add_axis(labels))
+                    smoothing_model = smoothing_gpu_model(label_shape, label_list, connectivity)
+                unique_labels = np.unique(labels).astype('int32')
+                if labels_list is None:
+                    labels = smoothing_model.predict(utils.add_axis(labels))
+                else:
+                    labels_to_keep = [lab for lab in unique_labels if lab not in labels_list]
+                    new_labels, mask_new_labels = mask_label_map(labels, labels_to_keep, return_mask=True)
+                    labels = smoothing_model.predict(utils.add_axis(labels))
+                    labels = np.where(mask_new_labels, new_labels, labels)
                 utils.save_volume(np.squeeze(labels), aff, h, path_result, dtype='int')
 
     else:
         # build kernel
         _, _, n_dims, _, _, _ = utils.get_volume_info(path_labels[0])
-        kernel = np.ones(tuple([3] * n_dims))
+        kernel = utils.build_binary_structure(connectivity, n_dims, shape=n_dims)
 
         # loop over label maps
         for idx, path in enumerate(path_labels):
@@ -1483,15 +1650,16 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, path_label_list=None
             path_result = os.path.join(result_dir, os.path.basename(path))
             if (not os.path.isfile(path_result)) | recompute:
                 volume, aff, h = utils.load_volume(path, im_only=False)
-                new_volume = smooth_label_map(volume, kernel)
+                new_volume = smooth_label_map(volume, kernel, labels_list)
                 utils.save_volume(new_volume, aff, h, path_result, dtype='int')
 
 
-def smoothing_gpu_model(label_shape, label_list):
+def smoothing_gpu_model(label_shape, label_list, connectivity=1):
     """This function builds a gpu model in keras with a tensorflow backend to smooth label maps.
     This model replaces each voxel of the input by the value of its most numerous neigbour.
     :param label_shape: shape of the label map
     :param label_list: list of all labels to consider
+    :param connectivity: (optional) connectivity to use when smoothing the label maps
     :return: gpu smoothing model
     """
 
@@ -1506,8 +1674,8 @@ def smoothing_gpu_model(label_shape, label_list):
 
     # count neighbouring voxels
     n_dims, _ = utils.get_dims(label_shape)
-    kernel = KL.Lambda(lambda x: tf.convert_to_tensor(
-        utils.add_axis(np.ones(tuple([n_dims] * n_dims)).astype('float32'), axis=[-1, -1])))([])
+    k = utils.add_axis(utils.build_binary_structure(connectivity, n_dims, shape=n_dims), axis=[-1, -1])
+    kernel = KL.Lambda(lambda x: tf.convert_to_tensor(k, dtype='float32'))([])
     split = KL.Lambda(lambda x: tf.split(x, [1] * n_labels, axis=-1))(labels)
     labels = KL.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME'))([split[0], kernel])
     for i in range(1, n_labels):

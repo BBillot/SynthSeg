@@ -214,7 +214,8 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     n_neutral_labels = 0
     if FS_sort:
         neutral_FS_labels = [0, 14, 15, 16, 21, 22, 23, 24, 72, 77, 80, 85, 101, 102, 103, 104, 105, 165, 251, 252, 253,
-                             254, 255, 258, 259, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340]
+                             254, 255, 258, 259, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340,
+                             502, 506, 507, 508, 509, 511, 512, 514, 515, 516, 530]
         neutral = list()
         left = list()
         right = list()
@@ -620,9 +621,12 @@ def find_closest_number_divisible_by_m(n, m, smaller_ans=True):
         return n2
 
 
-def build_binary_structure(connectivity, n_dims):
+def build_binary_structure(connectivity, n_dims, shape=None):
     """Return a dilation/erosion element with provided connectivity"""
-    shape = [connectivity * 2 + 1] * n_dims
+    if shape is None:
+        shape = [connectivity * 2 + 1] * n_dims
+    else:
+        shape = reformat_to_list(shape, length=n_dims)
     dist = np.ones(shape)
     center = tuple([tuple([int(s / 2)]) for s in shape])
     dist[center] = 0
