@@ -22,9 +22,9 @@ realistic/unrealistic, isotropic/anisotropic, uni-modal/multi-modal scans.
 ![Generation examples](data/README_figures/figure.png)
 \
 \
-The generated images are then usd to train a CNN for image segmentation. Because the parameters of the GMM (means and 
+The generated images are then used to train a CNN for image segmentation. Because the parameters of the GMM (means and 
 variances) are sampled at each minibatch from prior distributions, the network is exposed to images yielding differences
- in contrast (depending on the GMM priors), and learns robust features. An overvoew of the training process is 
+ in contrast (depending on the GMM priors), and learns robust features. An overview of the training process is 
 represented in the following figure:
 \
 \
@@ -72,14 +72,14 @@ images of random or constrained intensity distributions.
 [SynthSeg](https://arxiv.org/abs/2003.01995), a contrast-agnostic network for segmenation of brain MRI scans. 
 These scripts introduce some new parameters of the generative model.
 
-- [PV-SynthSeg_scripts](scripts/PV-SynthSeg_scripts): this folder contains several scripts, among which you can find 
+- [PV-SynthSeg_scripts](scripts/PV_SynthSeg_scripts): this folder contains several scripts, among which you can find 
 how we trained [PV-SynthSeg](https://arxiv.org/abs/2004.10221), a PV-aware network for segmentation of brain MRI scans.
-In particular the [PV-SynthSeg_generation](scripts/PV-SynthSeg_scripts/PV-SynthSeg_generation.py) explains some advanced
+In particular the [PV-SynthSeg_generation](scripts/PV_SynthSeg_scripts/PV_SynthSeg_generation.py) explains some advanced
 parameters if you wish to generate multi-modal and/or anisotropic images. 
 
 As opposed to SynthSeg, PV-SynthSeg needs to be retrained for new target modalities. This is done by evaluating new 
 Gaussian distribution priors on the target modality. These Gaussian distributions can be estimated as explained in 
-[intensity_estimation](scripts/PV-SynthSeg_scripts/intensity_estimation.py).
+[intensity_estimation](scripts/PV_SynthSeg_scripts/intensity_estimation.py).
 
 ----------------
 

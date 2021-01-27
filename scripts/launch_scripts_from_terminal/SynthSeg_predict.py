@@ -8,7 +8,6 @@ print('\n')
 # python imports
 import os
 import sys
-import numpy as np
 from argparse import ArgumentParser
 
 # add main folder to python path and import ./SynthSeg/predict.py

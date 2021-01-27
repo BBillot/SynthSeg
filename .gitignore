@@ -5,23 +5,28 @@ venv
 scripts/generated_images/
 scripts/model_dir
 
+scripts/scripts_for_Eugenio
+
 scripts/lesions_scripts/check_generative_model.py
 scripts/lesions_scripts/check_supervised_training.py
 scripts/lesions_scripts/lesion_generation.py
 scripts/lesions_scripts/sample_vae_keras.py
 scripts/lesions_scripts/validation.py
 
-scripts/PV-SynthSeg_scripts/check_generative_model.py
-scripts/PV-SynthSeg_scripts/draw_boxplots.py
-scripts/PV-SynthSeg_scripts/PV-SynthSeg_generation_script.py
+scripts/super-res/
+
+scripts/PV_SynthSeg_scripts/draw_boxplots.py
+scripts/PV_SynthSeg_scripts/PV_SynthSeg_generation_script.py
 
 scripts/SynthSeg_scripts/check_generative_model.py
+scripts/SynthSeg_scripts/check_supervised_training.py
 scripts/SynthSeg_scripts/draw_boxplots.py
 scripts/SynthSeg_scripts/list_test_subjects.txt
 scripts/SynthSeg_scripts/mosaic_figure.py
 
 SynthSeg/boxplots.py
-SynthSeg/check_generative_model.py
+SynthSeg/check_generation.py
+SynthSeg/check_generation_rel_map.py
 SynthSeg/check_supervised_training.py
 
 VAE
