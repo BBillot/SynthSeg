@@ -27,7 +27,7 @@ def labels_to_image_model(labels_shape,
                           rotation_bounds=15,
                           shearing_bounds=0.012,
                           translation_bounds=False,
-                          nonlin_std=3.,
+                          nonlin_std=4.,
                           nonlin_shape_factor=.0625,
                           randomise_res=False,
                           buil_distance_maps=False,
@@ -35,7 +35,7 @@ def labels_to_image_model(labels_shape,
                           thickness=None,
                           downsample=False,
                           blur_range=1.15,
-                          bias_field_std=.3,
+                          bias_field_std=.5,
                           bias_shape_factor=.025):
     """
     This function builds a keras/tensorflow model to generate images from provided label maps.

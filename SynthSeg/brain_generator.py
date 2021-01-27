@@ -32,7 +32,7 @@ class BrainGenerator:
                  rotation_bounds=15,
                  shearing_bounds=.012,
                  translation_bounds=False,
-                 nonlin_std=3.,
+                 nonlin_std=4.,
                  nonlin_shape_factor=0.0625,
                  randomise_res=False,
                  buil_distance_maps=False,
@@ -40,7 +40,7 @@ class BrainGenerator:
                  thickness=None,
                  downsample=False,
                  blur_range=1.15,
-                 bias_field_std=0.3,
+                 bias_field_std=0.5,
                  bias_shape_factor=0.025):
         """
         This class is wrapper around the labels_to_image_model model. It contains the GPU model that generates images

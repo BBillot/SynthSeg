@@ -914,7 +914,7 @@ class BiasFieldCorruption(Layer):
     :param same_bias_for_all_channels: whether to apply the same bias field to all the channels of the input tensor.
     """
 
-    def __init__(self, bias_field_std=.3, bias_shape_factor=.025, same_bias_for_all_channels=False, **kwargs):
+    def __init__(self, bias_field_std=.5, bias_shape_factor=.025, same_bias_for_all_channels=False, **kwargs):
 
         # input shape
         self.several_inputs = False
