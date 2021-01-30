@@ -37,8 +37,8 @@ def dice(x, y):
     return 2 * np.sum(x*y) / (np.sum(x) + np.sum(y))
 
 
-def surface_distances(x, y):
-    """Computes the maximum boundary distance (Haussdorf distance), and the average boundary distance of two masks.
+def surface_distances(x, y, hausdorff_percentile=1):
+    """Computes the maximum boundary distance (Haussdorff distance), and the average boundary distance of two masks.
     x and y should be boolean or 0/1 numpy arrays of the same size."""
 
     assert x.shape == y.shape, 'both inputs should have same size, had {} and {}'.format(x.shape, y.shape)
@@ -58,14 +58,21 @@ def surface_distances(x, y):
     y_dists_to_x = x_dist[y_edge == 1]
 
     # find max distance from the 2 surfaces
-    x_max_dist_to_y = np.max(x_dists_to_y)
-    y_max_dist_to_x = np.max(y_dists_to_x)
+    if hausdorff_percentile == 1:
+        x_max_dist_to_y = np.max(x_dists_to_y)
+        y_max_dist_to_x = np.max(y_dists_to_x)
+        max_dist = np.maximum(x_max_dist_to_y, y_max_dist_to_x)
+    else:
+        dists = np.sort(np.concatenate([x_dists_to_y, y_dists_to_x]))
+        idx_max = min(int(dists.shape[0] * hausdorff_percentile), dists.shape[0] - 1)
+        max_dist = dists[idx_max]
 
     # find average distance between 2 surfaces
     x_mean_dist_to_y = np.mean(x_dists_to_y)
     y_mean_dist_to_x = np.mean(y_dists_to_x)
+    mean_dist = (x_mean_dist_to_y + y_mean_dist_to_x) / 2
 
-    return np.maximum(x_max_dist_to_y, y_max_dist_to_x), (x_mean_dist_to_y + y_mean_dist_to_x) / 2
+    return max_dist, mean_dist
 
 
 def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None, alternative='two-sided'):
