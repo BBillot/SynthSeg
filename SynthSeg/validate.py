@@ -98,23 +98,24 @@ def validate_training(image_dir,
                     verbose=False)
 
 
-def plot_validation_curves(list_net_validation_dirs, fontsize=18, size_max_circle=100, eval_indices=None,
-                           skip_first_dice_row=True):
+def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_first_dice_row=True,
+                           size_max_circle=100, figsize=(11, 6), fontsize=18):
     """This function plots the validation curves of several networks, based on the results of validate_training().
     It takes as input a list of validation folders (one for each network), each containing subfolders with dice scores
     for the corresponding validated epoch.
     :param list_net_validation_dirs: list of all the validation folders of the trainings to plot.
-    :param fontsize: (optional) fontsize used for the graph.
-    :param size_max_circle: (optional) size of the marker for epochs achieveing the best validation scores.
     :param eval_indices: (optional) compute the average Dice loss on a subset of labels indicated by the specified
     indices. Can be a sequence, 1d numpy array, or the path to such an array.
-    :param skip_first_dice_row: if eval_indices is None, skip the first row of the dice matrices (usually background)"""
+    :param skip_first_dice_row: if eval_indices is None, skip the first row of the dice matrices (usually background)
+    :param size_max_circle: (optional) size of the marker for epochs achieveing the best validation scores.
+    :param figsize: (optional) size of the figure to draw.
+    :param fontsize: (optional) fontsize used for the graph."""
 
     if eval_indices is not None:
         eval_indices = utils.reformat_to_list(eval_indices, load_as_numpy=True)
 
     # loop over architectures
-    plt.figure()
+    plt.figure(figsize=figsize)
     for net_val_dir in list_net_validation_dirs:
 
         net_name = os.path.basename(os.path.dirname(net_val_dir))
@@ -155,14 +156,16 @@ def plot_validation_curves(list_net_validation_dirs, fontsize=18, size_max_circl
     plt.ylabel('Dice scores', fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
     plt.title('Validation curves', fontsize=fontsize)
-    plt.legend()
+    plt.legend(fontsize=fontsize)
+    plt.tight_layout(pad=1)
     plt.show()
 
 
-def draw_learning_curve(path_tensorboard_files, architecture_names, fontsize=18):
+def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11, 6), fontsize=18):
     """This function draws the learning curve of several trainings on the same graph.
     :param path_tensorboard_files: list of tensorboard files corresponding to the models to plot.
     :param architecture_names: list of the names of the models
+    :param figsize: (optional) size of the figure to draw.
     :param fontsize: (optional) fontsize used for the graph.
     """
 
@@ -172,7 +175,7 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, fontsize=18)
     assert len(path_tensorboard_files) == len(architecture_names), 'names and tensorboard lists should have same length'
 
     # loop over architectures
-    plt.figure()
+    plt.figure(figsize=figsize)
     for path_tensorboard_file, name in zip(path_tensorboard_files, architecture_names):
 
         # extract loss at the end of all epochs

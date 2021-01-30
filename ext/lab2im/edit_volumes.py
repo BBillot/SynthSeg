@@ -1824,7 +1824,7 @@ def compute_hard_volumes_in_dir(labels_dir,
         utils.mkdir(os.path.dirname(path_csv_result))
 
     # load or compute labels list
-    label_list = utils.get_list_labels(path_label_list, labels_dir, FS_sort=FS_sort)
+    label_list, _ = utils.get_list_labels(path_label_list, labels_dir, FS_sort=FS_sort)
 
     # create csv volume file if necessary
     if path_csv_result is not None:

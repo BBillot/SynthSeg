@@ -157,7 +157,7 @@ def predict(path_images,
             utils.save_volume(seg.astype('int'), aff, h, path_segmentation)
         if path_posterior is not None:
             if n_channels > 1:
-                posteriors = utils.add_axis(posteriors, axis=-2)
+                posteriors = utils.add_axis(posteriors, axis=[0, -1])
             utils.save_volume(posteriors.astype('float'), aff, h, path_posterior)
 
     # evaluate

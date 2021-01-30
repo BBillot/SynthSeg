@@ -23,16 +23,19 @@
     -get_resample_shape
     -add_axis
     -get_padding_margin
-5- miscellaneous
+5- build affine matrices/tensors
+    -create_affine_transformation_matrix
+    -sample_affine_transform
+    -create_rotation_transform
+    -create_shearing_transform
+6- miscellaneous
     -infer
     -print_loop_info
     -rearrange_label_list
     -build_training_generator
     -find_closest_number_divisible_by_m
     -build_binary_structure
-    -get_std_blurring_mask_for_downsampling
     -draw_value_from_distribution
-    -create_affine_transformation_matrix
     -build_exp
 """
 
@@ -242,7 +245,7 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     if FS_sort:
         return np.int32(label_list), n_neutral_labels
     else:
-        return np.int32(label_list)
+        return np.int32(label_list), None
 
 
 def load_array_if_path(var, load_as_numpy=True):
@@ -551,6 +554,207 @@ def get_padding_margin(cropping, loss_cropping):
     return padding_margin
 
 
+# -------------------------------------------- build affine matrices/tensors -------------------------------------------
+
+
+def create_affine_transformation_matrix(n_dims, scaling=None, rotation=None, shearing=None, translation=None):
+    """Create a 4x4 affine transformation matrix from specified values
+    :param n_dims: integer
+    :param scaling: list of 3 scaling values
+    :param rotation: list of 3 angles (degrees) for rotations around 1st, 2nd, 3rd axis
+    :param shearing: list of 6 shearing values
+    :param translation: list of 3 values
+    :return: 4x4 numpy matrix
+    """
+
+    T_scaling = np.eye(n_dims + 1)
+    T_shearing = np.eye(n_dims + 1)
+    T_translation = np.eye(n_dims + 1)
+
+    if scaling is not None:
+        T_scaling[np.arange(n_dims + 1), np.arange(n_dims + 1)] = np.append(scaling, 1)
+
+    if shearing is not None:
+        shearing_index = np.ones((n_dims + 1, n_dims + 1), dtype='bool')
+        shearing_index[np.eye(n_dims + 1, dtype='bool')] = False
+        shearing_index[-1, :] = np.zeros((n_dims + 1))
+        shearing_index[:, -1] = np.zeros((n_dims + 1))
+        T_shearing[shearing_index] = shearing
+
+    if translation is not None:
+        T_translation[np.arange(n_dims), n_dims * np.ones(n_dims, dtype='int')] = translation
+
+    if n_dims == 2:
+        if rotation is None:
+            rotation = np.zeros(1)
+        else:
+            rotation = np.asarray(rotation) * (math.pi / 180)
+        T_rot = np.eye(n_dims + 1)
+        T_rot[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [np.cos(rotation[0]), np.sin(rotation[0]),
+                                                                 np.sin(rotation[0]) * -1, np.cos(rotation[0])]
+        return T_translation @ T_rot @ T_shearing @ T_scaling
+
+    else:
+
+        if rotation is None:
+            rotation = np.zeros(n_dims)
+        else:
+            rotation = np.asarray(rotation) * (math.pi / 180)
+        T_rot1 = np.eye(n_dims + 1)
+        T_rot1[np.array([1, 2, 1, 2]), np.array([1, 1, 2, 2])] = [np.cos(rotation[0]), np.sin(rotation[0]),
+                                                                  np.sin(rotation[0]) * -1, np.cos(rotation[0])]
+        T_rot2 = np.eye(n_dims + 1)
+        T_rot2[np.array([0, 2, 0, 2]), np.array([0, 0, 2, 2])] = [np.cos(rotation[1]), np.sin(rotation[1]) * -1,
+                                                                  np.sin(rotation[1]), np.cos(rotation[1])]
+        T_rot3 = np.eye(n_dims + 1)
+        T_rot3[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [np.cos(rotation[2]), np.sin(rotation[2]),
+                                                                  np.sin(rotation[2]) * -1, np.cos(rotation[2])]
+        return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling
+
+
+def sample_affine_transform(batchsize,
+                            n_dims,
+                            rotation_bounds=False,
+                            scaling_bounds=False,
+                            shearing_bounds=False,
+                            translation_bounds=False,
+                            enable_90_rotations=False):
+    """build batchsizex4x4 tensor representing an affine transormation in homogeneous coordinates.
+    If return_inv is True, also returns the inverse of the created affine matrix."""
+
+    if (rotation_bounds is not False) | (enable_90_rotations is not False):
+        if n_dims == 2:
+            if rotation_bounds is not False:
+                rotation = draw_value_from_distribution(rotation_bounds,
+                                                        size=1,
+                                                        default_range=15.0,
+                                                        return_as_tensor=True,
+                                                        batchsize=batchsize)
+            else:
+                rotation = tf.zeros(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0))
+        else:  # n_dims = 3
+            if rotation_bounds is not False:
+                rotation = draw_value_from_distribution(rotation_bounds,
+                                                        size=n_dims,
+                                                        default_range=15.0,
+                                                        return_as_tensor=True,
+                                                        batchsize=batchsize)
+            else:
+                rotation = tf.zeros(tf.concat([batchsize, 3 * tf.ones(1, dtype='int32')], axis=0))
+        if enable_90_rotations:
+            rotation = tf.cast(tf.random.uniform(tf.shape(rotation), maxval=4, dtype='int32') * 90, 'float32') \
+                       + rotation
+        T_rot = create_rotation_transform(rotation, n_dims)
+    else:
+        T_rot = tf.tile(tf.expand_dims(tf.eye(n_dims), axis=0),
+                        tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
+
+    if shearing_bounds is not False:
+        shearing = draw_value_from_distribution(shearing_bounds,
+                                                size=n_dims ** 2 - n_dims,
+                                                default_range=.01,
+                                                return_as_tensor=True,
+                                                batchsize=batchsize)
+        T_shearing = create_shearing_transform(shearing, n_dims)
+    else:
+        T_shearing = tf.tile(tf.expand_dims(tf.eye(n_dims), axis=0),
+                             tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
+
+    if scaling_bounds is not False:
+        scaling = draw_value_from_distribution(scaling_bounds,
+                                               size=n_dims,
+                                               centre=1,
+                                               default_range=.15,
+                                               return_as_tensor=True,
+                                               batchsize=batchsize)
+        T_scaling = tf.linalg.diag(scaling)
+    else:
+        T_scaling = tf.tile(tf.expand_dims(tf.eye(n_dims), axis=0),
+                            tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
+
+    T = tf.matmul(T_scaling, tf.matmul(T_shearing, T_rot))
+
+    if translation_bounds is not False:
+        translation = draw_value_from_distribution(translation_bounds,
+                                                   size=n_dims,
+                                                   default_range=5,
+                                                   return_as_tensor=True,
+                                                   batchsize=batchsize)
+        T = tf.concat([T, tf.expand_dims(translation, axis=-1)], axis=-1)
+    else:
+        T = tf.concat([T, tf.zeros(tf.concat([tf.shape(T)[:2], tf.ones(1, dtype='int32')], 0))], axis=-1)
+
+    # build rigid transform
+    T_last_row = tf.expand_dims(tf.concat([tf.zeros((1, n_dims)), tf.ones((1, 1))], axis=1), 0)
+    T_last_row = tf.tile(T_last_row, tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
+    T = tf.concat([T, T_last_row], axis=1)
+
+    return T
+
+
+def create_rotation_transform(rotation, n_dims):
+    """build rotation transform from 3d or 2d rotation coefficients. Angles are given in degrees."""
+    rotation = rotation * np.pi / 180
+    if n_dims == 3:
+        shape = tf.shape(tf.expand_dims(rotation[..., 0], -1))
+
+        Rx_row0 = tf.expand_dims(tf.tile(tf.expand_dims(tf.convert_to_tensor([1., 0., 0.]), 0), shape), axis=1)
+        Rx_row1 = tf.stack([tf.zeros(shape), tf.expand_dims(tf.cos(rotation[..., 0]), -1),
+                            tf.expand_dims(-tf.sin(rotation[..., 0]), -1)], axis=-1)
+        Rx_row2 = tf.stack([tf.zeros(shape), tf.expand_dims(tf.sin(rotation[..., 0]), -1),
+                            tf.expand_dims(tf.cos(rotation[..., 0]), -1)], axis=-1)
+        Rx = tf.concat([Rx_row0, Rx_row1, Rx_row2], axis=1)
+
+        Ry_row0 = tf.stack([tf.expand_dims(tf.cos(rotation[..., 1]), -1), tf.zeros(shape),
+                            tf.expand_dims(tf.sin(rotation[..., 1]), -1)], axis=-1)
+        Ry_row1 = tf.expand_dims(tf.tile(tf.expand_dims(tf.convert_to_tensor([0., 1., 0.]), 0), shape), axis=1)
+        Ry_row2 = tf.stack([tf.expand_dims(-tf.sin(rotation[..., 1]), -1), tf.zeros(shape),
+                            tf.expand_dims(tf.cos(rotation[..., 1]), -1)], axis=-1)
+        Ry = tf.concat([Ry_row0, Ry_row1, Ry_row2], axis=1)
+
+        Rz_row0 = tf.stack([tf.expand_dims(tf.cos(rotation[..., 2]), -1),
+                            tf.expand_dims(-tf.sin(rotation[..., 2]), -1), tf.zeros(shape)], axis=-1)
+        Rz_row1 = tf.stack([tf.expand_dims(tf.sin(rotation[..., 2]), -1),
+                            tf.expand_dims(tf.cos(rotation[..., 2]), -1), tf.zeros(shape)], axis=-1)
+        Rz_row2 = tf.expand_dims(tf.tile(tf.expand_dims(tf.convert_to_tensor([0., 0., 1.]), 0), shape), axis=1)
+        Rz = tf.concat([Rz_row0, Rz_row1, Rz_row2], axis=1)
+
+        T_rot = tf.matmul(tf.matmul(Rx, Ry), Rz)
+
+    elif n_dims == 2:
+        R_row0 = tf.stack([tf.expand_dims(tf.cos(rotation[..., 0]), -1),
+                           tf.expand_dims(tf.sin(rotation[..., 0]), -1)], axis=-1)
+        R_row1 = tf.stack([tf.expand_dims(-tf.sin(rotation[..., 0]), -1),
+                           tf.expand_dims(tf.cos(rotation[..., 0]), -1)], axis=-1)
+        T_rot = tf.concat([R_row0, R_row1], axis=1)
+
+    else:
+        raise Exception('only supports 2 or 3D.')
+
+    return T_rot
+
+
+def create_shearing_transform(shearing, n_dims):
+    """build shearing transform from 2d/3d shearing coefficients"""
+    shape = tf.shape(tf.expand_dims(shearing[..., 0], -1))
+    if n_dims == 3:
+        shearing_row0 = tf.stack([tf.ones(shape), tf.expand_dims(shearing[..., 0], -1),
+                                  tf.expand_dims(shearing[..., 1], -1)], axis=-1)
+        shearing_row1 = tf.stack([tf.expand_dims(shearing[..., 2], -1), tf.ones(shape),
+                                  tf.expand_dims(shearing[..., 3], -1)], axis=-1)
+        shearing_row2 = tf.stack([tf.expand_dims(shearing[..., 4], -1), tf.expand_dims(shearing[..., 5], -1),
+                                  tf.ones(shape)], axis=-1)
+        T_shearing = tf.concat([shearing_row0, shearing_row1, shearing_row2], axis=1)
+
+    elif n_dims == 2:
+        shearing_row0 = tf.stack([tf.ones(shape), tf.expand_dims(shearing[..., 0], -1)], axis=-1)
+        shearing_row1 = tf.stack([tf.expand_dims(shearing[..., 1], -1), tf.ones(shape)], axis=-1)
+        T_shearing = tf.concat([shearing_row0, shearing_row1], axis=1)
+    else:
+        raise Exception('only supports 2 or 3D.')
+    return T_shearing
+
+
 # --------------------------------------------------- miscellaneous ----------------------------------------------------
 
 
@@ -721,61 +925,6 @@ def draw_value_from_distribution(hyperparameter,
             parameter_value[parameter_value < 0] = 0
 
     return parameter_value
-
-
-def create_affine_transformation_matrix(n_dims, scaling=None, rotation=None, shearing=None, translation=None):
-    """Create a 4x4 affine transformation matrix from specified values
-    :param n_dims: integer
-    :param scaling: list of 3 scaling values
-    :param rotation: list of 3 angles (degrees) for rotations around 1st, 2nd, 3rd axis
-    :param shearing: list of 6 shearing values
-    :param translation: list of 3 values
-    :return: 4x4 numpy matrix
-    """
-
-    T_scaling = np.eye(n_dims + 1)
-    T_shearing = np.eye(n_dims + 1)
-    T_translation = np.eye(n_dims + 1)
-
-    if scaling is not None:
-        T_scaling[np.arange(n_dims + 1), np.arange(n_dims + 1)] = np.append(scaling, 1)
-
-    if shearing is not None:
-        shearing_index = np.ones((n_dims + 1, n_dims + 1), dtype='bool')
-        shearing_index[np.eye(n_dims + 1, dtype='bool')] = False
-        shearing_index[-1, :] = np.zeros((n_dims + 1))
-        shearing_index[:, -1] = np.zeros((n_dims + 1))
-        T_shearing[shearing_index] = shearing
-
-    if translation is not None:
-        T_translation[np.arange(n_dims), n_dims * np.ones(n_dims, dtype='int')] = translation
-
-    if n_dims == 2:
-        if rotation is None:
-            rotation = np.zeros(1)
-        else:
-            rotation = np.asarray(rotation) * (math.pi / 180)
-        T_rot = np.eye(n_dims + 1)
-        T_rot[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [np.cos(rotation[0]), np.sin(rotation[0]),
-                                                                 np.sin(rotation[0]) * -1, np.cos(rotation[0])]
-        return T_translation @ T_rot @ T_shearing @ T_scaling
-
-    else:
-
-        if rotation is None:
-            rotation = np.zeros(n_dims)
-        else:
-            rotation = np.asarray(rotation) * (math.pi / 180)
-        T_rot1 = np.eye(n_dims + 1)
-        T_rot1[np.array([1, 2, 1, 2]), np.array([1, 1, 2, 2])] = [np.cos(rotation[0]), np.sin(rotation[0]),
-                                                                  np.sin(rotation[0]) * -1, np.cos(rotation[0])]
-        T_rot2 = np.eye(n_dims + 1)
-        T_rot2[np.array([0, 2, 0, 2]), np.array([0, 0, 2, 2])] = [np.cos(rotation[1]), np.sin(rotation[1]) * -1,
-                                                                  np.sin(rotation[1]), np.cos(rotation[1])]
-        T_rot3 = np.eye(n_dims + 1)
-        T_rot3[np.array([0, 1, 0, 1]), np.array([0, 0, 1, 1])] = [np.cos(rotation[2]), np.sin(rotation[2]),
-                                                                  np.sin(rotation[2]) * -1, np.cos(rotation[2])]
-        return T_translation @ T_rot3 @ T_rot2 @ T_rot1 @ T_shearing @ T_scaling
 
 
 def build_exp(x, first, last, fix_point):

@@ -140,7 +140,13 @@ class RandomSpatialDeformation(Layer):
 
         # add affine deformation to inputs list
         if self.apply_affine_trans:
-            affine_trans = self._sample_affine_transform(batchsize=batchsize)
+            affine_trans = utils.sample_affine_transform(batchsize,
+                                                         self.n_dims,
+                                                         self.rotation_bounds,
+                                                         self.scaling_bounds,
+                                                         self.shearing_bounds,
+                                                         self.translation_bounds,
+                                                         self.enable_90_rotations)
             list_trans.append(affine_trans)
 
         # prepare non-linear deformation field and add it to inputs list
@@ -161,141 +167,6 @@ class RandomSpatialDeformation(Layer):
         # apply deformations and return tensors with correct dtype
         inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in zip(self.inter_method, inputs)]
         return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
-
-    def _sample_affine_transform(self, batchsize):
-        """build 4x4 matrix representing an affine transormation in homogeneous coordinates"""
-
-        if (self.rotation_bounds is not False) | (self.enable_90_rotations is not False):
-            if self.n_dims == 2:
-                if self.rotation_bounds is not False:
-                    rotation = utils.draw_value_from_distribution(self.rotation_bounds,
-                                                                  size=1,
-                                                                  default_range=15.0,
-                                                                  return_as_tensor=True,
-                                                                  batchsize=batchsize)
-                else:
-                    rotation = tf.zeros(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0))
-            else:  # n_dims = 3
-                if self.rotation_bounds is not False:
-                    rotation = utils.draw_value_from_distribution(self.rotation_bounds,
-                                                                  size=self.n_dims,
-                                                                  default_range=15.0,
-                                                                  return_as_tensor=True,
-                                                                  batchsize=batchsize)
-                else:
-                    rotation = tf.zeros(tf.concat([batchsize, 3 * tf.ones(1, dtype='int32')], axis=0))
-            if self.enable_90_rotations:
-                rotation = tf.cast(tf.random.uniform(tf.shape(rotation), maxval=4, dtype='int32') * 90, 'float32') \
-                           + rotation
-            T_rot = self._create_rotation_transform(rotation, self.n_dims)
-        else:
-            T_rot = tf.tile(tf.expand_dims(tf.eye(self.n_dims), axis=0),
-                            tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
-
-        if self.shearing_bounds is not False:
-            shearing = utils.draw_value_from_distribution(self.shearing_bounds,
-                                                          size=self.n_dims ** 2 - self.n_dims,
-                                                          default_range=.01,
-                                                          return_as_tensor=True,
-                                                          batchsize=batchsize)
-            T_shearing = self._create_shearing_transform(shearing, self.n_dims)
-        else:
-            T_shearing = tf.tile(tf.expand_dims(tf.eye(self.n_dims), axis=0),
-                                 tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
-
-        if self.scaling_bounds is not False:
-            scaling = utils.draw_value_from_distribution(self.scaling_bounds,
-                                                         size=self.n_dims,
-                                                         centre=1,
-                                                         default_range=.15,
-                                                         return_as_tensor=True,
-                                                         batchsize=batchsize)
-            T_scaling = tf.linalg.diag(scaling)
-        else:
-            T_scaling = tf.tile(tf.expand_dims(tf.eye(self.n_dims), axis=0),
-                                tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
-
-        T = tf.matmul(T_scaling, tf.matmul(T_shearing, T_rot))
-
-        if self.translation_bounds is not False:
-            translation = utils.draw_value_from_distribution(self.translation_bounds,
-                                                             size=self.n_dims,
-                                                             default_range=5,
-                                                             return_as_tensor=True,
-                                                             batchsize=batchsize)
-            T = tf.concat([T, tf.expand_dims(translation, axis=-1)], axis=-1)
-        else:
-            T = tf.concat([T, tf.zeros(tf.concat([tf.shape(T)[:2], tf.ones(1, dtype='int32')], 0))], axis=-1)
-
-        # build rigid transform
-        T_last_row = tf.expand_dims(tf.concat([tf.zeros((1, self.n_dims)), tf.ones((1, 1))], axis=1), 0)
-        T_last_row = tf.tile(T_last_row, tf.concat([batchsize, tf.ones(2, dtype='int32')], axis=0))
-        T = tf.concat([T, T_last_row], axis=1)
-
-        return T
-
-    @staticmethod
-    def _create_rotation_transform(rotation, n_dims):
-        """build rotation transform from 3d or 2d rotation coefficients. Angles are given in degrees."""
-        rotation = rotation * np.pi / 180
-        if n_dims == 3:
-            shape = tf.shape(tf.expand_dims(rotation[..., 0], -1))
-
-            Rx_row0 = tf.expand_dims(tf.tile(tf.expand_dims(tf.convert_to_tensor([1., 0., 0.]), 0), shape), axis=1)
-            Rx_row1 = tf.stack([tf.zeros(shape), tf.expand_dims(tf.cos(rotation[..., 0]), -1),
-                                tf.expand_dims(-tf.sin(rotation[..., 0]), -1)], axis=-1)
-            Rx_row2 = tf.stack([tf.zeros(shape), tf.expand_dims(tf.sin(rotation[..., 0]), -1),
-                                tf.expand_dims(tf.cos(rotation[..., 0]), -1)], axis=-1)
-            Rx = tf.concat([Rx_row0, Rx_row1, Rx_row2], axis=1)
-
-            Ry_row0 = tf.stack([tf.expand_dims(tf.cos(rotation[..., 1]), -1), tf.zeros(shape),
-                                tf.expand_dims(tf.sin(rotation[..., 1]), -1)], axis=-1)
-            Ry_row1 = tf.expand_dims(tf.tile(tf.expand_dims(tf.convert_to_tensor([0., 1., 0.]), 0), shape), axis=1)
-            Ry_row2 = tf.stack([tf.expand_dims(-tf.sin(rotation[..., 1]), -1), tf.zeros(shape),
-                                tf.expand_dims(tf.cos(rotation[..., 1]), -1)], axis=-1)
-            Ry = tf.concat([Ry_row0, Ry_row1, Ry_row2], axis=1)
-
-            Rz_row0 = tf.stack([tf.expand_dims(tf.cos(rotation[..., 2]), -1),
-                                tf.expand_dims(-tf.sin(rotation[..., 2]), -1), tf.zeros(shape)], axis=-1)
-            Rz_row1 = tf.stack([tf.expand_dims(tf.sin(rotation[..., 2]), -1),
-                                tf.expand_dims(tf.cos(rotation[..., 2]), -1), tf.zeros(shape)], axis=-1)
-            Rz_row2 = tf.expand_dims(tf.tile(tf.expand_dims(tf.convert_to_tensor([0., 0., 1.]), 0), shape), axis=1)
-            Rz = tf.concat([Rz_row0, Rz_row1, Rz_row2], axis=1)
-
-            T_rot = tf.matmul(tf.matmul(Rx, Ry), Rz)
-
-        elif n_dims == 2:
-            R_row0 = tf.stack([tf.expand_dims(tf.cos(rotation[..., 0]), -1),
-                               tf.expand_dims(tf.sin(rotation[..., 0]), -1)], axis=-1)
-            R_row1 = tf.stack([tf.expand_dims(-tf.sin(rotation[..., 0]), -1),
-                               tf.expand_dims(tf.cos(rotation[..., 0]), -1)], axis=-1)
-            T_rot = tf.concat([R_row0, R_row1], axis=1)
-
-        else:
-            raise Exception('only supports 2 or 3D.')
-
-        return T_rot
-
-    @staticmethod
-    def _create_shearing_transform(shearing, n_dims):
-        """build shearing transform from 2d/3d shearing coefficients"""
-        shape = tf.shape(tf.expand_dims(shearing[..., 0], -1))
-        if n_dims == 3:
-            shearing_row0 = tf.stack([tf.ones(shape), tf.expand_dims(shearing[..., 0], -1),
-                                      tf.expand_dims(shearing[..., 1], -1)], axis=-1)
-            shearing_row1 = tf.stack([tf.expand_dims(shearing[..., 2], -1), tf.ones(shape),
-                                      tf.expand_dims(shearing[..., 3], -1)], axis=-1)
-            shearing_row2 = tf.stack([tf.expand_dims(shearing[..., 4], -1), tf.expand_dims(shearing[..., 5], -1),
-                                      tf.ones(shape)], axis=-1)
-            T_shearing = tf.concat([shearing_row0, shearing_row1, shearing_row2], axis=1)
-
-        elif n_dims == 2:
-            shearing_row0 = tf.stack([tf.ones(shape), tf.expand_dims(shearing[..., 0], -1)], axis=-1)
-            shearing_row1 = tf.stack([tf.expand_dims(shearing[..., 1], -1), tf.ones(shape)], axis=-1)
-            T_shearing = tf.concat([shearing_row0, shearing_row1], axis=1)
-        else:
-            raise Exception('only supports 2 or 3D.')
-        return T_shearing
 
 
 class RandomCrop(Layer):

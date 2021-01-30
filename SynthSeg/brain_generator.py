@@ -175,7 +175,7 @@ class BrainGenerator:
         if generation_labels is not None:
             self.generation_labels = utils.load_array_if_path(generation_labels)
         else:
-            self.generation_labels = utils.get_list_labels(labels_dir=labels_dir)
+            self.generation_labels, _ = utils.get_list_labels(labels_dir=labels_dir)
         if output_labels is not None:
             self.output_labels = utils.load_array_if_path(output_labels)
         else:

@@ -95,11 +95,7 @@ class ImageGenerator:
         """
 
         # prepare data files
-        if ('.nii.gz' in labels_dir) | ('.nii' in labels_dir) | ('.mgz' in labels_dir) | ('.npz' in labels_dir):
-            self.labels_paths = [labels_dir]
-        else:
-            self.labels_paths = utils.list_images_in_folder(labels_dir)
-        assert len(self.labels_paths) > 0, "Could not find any training data"
+        self.labels_paths = utils.list_images_in_folder(labels_dir)
 
         # generation parameters
         self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
@@ -108,7 +104,7 @@ class ImageGenerator:
         if generation_labels is not None:
             self.generation_labels = utils.load_array_if_path(generation_labels)
         else:
-            self.generation_labels = utils.get_list_labels(labels_dir=labels_dir)
+            self.generation_labels, _ = utils.get_list_labels(labels_dir=labels_dir)
         if output_labels is not None:
             self.output_labels = utils.load_array_if_path(output_labels)
         else:
