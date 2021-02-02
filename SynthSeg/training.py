@@ -136,7 +136,7 @@ def training(labels_dir,
     :param translation_bounds: (optional) same as scaling bounds. Default is translation_bounds = False, but we
     encourage using it when cropping is deactivated (i.e. when output_shape=None).
     :param nonlin_std: (optional) Standard deviation of the normal distribution from which we sample the first
-    tensor for synthesising the deformation field. Set to False to completely deactivate elastic deformation.
+    tensor for synthesising the deformation field. Set to 0 to completely deactivate elastic deformation.
     :param nonlin_shape_factor: (optional) Ratio between the size of the input label maps and the size of the sampled
     tensor for synthesising the elastic deformation field.
 
