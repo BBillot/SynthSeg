@@ -174,15 +174,16 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
 
     # convert path to absolute paths
     path_images = os.path.abspath(path_images)
+    basename = os.path.basename(path_images)
     out_seg = os.path.abspath(out_seg) if (out_seg is not None) else out_seg
     out_posteriors = os.path.abspath(out_posteriors) if (out_posteriors is not None) else out_posteriors
     out_volumes = os.path.abspath(out_volumes) if (out_volumes is not None) else out_volumes
 
     # prepare input/output volumes
-    if ('.nii.gz' not in path_images) & ('.nii' not in path_images) & ('.mgz' not in path_images) & \
-            ('.npz' not in path_images):
+    if ('.nii.gz' not in basename) & ('.nii' not in basename) & ('.mgz' not in basename) & ('.npz' not in basename):
+        if os.path.isfile(path_images):
+            raise Exception('extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_images)
         images_to_segment = utils.list_images_in_folder(path_images)
-        assert len(images_to_segment) > 0, "Could not find any training data"
         if out_seg:
             utils.mkdir(out_seg)
             out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii', '_seg.nii') for image in
@@ -201,7 +202,8 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes):
             out_posteriors = [out_posteriors] * len(images_to_segment)
 
     else:
-        assert os.path.exists(path_images), "Could not find image to segment"
+        assert os.path.isfile(path_images), "files does not exist: %s " \
+                                            "\nplease make sure the path and the extension are correct" % path_images
         images_to_segment = [path_images]
         if out_seg is not None:
             if ('.nii.gz' not in out_seg) & ('.nii' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):

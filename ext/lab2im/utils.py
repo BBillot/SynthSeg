@@ -363,15 +363,20 @@ def reformat_to_n_channels_array(var, n_dims=3, n_channels=1):
 
 def list_images_in_folder(path_dir, include_single_image=True):
     """List all files with extension nii, nii.gz, mgz, or npz whithin a folder."""
+    basename = os.path.basename(path_dir)
     if include_single_image & \
-       (('.nii.gz' in path_dir) | ('.nii' in path_dir) | ('.mgz' in path_dir) | ('.npz' in path_dir)):
+            (('.nii.gz' in basename) | ('.nii' in basename) | ('.mgz' in basename) | ('.npz' in basename)):
+        assert os.path.isfile(path_dir), 'file %s does not exist' % path_dir
         list_images = [path_dir]
     else:
-        list_images = sorted(glob.glob(os.path.join(path_dir, '*nii.gz')) +
-                             glob.glob(os.path.join(path_dir, '*nii')) +
-                             glob.glob(os.path.join(path_dir, '*.mgz')) +
-                             glob.glob(os.path.join(path_dir, '*.npz')))
-    assert len(list_images) > 0, 'no nii, nii.gz, mgz or npz could be found in %s' % path_dir
+        if os.path.isdir(path_dir):
+            list_images = sorted(glob.glob(os.path.join(path_dir, '*nii.gz')) +
+                                 glob.glob(os.path.join(path_dir, '*nii')) +
+                                 glob.glob(os.path.join(path_dir, '*.mgz')) +
+                                 glob.glob(os.path.join(path_dir, '*.npz')))
+        else:
+            raise Exception('extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_dir)
+        assert len(list_images) > 0, 'no .nii, .nii.gz, .mgz or .npz image could be found in %s' % path_dir
     return list_images
 
 
@@ -789,9 +794,9 @@ def rearrange_label_list(label_list):
     label_list = np.array(reformat_to_list(label_list))
     n_labels = label_list.shape[0]
     new_label_list = np.arange(n_labels)
-    lut = np.zeros(np.max(label_list).astype('int') + 1)
+    lut = np.zeros(np.max(label_list) + 1, dtype='int32')
     for n in range(n_labels):
-        lut[label_list[n].astype('int')] = n
+        lut[int(label_list[n])] = n
     return new_label_list, lut
 
 
