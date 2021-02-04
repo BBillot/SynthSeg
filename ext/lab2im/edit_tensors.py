@@ -25,8 +25,7 @@ def blurring_sigma_for_downsampling(current_res, downsample_res, mult_coef=None,
     :param downsample_res: resolution to downsample to. Can be a 1d numpy array or list, or a tensor.
     :param current_res: resolution of the volume before downsampling.
     Can be a 1d numpy array or list or tensor of the same length as downsample res.
-    :param thickness: (optional) slices thickness in each dimension.
-    Can be a 1d numpy array or list of the same length as downsample res.
+    :param thickness: (optional) slice thickness in each dimension. Must be the same type as downsample_res.
     :return: standard deviation of the blurring masks given as as the same type as downsample_res (list or tensor).
     """
 
@@ -50,19 +49,17 @@ def blurring_sigma_for_downsampling(current_res, downsample_res, mult_coef=None,
 
         # reformat data resolution at which we blur
         if thickness is not None:
-            tmp_down_res = KL.Lambda(lambda x: tf.math.minimum(tf.convert_to_tensor(thickness, dtype='float32'),
-                                                                     x))(downsample_res)
+            down_res = KL.Lambda(lambda x: tf.math.minimum(x[0], x[1]))([downsample_res, thickness])
         else:
-            tmp_down_res = downsample_res
+            down_res = downsample_res
 
         # get std deviation for blurring kernels
-        current_res = KL.Lambda(lambda x: tf.convert_to_tensor(current_res, dtype='float32'))([])
         if mult_coef is None:
-            sigma = KL.Lambda(lambda x:
-                              tf.where(tf.math.equal(x[0], x[1]), 0.5, 0.75 * x[0] / x[1]))([tmp_down_res, current_res])
+            sigma = KL.Lambda(lambda x: tf.where(tf.math.equal(x, tf.convert_to_tensor(current_res, dtype='float32')),
+                              0.5, 0.75 * x / tf.convert_to_tensor(current_res, dtype='float32')))(down_res)
         else:
-            sigma = KL.Lambda(lambda x: mult_coef * x[0] / x[1])([tmp_down_res, current_res])
-        sigma = KL.Lambda(lambda x: tf.where(tf.math.equal(x[0], 0.), 0., x[1]))([tmp_down_res, sigma])
+            sigma = KL.Lambda(lambda x: mult_coef * x / tf.convert_to_tensor(current_res, dtype='float32'))(down_res)
+        sigma = KL.Lambda(lambda x: tf.where(tf.math.equal(x[0], 0.), 0., x[1]))([down_res, sigma])
 
     return sigma
 

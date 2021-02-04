@@ -23,6 +23,7 @@ from keras import backend as K
 from keras.legacy import interfaces
 from keras.layers import Layer
 from keras.engine.topology import Node
+from copy import deepcopy
 
 # local
 from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
@@ -74,6 +75,13 @@ class SpatialTransformer(Layer):
         self.indexing = indexing
 
         super(self.__class__, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["interp_method"] = self.interp_method
+        config["indexing"] = self.indexing
+        config["single_transform"] = self.single_transform
+        return config
 
     def build(self, input_shape):
         """
@@ -211,6 +219,16 @@ class VecInt(Layer):
             self.ode_args = {'rtol': 1e-6, 'atol': 1e-12}
         super(self.__class__, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["indexing"] = self.indexing
+        config["method"] = self.method
+        config["int_steps"] = self.int_steps
+        config["out_time_pt"] = self.out_time_pt
+        config["ode_args"] = self.ode_args
+        config["odeint_fn"] = self.odeint_fn
+        return config
+
     def build(self, input_shape):
         # confirm built
         self.built = True
@@ -286,10 +304,19 @@ class Resize(Layer):
         """
         self.zoom_factor = zoom_factor
         self.size = size
+        self.zoom_factor0 = None
+        self.size0 = None
         self.interp_method = interp_method
         self.ndims = None
         self.inshape = None
         super(Resize, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["zoom_factor"] = self.zoom_factor
+        config["size"] = self.size
+        config["interp_method"] = self.interp_method
+        return config
 
     def build(self, input_shape):
         """
@@ -298,8 +325,9 @@ class Resize(Layer):
                 should be a *vol_shape x N
         """
 
-        if (self.zoom_factor is None and self.size is None) or (self.zoom_factor is not None and self.size is not None):
-            raise Exception('Either zoom_factor or size should be specified')
+        # if (self.zoom_factor is None and self.size is None) or \
+        #         (self.zoom_factor is not None and self.size is not None):
+        #     raise Exception('Either zoom_factor or size should be specified')
 
         if isinstance(input_shape[0], (list, tuple)) and len(input_shape) > 1:
             raise Exception('Resize must be called on a list of length 1.')
@@ -313,23 +341,25 @@ class Resize(Layer):
 
         # check zoom_factor
         if isinstance(self.zoom_factor, float):
-            self.zoom_factor = [self.zoom_factor] * self.ndims
+            self.zoom_factor0 = [self.zoom_factor] * self.ndims
         elif self.zoom_factor is None:
-            self.zoom_factor = [0] * self.ndims
+            self.zoom_factor0 = [0] * self.ndims
         elif isinstance(self.zoom_factor, (list, tuple)):
-            assert len(self.zoom_factor) == self.ndims, \
+            self.zoom_factor0 = deepcopy(self.zoom_factor)
+            assert len(self.zoom_factor0) == self.ndims, \
                 'zoom factor length {} does not match number of dimensions {}'.format(len(self.zoom_factor), self.ndims)
         else:
             raise Exception('zoom_factor should be an int or a list/tuple of int (or None if size is not set to None)')
 
         # check size
         if isinstance(self.size, int):
-            self.size = [self.size] * self.ndims
+            self.size0 = [self.size] * self.ndims
         elif self.size is None:
-            self.size = [0] * self.ndims
+            self.size0 = [0] * self.ndims
         elif isinstance(self.size, (list, tuple)):
-            assert len(self.size) == self.ndims, \
-                'size length {} does not match number of dimensions {}'.format(len(self.size), self.ndims)
+            self.size0 = deepcopy(self.size)
+            assert len(self.size0) == self.ndims, \
+                'size length {} does not match number of dimensions {}'.format(len(self.size0), self.ndims)
         else:
             raise Exception('size should be an int or a list/tuple of int (or None if zoom_factor is not set to None)')
 
@@ -355,23 +385,23 @@ class Resize(Layer):
         vol = K.reshape(vol, [-1, *self.inshape[1:]])
 
         # set value of missing size or zoom_factor
-        if not any(self.zoom_factor):
-            self.zoom_factor = [self.size[i] / self.inshape[i+1] for i in range(self.ndims)]
+        if not any(self.zoom_factor0):
+            self.zoom_factor0 = [self.size0[i] / self.inshape[i+1] for i in range(self.ndims)]
         else:
-            self.size = [int(self.inshape[f+1] * self.zoom_factor[f]) for f in range(self.ndims)]
+            self.size0 = [int(self.inshape[f+1] * self.zoom_factor0[f]) for f in range(self.ndims)]
 
         # map transform across batch
-        return tf.map_fn(self._single_resize, vol, dtype=tf.float32)
+        return tf.map_fn(self._single_resize, vol, dtype=vol.dtype)
 
     def compute_output_shape(self, input_shape):
 
         output_shape = [input_shape[0]]
-        output_shape += [int(input_shape[1:-1][f] * self.zoom_factor[f]) for f in range(self.ndims)]
+        output_shape += [int(input_shape[1:-1][f] * self.zoom_factor0[f]) for f in range(self.ndims)]
         output_shape += [input_shape[-1]]
         return tuple(output_shape)
 
     def _single_resize(self, inputs):
-        return resize(inputs, self.zoom_factor, self.size, interp_method=self.interp_method)
+        return resize(inputs, self.zoom_factor0, self.size0, interp_method=self.interp_method)
 
 
 # Zoom naming of resize, to match scipy's naming
@@ -402,6 +432,15 @@ class SpatiallySparse_Dense(Layer):
         self.use_bias = use_bias
         self.orig_input_shape = input_shape  # just the image size
         super(SpatiallySparse_Dense, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["input_shape"] = self.orig_input_shape
+        config["output_len"] = self.output_len
+        config["use_bias"] = self.use_bias
+        config["kernel_initializer"] = self.kernel_initializer
+        config["bias_initializer"] = self.bias_initializer
+        return config
 
     def build(self, input_shape):
 
@@ -499,6 +538,12 @@ class LocalBias(Layer):
         self.biasmult = biasmult
         super(LocalBias, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["my_initializer"] = self.initializer
+        config["biasmult"] = self.biasmult
+        return config
+
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
         self.kernel = self.add_weight(name='kernel',
@@ -528,6 +573,13 @@ class LocalParam_new(Layer):
         self.mult = mult
 
         super(LocalParam_new, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["shape"] = self.shape
+        config["my_initializer"] = self.my_initializer
+        config["mult"] = self.mult
+        return config
 
     def build(self, input_shape):
 
@@ -608,11 +660,13 @@ class LocalParam(Layer):
              output_shapes=[self.shape])
 
     def get_config(self):
-        config = {
-            '_batch_input_shape': self.shape,
-            '_keras_shape': self.shape,
-            'name': self.name
-        }
+        config = super().get_config()
+        config["shape"] = self.shape
+        config["my_initializer"] = self.my_initializer
+        config["mult"] = self.mult
+        config['_batch_input_shape'] = self.shape
+        config['_keras_shape'] = self.shape
+        config['name'] = self.name
         return config
 
     def call(self, _):
@@ -639,6 +693,11 @@ class LocalLinear(Layer):
     def __init__(self, my_initializer='RandomNormal', **kwargs):
         self.initializer = my_initializer
         super(LocalLinear, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["my_initializer"] = self.initializer
+        return config
 
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.

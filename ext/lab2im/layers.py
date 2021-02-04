@@ -98,6 +98,18 @@ class RandomSpatialDeformation(Layer):
 
         super(RandomSpatialDeformation, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["scaling_bounds"] = self.scaling_bounds
+        config["rotation_bounds"] = self.rotation_bounds
+        config["shearing_bounds"] = self.shearing_bounds
+        config["translation_bounds"] = self.translation_bounds
+        config["enable_90_rotations"] = self.enable_90_rotations
+        config["nonlin_std"] = self.nonlin_std
+        config["nonlin_shape_factor"] = self.nonlin_shape_factor
+        config["inter_method"] = self.inter_method
+        return config
+
     def build(self, input_shape):
 
         if not isinstance(input_shape, list):
@@ -190,6 +202,11 @@ class RandomCrop(Layer):
         self.n_dims = len(crop_shape)
         self.list_n_channels = None
         super(RandomCrop, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["crop_shape"] = self.crop_shape
+        return config
 
     def build(self, input_shape):
 
@@ -292,6 +309,14 @@ class RandomFlip(Layer):
         self.swapped_label_list = None
 
         super(RandomFlip, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["flip_axis"] = self.flip_axis
+        config["swap_labels"] = self.swap_labels
+        config["label_list"] = self.label_list
+        config["n_neutral_labels"] = self.n_neutral_labels
+        return config
 
     def build(self, input_shape):
 
@@ -419,6 +444,14 @@ class SampleResolution(Layer):
         self.min_res_tens = None
         super(SampleResolution, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["min_resolution"] = self.min_res
+        config["max_resolution"] = self.max_res
+        config["prob_min"] = self.prob_min
+        config["return_thickness"] = self.return_thickness
+        return config
+
     def build(self, input_shape):
 
         # check dimension
@@ -519,6 +552,13 @@ class GaussianBlur(Layer):
         self.convnd = None
         super().__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["sigma"] = self.sigma
+        config["random_blur_range"] = self.blur_range
+        config["use_mask"] = self.use_mask
+        return config
+
     def build(self, input_shape):
 
         # get shapes
@@ -603,6 +643,12 @@ class DynamicGaussianBlur(Layer):
         self.blur_range = random_blur_range
         self.separable = None
         super().__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["max_sigma"] = self.max_sigma
+        config["random_blur_range"] = self.blur_range
+        return config
 
     def build(self, input_shape):
         assert len(input_shape) == 2, 'sigma should be provided as an input tensor for dynamic blurring'
@@ -691,12 +737,20 @@ class MimicAcquisition(Layer):
 
         super(MimicAcquisition, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["volume_res"] = self.volume_res
+        config["min_subsample_res"] = self.min_subsample_res
+        config["resample_shape"] = self.resample_shape
+        config["build_dist_map"] = self.build_dist_map
+        return config
+
     def build(self, input_shape):
 
         # set up input shape and acquisistion shape
         self.inshape = input_shape[0][1:]
         self.add_batchsize = False if (input_shape[1][0] is None) else True
-        down_tensor_shape = np.int32(self.inshape[:-1] * self.volume_res / self.min_subsample_res)
+        down_tensor_shape = np.int32(np.array(self.inshape[:-1]) * self.volume_res / self.min_subsample_res)
 
         # build interpolation meshgrids
         self.down_grid = tf.expand_dims(tf.stack(nrn_utils.volshape_to_ndgrid(down_tensor_shape), -1), axis=0)
@@ -718,8 +772,8 @@ class MimicAcquisition(Layer):
         # get downsampling and upsampling factors
         if self.add_batchsize:
             subsample_res = tf.tile(tf.expand_dims(subsample_res, 0), tile_shape)
-        down_shape = tf.cast(tf.convert_to_tensor(self.inshape[:-1]*self.volume_res, dtype='float32') / subsample_res,
-                             dtype='int32')
+        down_shape = tf.cast(tf.convert_to_tensor(np.array(self.inshape[:-1]) * self.volume_res, dtype='float32') /
+                             subsample_res, dtype='int32')
         down_zoom_factor = tf.cast(down_shape / tf.convert_to_tensor(self.inshape[:-1]), dtype='float32')
         up_zoom_factor = tf.cast(tf.convert_to_tensor(self.resample_shape, dtype='int32') / down_shape, dtype='float32')
 
@@ -804,6 +858,13 @@ class BiasFieldCorruption(Layer):
 
         super(BiasFieldCorruption, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["bias_field_std"] = self.bias_field_std
+        config["bias_shape_factor"] = self.bias_shape_factor
+        config["same_bias_for_all_channels"] = self.same_bias_for_all_channels
+        return config
+
     def build(self, input_shape):
 
         # input shape
@@ -883,6 +944,16 @@ class IntensityAugmentation(Layer):
         self.separate_channels = separate_channels
 
         super(IntensityAugmentation, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["noise_std"] = self.noise_std
+        config["clip"] = self.clip
+        config["normalise"] = self.normalise
+        config["norm_perc"] = self.norm_perc
+        config["gamma_std"] = self.gamma_std
+        config["separate_channels"] = self.separate_channels
+        return config
 
     def build(self, input_shape):
         self.n_dims = len(input_shape) - 2
@@ -1000,6 +1071,12 @@ class WeightedL2Loss(Layer):
         self.n_labels = None
         super(WeightedL2Loss, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["target_value"] = self.target_value
+        config["background_weight"] = self.background_weight
+        return config
+
     def build(self, input_shape):
         assert len(input_shape) == 2, 'DiceLoss expects 2 inputs to compute the Dice loss.'
         assert input_shape[0] == input_shape[1], 'the two inputs must have the same shape.'
@@ -1036,16 +1113,22 @@ class ResetValuesToZero(Layer):
     def __init__(self, values, **kwargs):
         assert values is not None, 'please provide correct list of values, received None'
         self.values = utils.reformat_to_list(values)
+        self.values_tens = None
         self.n_values = len(values)
         super(ResetValuesToZero, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["values"] = self.values
+        return config
+
     def build(self, input_shape):
-        self.values = tf.convert_to_tensor(self.values)
+        self.values_tens = tf.convert_to_tensor(self.values)
         self.built = True
         super(ResetValuesToZero, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
-        values = tf.cast(self.values, dtype=inputs.dtype)
+        values = tf.cast(self.values_tens, dtype=inputs.dtype)
         for i in range(self.n_values):
             inputs = tf.where(tf.equal(inputs, values[i]), tf.zeros_like(inputs), inputs)
         return inputs
@@ -1061,10 +1144,17 @@ class PadAroundCentre(Layer):
 
     def __init__(self, pad_shape, value=0, **kwargs):
         self.pad_shape = pad_shape
+        self.pad_shape_tens = None
         self.value = value
         self.n_dims = None
         self.pad_margins = None
         super(PadAroundCentre, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["pad_shape"] = self.pad_shape
+        config["value"] = self.value
+        return config
 
     def build(self, input_shape):
         # input shape
@@ -1074,13 +1164,13 @@ class PadAroundCentre(Layer):
         tensor_shape = tf.cast(tf.convert_to_tensor(input_shape), 'int32')
 
         # pad shape
-        self.pad_shape = np.array([0] + utils.reformat_to_list(self.pad_shape, length=self.n_dims) + [0])
-        self.pad_shape = tf.cast(tf.convert_to_tensor(self.pad_shape), 'int32')
-        self.pad_shape = tf.math.maximum(tensor_shape, self.pad_shape)
+        self.pad_shape_tens = np.array([0] + utils.reformat_to_list(self.pad_shape, length=self.n_dims) + [0])
+        self.pad_shape_tens = tf.cast(tf.convert_to_tensor(self.pad_shape_tens), 'int32')
+        self.pad_shape_tens = tf.math.maximum(tensor_shape, self.pad_shape_tens)
 
         # padding margin
-        min_margins = (self.pad_shape - tensor_shape) / 2
-        max_margins = self.pad_shape - tensor_shape - min_margins
+        min_margins = (self.pad_shape_tens - tensor_shape) / 2
+        max_margins = self.pad_shape_tens - tensor_shape - min_margins
         self.pad_margins = tf.stack([min_margins, max_margins], axis=-1)
 
         self.built = True
@@ -1135,6 +1225,12 @@ class MaskEdges(Layer):
         self.boundaries = utils.reformat_to_n_channels_array(boundaries, n_dims=4, n_channels=len(self.axes))
         self.inputshape = None
         super(MaskEdges, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["axes"] = self.axes
+        config["boundaries"] = self.boundaries
+        return config
 
     def build(self, input_shape):
         self.inputshape = input_shape
