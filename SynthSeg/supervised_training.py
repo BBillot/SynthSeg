@@ -2,9 +2,9 @@
 import os
 import numpy as np
 import tensorflow as tf
+from keras import models
 import keras.layers as KL
 import numpy.random as npr
-from keras.models import Model
 
 # project imports
 from SynthSeg import metrics_model
@@ -45,9 +45,7 @@ def supervised_training(image_dir,
                         wl2_epochs=5,
                         dice_epochs=100,
                         steps_per_epoch=1000,
-                        load_model_file=None,
-                        initial_epoch_wl2=0,
-                        initial_epoch_dice=0):
+                        checkpoint=None):
 
     # check epochs
     assert (wl2_epochs > 0) | (dice_epochs > 0), \
@@ -90,10 +88,8 @@ def supervised_training(image_dir,
                                                   bias_shape_factor=bias_shape_factor)
     unet_input_shape = augmentation_model.output[0].get_shape().as_list()[1:]
 
-    model_input_generator = build_model_inputs(path_images,
-                                               path_labels,
-                                               batchsize=batchsize)
-    training_generator = utils.build_training_generator(model_input_generator, batchsize)
+    # input generator
+    input_generator = utils.build_training_generator(build_model_inputs(path_images, path_labels, batchsize), batchsize)
 
     # prepare the segmentation model
     unet_model = nrn_models.unet(nb_features=unet_feat_count,
@@ -110,23 +106,14 @@ def supervised_training(image_dir,
 
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
     if wl2_epochs > 0:
-        wl2_model = Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
+        wl2_model = models.Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
         wl2_model = metrics_model.metrics_model(label_list=label_list, input_model=wl2_model, metrics='wl2')
-        if load_model_file is not None:
-            wl2_model.load_weights(load_model_file)
-        train_model(wl2_model, training_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, log_dir,
-                    'wl2', initial_epoch_wl2)
+        train_model(wl2_model, input_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, 'wl2', checkpoint)
+        checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
 
     # fine-tuning with dice metric
-    if dice_epochs > 0:
-        dice_model = metrics_model.metrics_model(label_list=label_list, input_model=unet_model)
-        if wl2_epochs > 0:
-            last_wl2_model_name = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
-            dice_model.load_weights(last_wl2_model_name, by_name=True)
-        elif load_model_file is not None:
-            dice_model.load_weights(load_model_file)
-        train_model(dice_model, training_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, log_dir,
-                    'dice', initial_epoch_dice)
+    dice_model = metrics_model.metrics_model(label_list=label_list, input_model=unet_model, metrics='dice')
+    train_model(dice_model, input_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, 'dice', checkpoint)
 
 
 def build_augmentation_model(im_shape,
@@ -206,7 +193,7 @@ def build_augmentation_model(im_shape,
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = Model(inputs=[image_input, labels_input], outputs=[image, labels])
+    brain_model = models.Model(inputs=[image_input, labels_input], outputs=[image, labels])
 
     return brain_model
 
