@@ -68,6 +68,7 @@ def validate_training(image_dir,
 
     # loop over models
     list_models = utils.list_files(models_dir, expr=['dice', 'h5'], cond_type='and')[::step_eval]
+    loop_info = utils.LoopInfo(len(list_models), 1, 'validating', True)
     for model_idx, path_model in enumerate(list_models):
 
         # build names and create folders
@@ -76,7 +77,7 @@ def validate_training(image_dir,
         utils.mkdir(model_val_dir)
 
         if (not os.path.isfile(dice_path)) | recompute:
-            utils.print_loop_info(model_idx, len(list_models), spacing=1)
+            loop_info.update(model_idx)
             predict(path_images=image_dir,
                     path_model=path_model,
                     segmentation_label_list=segmentation_label_list,

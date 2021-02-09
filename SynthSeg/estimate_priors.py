@@ -26,8 +26,9 @@ def estimate_t2_cropping(image_dir, result_dir=None, dilation=5):
     list_image_paths = utils.list_images_in_folder(image_dir)
     max_cropping_proportions = np.zeros(len(list_image_paths))
     min_cropping_proportions = np.zeros(len(list_image_paths))
+    loop_info = utils.LoopInfo(len(list_image_paths), 10, 'processing')
     for im_idx, image_path in enumerate(list_image_paths):
-        utils.print_loop_info(im_idx, len(list_image_paths), 10)
+        loop_info.update(im_idx)
 
         # load t2 channel
         im = utils.load_volume(image_path)
@@ -167,8 +168,9 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
     stds = np.zeros((len(path_images), n_classes, n_channels))
 
     # loop over images
+    loop_info = utils.LoopInfo(len(path_images), 10, 'estimating')
     for idx, (path_im, path_la) in enumerate(zip(path_images, path_labels)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # load image and label map
         image = utils.load_volume(path_im)

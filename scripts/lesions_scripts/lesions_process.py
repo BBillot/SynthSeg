@@ -63,8 +63,9 @@ def paste_lesions_on_buckner(lesion_dir, buckner_dir, result_dir, dilate=2, reco
     utils.mkdir(result_dir)
 
     # loop over buckner label maps
+    loop_info = utils.LoopInfo(len(path_buckners), 1, 'processing', True)
     for idx_buckner, path_buckner in enumerate(path_buckners):
-        utils.print_loop_info(idx_buckner, len(path_buckners), 1)
+        loop_info.update(idx_buckner)
         buckner_name = os.path.basename(path_buckner).replace('_seg', '').replace('.nii.gz', '')
         buckner = utils.load_volume(path_buckner)
         WM = (buckner == 2) | (buckner == 7) | (buckner == 16) | (buckner == 41) | (buckner == 46)
@@ -256,9 +257,9 @@ def validation_on_dilated_lesions(normal_validation_dir, dilated_validation_dir,
     utils.mkdir(dilated_validation_dir)
 
     list_validation_subdir = utils.list_subfolders(normal_validation_dir)
+    loop_info = utils.LoopInfo(len(list_validation_subdir), 5, 'validating', True)
     for val_idx, validation_subdir in enumerate(list_validation_subdir):
-        utils.print_loop_info(val_idx, len(list_validation_subdir), 5)
-
+        loop_info.update(val_idx)
         # dilate lesion
         dilated_validation_subdir = os.path.join(dilated_validation_dir, os.path.basename(validation_subdir))
         dilate_lesions(validation_subdir, dilated_validation_subdir, recompute=recompute)

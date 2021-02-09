@@ -122,8 +122,9 @@ def prepare_hippo_training_atlases(labels_dir,
     # crop all atlases around hippo
     print('\ncropping around hippo')
     shape_array = np.zeros((len(labels_paths)*2, 3))
+    loop_info = utils.LoopInfo(len(labels_paths), 1)
     for idx, (path_label, path_image) in enumerate(zip(labels_paths, path_images)):
-        utils.print_loop_info(idx, len(labels_paths), 1)
+        loop_info.update(idx)
 
         # crop left hippo first
         path_label_first_crop_l = os.path.join(tmp_result_dir,
@@ -175,8 +176,9 @@ def prepare_hippo_training_atlases(labels_dir,
     # crop all label maps to same size
     print('\nequalising shapes')
     new_shape = np.min(shape_array, axis=0).astype('int32')
+    loop_info = utils.LoopInfo(len(path_labels_first_cropped), 1)
     for i, (path_label, path_image) in enumerate(zip(path_labels_first_cropped, path_images_first_cropped)):
-        utils.print_loop_info(i, len(path_labels_first_cropped), 1)
+        loop_info.update(i)
 
         # get cropping indices
         path_lab_cropped = os.path.join(result_dir, os.path.basename(path_label))

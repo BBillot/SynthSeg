@@ -42,12 +42,14 @@
 import os
 import glob
 import math
+import time
 import pickle
 import numpy as np
 import nibabel as nib
 import tensorflow as tf
 import keras.layers as KL
 import keras.backend as K
+from datetime import timedelta
 from scipy.ndimage.morphology import distance_transform_edt
 
 
@@ -204,8 +206,9 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
         # go through all labels files and compute unique list of labels
         labels_paths = list_images_in_folder(labels_dir)
         label_list = np.empty(0)
+        loop_info = LoopInfo(len(labels_paths), 10, 'processing')
         for lab_idx, path in enumerate(labels_paths):
-            print_loop_info(lab_idx, len(labels_paths), 10)
+            loop_info.update(lab_idx)
             y = load_volume(path)
             y_unique = np.unique(y)
             label_list = np.unique(np.concatenate((label_list, y_unique))).astype('int')
@@ -777,16 +780,38 @@ def infer(x):
     return x
 
 
-def print_loop_info(idx, n_iterations, spacing):
-    """Print loop iteration number.
-    :param idx: iteration number
-    :param n_iterations: total number iterations.
-    :param spacing: frequency at which to print loop advancement.
+class LoopInfo:
     """
-    if idx == 0:
-        print('processing {}/{}'.format(1, n_iterations))
-    elif idx % spacing == spacing - 1:
-        print('processing {}/{}'.format(idx + 1, n_iterations))
+    Class to print the current iteration in a for loop, and optionally the estimated remaining time.
+    Instantiate just before the loop, and call the update method at the start of the loop.
+    The printed text has the following format:
+    processing i/total    remaining time: hh:mm:ss
+    """
+
+    def __init__(self, n_iterations, spacing=5, text='processing', print_time=False):
+        """
+        :param n_iterations: total number of iterations of the for loop.
+        :param spacing: frequency at which the update info will be printed on screen.
+        :param text: text to print. Default is processing.
+        :param print_time: whether to print the estimated remaining time. Default is False.
+        """
+        self.start = time.time()
+        self.n_iterations = n_iterations
+        self.spacing = spacing
+        self.text = text
+        self.print_time = print_time
+        self.align = len(str(self.n_iterations)) * 2 + 1 + 3
+
+    def update(self, idx):
+        if idx == 0:
+            print(self.text + ' 1/{}'.format(self.n_iterations))
+        elif idx % self.spacing == self.spacing - 1:
+            iteration = str(idx + 1) + '/' + str(self.n_iterations)
+            if self.print_time:
+                eta = str(timedelta(seconds=int((time.time() - self.start) / idx * (self.n_iterations - idx))))
+                print(self.text + ' {:<{x}} remaining time: {}'.format(iteration, eta, x=self.align))
+            else:
+                print(self.text + ' {}'.format(iteration))
 
 
 def rearrange_label_list(label_list):

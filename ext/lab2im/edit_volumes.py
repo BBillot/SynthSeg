@@ -516,8 +516,9 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
 
                 # loop around regions
                 components, n_components = scipy_label(new_labels == incorrect_label)
+                loop_info = utils.LoopInfo(n_components + 1, 100, 'correcting')
                 for i in range(1, n_components + 1):
-                    utils.print_loop_info(i, n_components + 1, 100)
+                    loop_info.update(i)
 
                     # crop each region
                     _, crop = crop_volume_around_region(components, masking_labels=i, margin=1)
@@ -597,9 +598,10 @@ def smooth_label_map(labels, kernel, labels_list=None, print_progress=0):
     # loop through label values
     count = np.zeros(labels_shape)
     labels_smoothed = np.zeros(labels_shape, dtype='int')
+    loop_info = utils.LoopInfo(len(labels_list), print_progress, 'smoothing')
     for la, label in enumerate(labels_list):
         if print_progress:
-            utils.print_loop_info(la, len(labels_list), print_progress)
+            loop_info.update(la)
 
         # count neigbours with same value
         mask = (labels == label) * 1
@@ -802,8 +804,9 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
         path_masks = [None] * len(path_images)
 
     # loop over images
+    loop_info = utils.LoopInfo(len(path_images), 10, 'masking', True)
     for idx, (path_image, path_mask) in enumerate(zip(path_images, path_masks)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # mask images
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -845,8 +848,9 @@ def rescale_images_in_dir(image_dir, result_dir,
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'rescaling', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         path_result = os.path.join(result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_result)) | recompute:
@@ -871,8 +875,9 @@ def crop_images_in_dir(image_dir, result_dir, cropping_margin=None, cropping_sha
 
     # loop over images and masks
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'cropping', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # crop image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -914,8 +919,9 @@ def crop_images_around_region_in_dir(image_dir,
         path_masks = [None] * len(path_images)
 
     # loop over images and masks
+    loop_info = utils.LoopInfo(len(path_images), 10, 'cropping', True)
     for idx, (path_image, path_mask) in enumerate(zip(path_images, path_masks)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # crop image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -955,8 +961,9 @@ def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, re
         max_shape = np.array(max_shape)
 
     # loop over label maps
+    loop_info = utils.LoopInfo(len(path_images), 10, 'padding', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # pad map
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -983,8 +990,9 @@ def flip_images_in_dir(image_dir, result_dir, axis=None, direction=None, recompu
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'flipping', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # flip image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -1018,8 +1026,9 @@ def align_images_in_dir(image_dir, result_dir, aff_ref=None, path_ref_image=None
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'aligning', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # align image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -1040,8 +1049,9 @@ def correct_nans_images_in_dir(image_dir, result_dir, recompute=True):
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'correcting', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # flip image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -1076,8 +1086,9 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
     # loop over images
     previous_model_input_shape = None
     model = None
+    loop_info = utils.LoopInfo(len(path_images), 10, 'blurring', True)
     for idx, (path_image, path_mask) in enumerate(zip(path_images, path_masks)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # load image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -1132,8 +1143,9 @@ def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
             raise ValueError('all directories should have the same number of files')
 
     # loop over images
+    loop_info = utils.LoopInfo(n_images, 10, 'processing', True)
     for idx in range(n_images):
-        utils.print_loop_info(idx, n_images, 10)
+        loop_info.update(idx)
 
         # stack all channels and save multichannel image
         path_result = os.path.join(result_dir, os.path.basename(list_channel_paths[0][idx]))
@@ -1162,8 +1174,9 @@ def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, recompute=Tr
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'converting', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # convert images to nifty format
         path_result = os.path.join(result_dir, os.path.basename(utils.strip_extension(path_image))) + '.nii.gz'
@@ -1220,8 +1233,9 @@ def mri_convert_images_in_dir(image_dir,
         path_references = [None] * len(path_images)
 
     # loop over images
+    loop_info = utils.LoopInfo(len(path_images), 10, 'converting', True)
     for idx, (path_image, path_reference) in enumerate(zip(path_images, path_references)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # convert image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
@@ -1267,8 +1281,9 @@ def samseg_images_in_dir(image_dir,
 
     # loop over images
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'processing', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # build path_result
         path_im_result_dir = os.path.join(result_dir, utils.strip_extension(os.path.basename(path_image)))
@@ -1314,8 +1329,9 @@ def upsample_anisotropic_images(image_dir,
         'the folders containing the images and their references are not the same size'
 
     # loop over images
+    loop_info = utils.LoopInfo(len(path_images), 10, 'upsampling', True)
     for idx, (path_image, path_ref) in enumerate(zip(path_images, path_ref_images)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # upsample image
         _, _, n_dims, _, _, image_res = utils.get_volume_info(path_image, return_volume=False)
@@ -1405,8 +1421,9 @@ def simulate_upsampled_anisotropic_images(image_dir,
     # loop over images
     previous_model_input_shape = None
     model = None
+    loop_info = utils.LoopInfo(len(path_images), 10, 'processing', True)
     for idx, (path_image, path_labels) in enumerate(zip(path_images, path_labels)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # downsample image
         path_im_downsampled = os.path.join(downsample_image_result_dir, os.path.basename(path_image))
@@ -1492,8 +1509,9 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
 
     # loop through files
     path_images = utils.list_images_in_folder(image_dir)
+    loop_info = utils.LoopInfo(len(path_images), 10, 'checking', True)
     for idx, path_image in enumerate(path_images):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # get info
         im, im_shape, aff, _, _, h, data_res = utils.get_volume_info(path_image, return_volume=True)
@@ -1540,8 +1558,9 @@ def correct_labels_in_dir(labels_dir, results_dir, list_incorrect_labels, list_c
 
     # prepare data files
     path_labels = utils.list_images_in_folder(labels_dir)
+    loop_info = utils.LoopInfo(len(path_labels), 10, 'correcting', True)
     for idx, path_label in enumerate(path_labels):
-        utils.print_loop_info(idx, len(path_labels), 10)
+        loop_info.update(idx)
 
         # correct labels
         path_result = os.path.join(results_dir, os.path.basename(path_label))
@@ -1571,8 +1590,9 @@ def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, 
 
     # loop over labels
     path_labels = utils.list_images_in_folder(labels_dir)
+    loop_info = utils.LoopInfo(len(path_labels), 10, 'masking', True)
     for idx, path_label in enumerate(path_labels):
-        utils.print_loop_info(idx, len(path_labels), 10)
+        loop_info.update(idx)
 
         # mask labels
         path_result = os.path.join(result_dir, os.path.basename(path_label))
@@ -1617,8 +1637,9 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
         smoothing_model = None
 
         # loop over label maps
+        loop_info = utils.LoopInfo(len(path_labels), 10, 'smoothing', True)
         for idx, path_label in enumerate(path_labels):
-            utils.print_loop_info(idx, len(path_labels), 10)
+            loop_info.update(idx)
 
             # smooth label map
             path_result = os.path.join(result_dir, os.path.basename(path_label))
@@ -1643,8 +1664,9 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
         kernel = utils.build_binary_structure(connectivity, n_dims, shape=n_dims)
 
         # loop over label maps
+        loop_info = utils.LoopInfo(len(path_labels), 10, 'smoothing', True)
         for idx, path in enumerate(path_labels):
-            utils.print_loop_info(idx, len(path_labels), 10)
+            loop_info.update(idx)
 
             # smooth label map
             path_result = os.path.join(result_dir, os.path.basename(path))
@@ -1706,8 +1728,9 @@ def erode_labels_in_dir(labels_dir, result_dir, labels_to_erode, erosion_factors
     # loop over label maps
     model = None
     path_labels = utils.list_images_in_folder(labels_dir)
+    loop_info = utils.LoopInfo(len(path_labels), 5, 'eroding', True)
     for idx, path_label in enumerate(path_labels):
-        utils.print_loop_info(idx, len(path_labels), 5)
+        loop_info.update(idx)
 
         # erode label map
         labels, aff, h = utils.load_volume(path_label, im_only=False)
@@ -1756,8 +1779,9 @@ def upsample_labels_in_dir(labels_dir,
     new_label_list, lut = utils.rearrange_label_list(label_list)
 
     # loop over label maps
+    loop_info = utils.LoopInfo(len(path_labels), 5, 'upsampling', True)
     for idx, path_label in enumerate(path_labels):
-        utils.print_loop_info(idx, len(path_labels), 5)
+        loop_info.update(idx)
         path_result = os.path.join(result_dir, os.path.basename(path_label))
         if (not os.path.isfile(path_result)) | recompute:
 
@@ -1843,8 +1867,9 @@ def compute_hard_volumes_in_dir(labels_dir,
         volumes = np.zeros((label_list.shape[0]-1, len(path_labels)))
     else:
         volumes = np.zeros((label_list.shape[0], len(path_labels)))
+    loop_info = utils.LoopInfo(len(path_labels), 10, 'processing', True)
     for idx, path_label in enumerate(path_labels):
-        utils.print_loop_info(idx, len(path_labels), 10)
+        loop_info.update(idx)
 
         # load segmentation, and compute unique labels
         labels, _, _, _, _, _, subject_res = utils.get_volume_info(path_label, return_volume=True)
@@ -1889,8 +1914,9 @@ def build_atlas(labels_dir, align_centre_of_mass=False, margin=15, path_result_a
         atlas = np.zeros(utils.load_volume(path_labels[0]).shape)
 
     # loop over label maps
+    loop_info = utils.LoopInfo(len(path_labels), 10, 'processing', True)
     for idx, path_label in enumerate(path_labels):
-        utils.print_loop_info(idx, len(path_labels), 10)
+        loop_info.update(idx)
 
         # load label map and build mask
         lab = (utils.load_volume(path_label, dtype='int32', aff_ref=np.eye(4)) > 0) * 1
@@ -1929,8 +1955,9 @@ def check_images_and_labels(image_dir, labels_dir):
     assert len(path_images) == len(path_labels), 'different number of files in image_dir and labels_dir'
 
     # loop over images and labels
+    loop_info = utils.LoopInfo(len(path_images), 10, 'checking', True)
     for idx, (path_image, path_label) in enumerate(zip(path_images, path_labels)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # load images and labels
         im, aff_im, h_im = utils.load_volume(path_image, im_only=False)
@@ -1986,8 +2013,9 @@ def crop_dataset_to_minimum_size(labels_dir,
     # loop over label maps for cropping
     print('\ncropping labels to individual minimum size')
     maximum_size = np.zeros(n_dims)
+    loop_info = utils.LoopInfo(len(path_labels), 10, 'cropping', True)
     for idx, (path_label, path_image) in enumerate(zip(path_labels, path_images)):
-        utils.print_loop_info(idx, len(path_labels), 10)
+        loop_info.update(idx)
 
         # crop label maps and update maximum size of cropped map
         label, aff, h = utils.load_volume(path_label, im_only=False)
@@ -2003,8 +2031,9 @@ def crop_dataset_to_minimum_size(labels_dir,
 
     # loop over label maps for padding
     print('\npadding labels to same size')
+    loop_info = utils.LoopInfo(len(path_labels), 10, 'padding', True)
     for idx, (path_label, path_image) in enumerate(zip(path_labels, path_images)):
-        utils.print_loop_info(idx, len(path_labels), 10)
+        loop_info.update(idx)
 
         # pad label maps to maximum size
         path_result = os.path.join(result_dir, os.path.basename(path_label))
@@ -2064,8 +2093,9 @@ def subdivide_dataset_to_patches(patch_shape,
     n_dims, _ = utils.get_dims(patch_shape)
 
     # loop over images and labels
+    loop_info = utils.LoopInfo(len(path_images), 10, 'processing', True)
     for idx, (path_image, path_label) in enumerate(zip(path_images, path_labels)):
-        utils.print_loop_info(idx, len(path_images), 10)
+        loop_info.update(idx)
 
         # load image and labels
         if path_image is not None:
