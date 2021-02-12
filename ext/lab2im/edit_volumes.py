@@ -232,18 +232,22 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
             mask = volume > threshold
 
     # find cropping indices
-    indices = np.nonzero(mask)
-    min_idx = np.maximum(np.array([np.min(idx) for idx in indices]) - margin, 0)
-    max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(volume.shape[:n_dims]))
-    cropping = np.concatenate([min_idx, max_idx])
+    if np.any(mask):
+        indices = np.nonzero(mask)
+        min_idx = np.maximum(np.array([np.min(idx) for idx in indices]) - margin, 0)
+        max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(volume.shape[:n_dims]))
+        cropping = np.concatenate([min_idx, max_idx])
 
-    # crop volume
-    if n_dims == 3:
-        volume = volume[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], min_idx[2]:max_idx[2], ...]
-    elif n_dims == 2:
-        volume = volume[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], ...]
+        # crop volume
+        if n_dims == 3:
+            volume = volume[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], min_idx[2]:max_idx[2], ...]
+        elif n_dims == 2:
+            volume = volume[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], ...]
+        else:
+            raise ValueError('cannot crop volumes with more than 3 dimensions')
     else:
-        raise ValueError('cannot crop volumes with more than 3 dimensions')
+        min_idx = np.zeros((3, 1))
+        cropping = None
 
     if aff is not None:
         if n_dims == 2:

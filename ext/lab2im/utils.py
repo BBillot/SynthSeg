@@ -788,28 +788,53 @@ class LoopInfo:
     processing i/total    remaining time: hh:mm:ss
     """
 
-    def __init__(self, n_iterations, spacing=5, text='processing', print_time=False):
+    def __init__(self, n_iterations, spacing=10, text='processing', print_time=False):
         """
         :param n_iterations: total number of iterations of the for loop.
         :param spacing: frequency at which the update info will be printed on screen.
         :param text: text to print. Default is processing.
         :param print_time: whether to print the estimated remaining time. Default is False.
         """
-        self.start = time.time()
+
+        # loop parameters
         self.n_iterations = n_iterations
         self.spacing = spacing
+
+        # text parameters
         self.text = text
         self.print_time = print_time
+        self.print_previous_time = False
         self.align = len(str(self.n_iterations)) * 2 + 1 + 3
 
+        # timing parameters
+        self.iteration_durations = np.zeros((n_iterations,))
+        self.start = time.time()
+        self.previous = time.time()
+
     def update(self, idx):
+
+        # time iteration
+        now = time.time()
+        self.iteration_durations[idx] = now - self.previous
+        self.previous = now
+
+        # print text
         if idx == 0:
             print(self.text + ' 1/{}'.format(self.n_iterations))
         elif idx % self.spacing == self.spacing - 1:
             iteration = str(idx + 1) + '/' + str(self.n_iterations)
             if self.print_time:
-                eta = str(timedelta(seconds=int((time.time() - self.start) / idx * (self.n_iterations - idx))))
-                print(self.text + ' {:<{x}} remaining time: {}'.format(iteration, eta, x=self.align))
+                # estimate remaining time
+                max_duration = np.max(self.iteration_durations)
+                average_duration = np.mean(self.iteration_durations[self.iteration_durations > .01 * max_duration])
+                remaining_time = int(average_duration * (self.n_iterations - idx))
+                # print total remaining time only if it is greater than 1s or if it was previously printed
+                if (remaining_time > 1) | self.print_previous_time:
+                    eta = str(timedelta(seconds=remaining_time))
+                    print(self.text + ' {:<{x}} remaining time: {}'.format(iteration, eta, x=self.align))
+                    self.print_previous_time = True
+                else:
+                    print(self.text + ' {}'.format(iteration))
             else:
                 print(self.text + ' {}'.format(iteration))
 

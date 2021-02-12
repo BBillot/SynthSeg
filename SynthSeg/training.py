@@ -263,12 +263,12 @@ def training(labels_dir,
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
     if wl2_epochs > 0:
         wl2_model = models.Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
-        wl2_model = metrics.metrics_model(label_list=segmentation_labels, input_model=wl2_model, metrics='wl2')
+        wl2_model = metrics.metrics_model(wl2_model, segmentation_labels, 'wl2')
         train_model(wl2_model, input_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, 'wl2', checkpoint)
         checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
 
     # fine-tuning with dice metric
-    dice_model = metrics.metrics_model(label_list=segmentation_labels, input_model=unet_model, metrics='dice')
+    dice_model = metrics.metrics_model(unet_model, segmentation_labels, 'dice')
     train_model(dice_model, input_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, 'dice', checkpoint)
 
 

@@ -96,11 +96,12 @@ def validate_training(image_dir,
                     activation=activation,
                     gt_folder=gt_dir,
                     evaluation_label_list=evaluation_label_list,
+                    recompute=recompute,
                     verbose=False)
 
 
 def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_first_dice_row=True,
-                           size_max_circle=100, figsize=(11, 6), fontsize=18):
+                           size_max_circle=100, figsize=(11, 6), fontsize=18, remove_legend=False):
     """This function plots the validation curves of several networks, based on the results of validate_training().
     It takes as input a list of validation folders (one for each network), each containing subfolders with dice scores
     for the corresponding validated epoch.
@@ -157,12 +158,13 @@ def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_fir
     plt.ylabel('Dice scores', fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
     plt.title('Validation curves', fontsize=fontsize)
-    plt.legend(fontsize=fontsize)
+    if not remove_legend:
+        plt.legend(fontsize=fontsize)
     plt.tight_layout(pad=1)
     plt.show()
 
 
-def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11, 6), fontsize=18):
+def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11, 6), fontsize=18, remove_legend=False):
     """This function draws the learning curve of several trainings on the same graph.
     :param path_tensorboard_files: list of tensorboard files corresponding to the models to plot.
     :param architecture_names: list of the names of the models
@@ -181,16 +183,19 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11,
 
         # extract loss at the end of all epochs
         list_losses = list()
+        list_epochs = list()
         logging.getLogger('tensorflow').disabled = True
         for e in summary_iterator(path_tensorboard_file):
             for v in e.summary.value:
                 if v.tag == 'loss' or v.tag == 'accuracy' or v.tag == 'epoch_loss':
                     list_losses.append(v.simple_value)
-        plt.plot(1-np.array(list_losses), label=name, linewidth=2)
+                    list_epochs.append(e.step)
+        plt.plot(np.array(list_epochs), 1-np.array(list_losses), label=name, linewidth=2)
 
     # finalise plot
     plt.grid()
-    plt.legend(fontsize=fontsize)
+    if not remove_legend:
+        plt.legend(fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
     plt.ylabel('Soft Dice scores', fontsize=fontsize)
     plt.tick_params(axis='both', labelsize=fontsize)
