@@ -97,8 +97,9 @@ def gaussian_kernel(sigma, max_sigma=None, blur_range=None, separable=True):
         max_sigma = np.array(utils.reformat_to_list(sigma, length=n_dims))
 
     # randomise the burring std dev and/or split it between dimensions
-    if (blur_range is not None) | (blur_range != 1):
-        sigma_tens = sigma_tens * tf.random.uniform(tf.shape(sigma_tens), minval=1 / blur_range, maxval=blur_range)
+    if blur_range is not None:
+        if blur_range != 1:
+            sigma_tens = sigma_tens * tf.random.uniform(tf.shape(sigma_tens), minval=1 / blur_range, maxval=blur_range)
 
     # get size of blurring kernels
     windowsize = np.int32(np.ceil(2.5 * max_sigma) / 2) * 2 + 1

@@ -40,7 +40,7 @@ parser.add_argument("--nonlin_shape_factor", type=float, dest="nonlin_shape_fact
 
 # blurring/resampling parameters
 parser.add_argument("--randomise_res", action='store_true', dest="randomise_res")
-parser.add_argument("--distance_maps", action='store_true', dest="buil_distance_maps")
+parser.add_argument("--distance_maps", action='store_true', dest="build_distance_maps")
 parser.add_argument("--data_res", dest="data_res", type=infer, default=None)
 parser.add_argument("--thickness", dest="thickness", type=infer, default=None)
 parser.add_argument("--downsample", action='store_true', dest="downsample")

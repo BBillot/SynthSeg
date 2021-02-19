@@ -113,9 +113,6 @@ def predict(path_images,
                                                                                            path_segmentations,
                                                                                            path_posteriors,
                                                                                            compute)):
-        if verbose:
-            loop_info.update(idx)
-
         # compute segmentation only if needed
         if tmp_compute:
 
@@ -136,8 +133,11 @@ def predict(path_images,
                 net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
                                   nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
 
-        # predict posteriors
-        prediction_patch = net.predict(image)
+            if verbose:
+                loop_info.update(idx)
+
+            # predict posteriors
+            prediction_patch = net.predict(image)
 
             # get posteriors and segmentation
             seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, label_list,

@@ -57,7 +57,7 @@ def prepare_anisotropic_dataset(image_dir,
 
         # loop over resolution directions
         for (data_res, thickness) in zip(list_data_res, list_thickness):
-            res_str = '_'.join(['%d' % r for r in data_res])
+            res_str = ''.join(['%d' % r for r in data_res])
             print('\npreprocess images to ' + res_str.replace('_', '*') + 'mm resolution')
 
             # build path result folders

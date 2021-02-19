@@ -445,7 +445,7 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
     each voxel to correct. In that case, the different correct values must be specified inside a list whithin
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
-    :param use_nearest_label: (optional) whether to correct the incoorect lavel values with the nearest labels.
+    :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
     :param remove_zero: (optional) if use_nearest_label is True, set to True not to consider zero among the potential
     candidates for the nearest neighbour.
     :param smooth: (optional) whether to smooth the corrected label map
@@ -1299,9 +1299,9 @@ def samseg_images_in_dir(image_dir,
 
         # run samseg
         if (not os.path.isfile(path_result)) | recompute:
-            cmd = path_samseg + ' -i ' + path_image + ' -o ' + path_im_result_dir + ' --threads ' + str(threads)
+            cmd = utils.mkcmd(path_samseg, '-i', path_image, '-o', path_im_result_dir, '--threads', threads)
             if atlas_dir is not None:
-                cmd += ' --a ' + atlas_dir
+                cmd = utils.mkcmd(cmd, '--a', atlas_dir)
             os.system(cmd)
 
         # move segmentation to result_dir if necessary
@@ -1324,7 +1324,7 @@ def upsample_anisotropic_images(image_dir,
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
     os.system(os.path.join(path_freesurfer, 'SetUpFreeSurfer.sh'))
-    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert') + ' '
+    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert')
 
     # list images and labels
     path_images = utils.list_images_in_folder(image_dir)
@@ -1342,7 +1342,7 @@ def upsample_anisotropic_images(image_dir,
         image_res = np.array(image_res)
         path_im_upsampled = os.path.join(resample_image_result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_im_upsampled)) | recompute:
-            cmd = mri_convert + path_image + ' ' + path_im_upsampled + ' -rl ' + path_ref + ' -odt float'
+            cmd = utils.mkcmd(mri_convert, path_image, path_im_upsampled, '-rl', path_ref, '-odt float')
             os.system(cmd)
 
         path_dist_map = os.path.join(resample_image_result_dir, 'dist_map_' + os.path.basename(path_image))
@@ -1356,7 +1356,7 @@ def upsample_anisotropic_images(image_dir,
                 path_mesh = os.path.join(tmp_dir, '%s_' % i + os.path.basename(path_image))
                 path_mesh_up = os.path.join(tmp_dir, 'up_%s_' % i + os.path.basename(path_image))
                 utils.save_volume(maps, aff, h, path_mesh)
-                cmd = mri_convert + path_mesh + ' ' + path_mesh_up + ' -rl ' + path_im_upsampled + ' -odt float'
+                cmd = utils.mkcmd(mri_convert, path_mesh, path_mesh_up, '-rl', path_im_upsampled, '-odt float')
                 os.system(cmd)
                 path_meshes_up.append(path_mesh_up)
             mesh_up_0, aff, h = utils.load_volume(path_meshes_up[0], im_only=False)
@@ -1411,7 +1411,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
     # set up FreeSurfer
     os.environ['FREESURFER_HOME'] = path_freesurfer
     os.system(os.path.join(path_freesurfer, 'SetUpFreeSurfer.sh'))
-    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert') + ' '
+    mri_convert = os.path.join(path_freesurfer, 'bin/mri_convert')
 
     # list images and labels
     path_images = utils.list_images_in_folder(image_dir)
@@ -1450,23 +1450,22 @@ def simulate_upsampled_anisotropic_images(image_dir,
 
             # downsample blurred image
             voxsize = ' '.join([str(r) for r in data_res])
-            cmd = mri_convert + path_im_downsampled + ' ' + path_im_downsampled + ' --voxsize ' + voxsize
-            cmd += ' -odt float -rt nearest'
+            cmd = utils.mkcmd(mri_convert, path_im_downsampled, path_im_downsampled, '--voxsize', voxsize,
+                              '-odt float -rt nearest')
             os.system(cmd)
 
         # downsample labels if necessary
         if path_labels is not None:
             path_lab_downsampled = os.path.join(downsample_labels_result_dir, os.path.basename(path_labels))
             if (not os.path.isfile(path_lab_downsampled)) | recompute:
-                voxsize = ' '.join([str(r) for r in data_res])
-                cmd = mri_convert + path_labels + ' ' + path_lab_downsampled + ' --voxsize ' + voxsize
-                cmd += ' -odt float -rt nearest'
+                cmd = utils.mkcmd(mri_convert, path_labels, path_lab_downsampled, '-rl', path_im_downsampled,
+                                  '-odt float -rt nearest')
                 os.system(cmd)
 
         # upsample image
         path_im_upsampled = os.path.join(resample_image_result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_im_upsampled)) | recompute:
-            cmd = mri_convert + path_im_downsampled + ' ' + path_im_upsampled + ' -rl ' + path_image + ' -odt float'
+            cmd = utils.mkcmd(mri_convert, path_im_downsampled, path_im_upsampled, '-rl', path_image, '-odt float')
             os.system(cmd)
 
         if build_dist_map:
@@ -1481,7 +1480,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
                     path_mesh = os.path.join(tmp_dir, '%s_' % i + os.path.basename(path_image))
                     path_mesh_up = os.path.join(tmp_dir, 'up_%s_' % i + os.path.basename(path_image))
                     utils.save_volume(d_map, aff, h, path_mesh)
-                    cmd = mri_convert + path_mesh + ' ' + path_mesh_up + ' -rl ' + path_image + ' -odt float'
+                    cmd = utils.mkcmd(mri_convert, path_mesh, path_mesh_up, '-rl', path_image, '-odt float')
                     os.system(cmd)
                     path_meshes_up.append(path_mesh_up)
                 mesh_up_0, aff, h = utils.load_volume(path_meshes_up[0], im_only=False)
@@ -1552,7 +1551,7 @@ def correct_labels_in_dir(labels_dir, results_dir, list_incorrect_labels, list_c
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
     each voxel to correct. In that case, the different correct values must be specified inside a list whithin
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
-    :param use_nearest_label: (optional) whether to correct the incoorect lavel values with the nearest labels.
+    :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
     :param smooth: (optional) whether to smooth the corrected label maps
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
@@ -1776,7 +1775,7 @@ def upsample_labels_in_dir(labels_dir,
 
     # build command
     target_res = utils.reformat_to_list(target_res, length=n_dims)
-    post_cmd = ' -voxsize ' + ' '.join([str(r) for r in target_res]) + ' -odt float'
+    post_cmd = '-voxsize ' + ' '.join([str(r) for r in target_res]) + ' -odt float'
 
     # load label list and corresponding LUT to make sure that labels go from 0 to N-1
     label_list, _ = utils.get_list_labels(path_label_list, labels_dir=path_labels, FS_sort=True)
@@ -1808,7 +1807,7 @@ def upsample_labels_in_dir(labels_dir,
                     mask = (labels == label) * 1.0
                     utils.save_volume(mask, aff, h, path_mask)
                 if not os.path.isfile(path_mask_upsampled):
-                    cmd = mri_convert + ' ' + path_mask + ' ' + path_mask_upsampled + post_cmd
+                    cmd = utils.mkcmd(mri_convert, path_mask, path_mask_upsampled, post_cmd)
                     os.system(cmd)
 
             # compute argmax of upsampled probability maps (upload them one at a time)

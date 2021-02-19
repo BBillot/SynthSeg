@@ -501,6 +501,10 @@ def mkdir(path_dir):
             os.mkdir(dir_to_create)
 
 
+def mkcmd(*args):
+    return ' '.join([str(arg) for arg in args])
+
+
 # ---------------------------------------------- shape-related functions -----------------------------------------------
 
 
