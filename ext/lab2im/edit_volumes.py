@@ -1638,9 +1638,11 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
     # list label maps
     path_labels = utils.list_images_in_folder(labels_dir)
 
+    if labels_list is not None:
+        labels_list, _ = utils.get_list_labels(label_list=labels_list, FS_sort=True)
+
     if gpu:
         # initialisation
-        label_list, _ = utils.get_list_labels(label_list=labels_list, labels_dir=labels_dir, FS_sort=True)
         previous_model_input_shape = None
         smoothing_model = None
 
@@ -1655,7 +1657,7 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
                 labels, label_shape, aff, n_dims, _, h, _ = utils.get_volume_info(path_label, return_volume=True)
                 if label_shape != previous_model_input_shape:
                     previous_model_input_shape = label_shape
-                    smoothing_model = smoothing_gpu_model(label_shape, label_list, connectivity)
+                    smoothing_model = smoothing_gpu_model(label_shape, labels_list, connectivity)
                 unique_labels = np.unique(labels).astype('int32')
                 if labels_list is None:
                     labels = smoothing_model.predict(utils.add_axis(labels))
