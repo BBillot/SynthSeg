@@ -266,8 +266,7 @@ def validation_on_dilated_lesions(normal_validation_dir, dilated_validation_dir,
 
         # compute new dice scores
         path_dice = os.path.join(dilated_validation_subdir, 'dice.npy')
-        if (not os.path.isfile(path_dice)) | recompute:
-            dice_evaluation(gt_dir, dilated_validation_subdir, evaluation_labels, path_dice)
+        dice_evaluation(gt_dir, dilated_validation_subdir, evaluation_labels, path_dice=path_dice, recompute=recompute)
 
 
 def run_validation_on_aseg_gt(list_supervised_model_dir, list_aseg_gt_dir, path_label_list, recompute=False):
@@ -287,19 +286,18 @@ def run_validation_on_aseg_gt(list_supervised_model_dir, list_aseg_gt_dir, path_
             # create equivalent aseg subdir
             aseg_validation_subdir = os.path.join(main_aseg_validation_dir, os.path.basename(samseg_validation_subdir))
             utils.mkdir(aseg_validation_subdir)
-            path_aseg_dice = os.path.join(aseg_validation_subdir, 'dice.npy')
 
             # compute dice with aseg gt
-            if (not os.path.isfile(path_aseg_dice)) | recompute:
-                dice_evaluation(gt_dir,
-                                samseg_validation_subdir,
-                                path_label_list,
-                                path_aseg_dice)
+            dice_evaluation(gt_dir,
+                            samseg_validation_subdir,
+                            path_label_list,
+                            path_dice=os.path.join(aseg_validation_subdir, 'dice.npy'),
+                            recompute=recompute)
 
 
 def postprocess_samseg(list_samseg_dir,
                        list_gt_dir,
-                       path_segmentation_labels,
+                       segmentation_labels,
                        incorrect_labels,
                        correct_labels,
                        list_posteriors_dir=None,
@@ -314,7 +312,7 @@ def postprocess_samseg(list_samseg_dir,
     where <contrast> must either be t1, flair, ***t1_flair***
     :param list_samseg_dir: main samseg dir containing the three subfolders t1, flair, t1_flair
     :param list_gt_dir: folder with the gt label maps for all subjects
-    :param path_segmentation_labels: list of segmentation labels
+    :param segmentation_labels: list of segmentation labels
     :param incorrect_labels: list of samseg incorrect labels
     :param correct_labels: list of labels to correct the wrong one with
     :param recompute: whether to recompute files
@@ -376,12 +374,11 @@ def postprocess_samseg(list_samseg_dir,
             samseg_postprocessed_dir = samseg_preprocessed_dir
 
         # compute dice scores with
-        path_dice_testing = os.path.join(samseg_postprocessed_dir, 'dice.npy')
+        path_dice = os.path.join(samseg_postprocessed_dir, 'dice.npy')
         path_dice_lesions_testing = os.path.join(samseg_postprocessed_dir, 'dice_lesions.npy')
-        if (not os.path.isfile(path_dice_testing)) | recompute:
-            dice_evaluation(gt_dir, samseg_postprocessed_dir, path_segmentation_labels, path_dice_testing)
+        dice_evaluation(gt_dir, samseg_postprocessed_dir, segmentation_labels, path_dice=path_dice, recompute=recompute)
         if (not os.path.isfile(path_dice_lesions_testing)) | recompute:
-            dice = np.load(path_dice_testing)
+            dice = np.load(path_dice)
             np.save(path_dice_lesions_testing, dice[4, :])
 
 

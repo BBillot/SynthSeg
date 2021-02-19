@@ -4,7 +4,6 @@ import csv
 import numpy as np
 import keras.layers as KL
 from keras.models import Model
-from scipy.ndimage import label
 
 # project imports
 from SynthSeg import evaluate
@@ -38,6 +37,8 @@ def predict(path_images,
             activation='elu',
             gt_folder=None,
             evaluation_label_list=None,
+            compute_distances=False,
+            recompute=True,
             verbose=True):
     """
     This function uses trained models to segment images.
@@ -173,14 +174,20 @@ def predict(path_images,
     # evaluate
     if gt_folder is not None:
 
-        # build dice path
-        if path_segmentations[0] is not None:
-            eval_folder = os.path.dirname(path_segmentations[0])
-        else:
-            eval_folder = os.path.dirname(path_posteriors[0])
-        path_result_dice = os.path.join(eval_folder, 'dice.npy')
-        evaluate.dice_evaluation(gt_folder, eval_folder, evaluation_label_list, path_result_dice, verbose=verbose)
+        # find path evaluation folder
+        path_first_result = path_segmentations[0] if (path_segmentations[0] is not None) else path_posteriors[0]
+        eval_folder = os.path.dirname(path_first_result)
 
+        # compute evaluation metrics
+        evaluate.dice_evaluation(gt_folder,
+                                 eval_folder,
+                                 evaluation_label_list,
+                                 compute_distances=compute_distances,
+                                 path_dice=os.path.join(eval_folder, 'dice.npy'),
+                                 path_hausdorff=os.path.join(eval_folder, 'hausdorff.npy'),
+                                 path_mean_distance=os.path.join(eval_folder, 'mean_distance.npy'),
+                                 recompute=recompute,
+                                 verbose=verbose)
 
 
 def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, recompute):
