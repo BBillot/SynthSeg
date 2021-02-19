@@ -694,6 +694,11 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
             return labels
 
 
+def get_largest_connected_component(mask):
+    components, n_components = scipy_label(mask)
+    return components == np.argmax(np.bincount(components.flat)[1:]) + 1 if n_components > 0 else mask.copy()
+
+
 def compute_hard_volumes(labels, voxel_volume=1., label_list=None, skip_background=True):
     """Compute hard volumes in a label map.
     :param labels: a label map

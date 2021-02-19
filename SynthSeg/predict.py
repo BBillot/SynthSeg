@@ -93,7 +93,7 @@ def predict(path_images,
         prepare_output_files(path_images, path_segmentations, path_posteriors, path_volumes, recompute)
 
     # get label and classes lists
-    label_list, _ = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
+    label_list, n_neutral_labels = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
     if evaluation_label_list is None:
         evaluation_label_list = segmentation_label_list
 
@@ -141,7 +141,9 @@ def predict(path_images,
 
             # get posteriors and segmentation
             seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, label_list,
-                                          keep_biggest_component, aff, aff_ref=aff_ref)
+                                          keep_biggest_component, aff, aff_ref=aff_ref,
+                                          keep_biggest_of_each_group=keep_biggest_component,
+                                          n_neutral_labels=n_neutral_labels)
 
             # write results to disk
             if path_segmentation is not None:
@@ -252,7 +254,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
             out_posteriors = [out_posteriors]
             recompute_post = [out_volumes is not None]
 
-    recompute_list = [recompute | re_seg | re_post for (re_seg, re_post) in zip (recompute_seg, recompute_post)]
+    recompute_list = [recompute | re_seg | re_post for (re_seg, re_post) in zip(recompute_seg, recompute_post)]
 
     if out_volumes is not None:
         if out_volumes[-4:] != '.csv':
@@ -393,26 +395,35 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
 
 
 def postprocess(prediction, pad_shape, im_shape, crop, n_dims, labels, keep_biggest_component,
-                aff, aff_ref='FS'):
+                aff, aff_ref='FS', keep_biggest_of_each_group=True, n_neutral_labels=None):
 
     # get posteriors and segmentation
     post_patch = np.squeeze(prediction)
+
+    # reset posteriors to zero outside the largest connectd component of each topological class
+    if keep_biggest_of_each_group:
+        topology_classes = np.array([0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 14, 5])
+        if n_neutral_labels != len(labels):
+            left = topology_classes[n_neutral_labels:]
+            topology_classes = np.concatenate([topology_classes, left + np.max(left) - np.min(left) + 1])
+        unique_topology_classes = np.unique(topology_classes)
+        post_patch_mask = post_patch > 0.2
+        for topology_class in unique_topology_classes[1:]:
+            tmp_topology_indices = np.where(topology_classes == topology_class)[0]
+            tmp_mask = np.any(post_patch_mask[..., tmp_topology_indices], axis=-1)
+            tmp_mask = edit_volumes.get_largest_connected_component(tmp_mask)
+            for idx in tmp_topology_indices:
+                post_patch[..., idx] *= tmp_mask
+
+    # renormalise posteriors and get hard segmentation
+    post_patch /= np.sum(post_patch, axis=-1)[..., np.newaxis]
     seg_patch = post_patch.argmax(-1)
 
     # keep biggest connected component (use it with smoothing!)
     if keep_biggest_component:
-        components, n_components = label(seg_patch)
-        if n_components > 1:
-            unique_components = np.unique(components)
-            size = 0
-            mask = None
-            for comp in unique_components[1:]:
-                tmp_mask = components == comp
-                tmp_size = np.sum(tmp_mask)
-                if tmp_size > size:
-                    size = tmp_size
-                    mask = tmp_mask
-            seg_patch[np.logical_not(mask)] = 0
+        mask = seg_patch > 0
+        mask = edit_volumes.get_largest_connected_component(mask)
+        seg_patch = seg_patch * mask
 
     # align prediction back to first orientation
     if n_dims > 2:
