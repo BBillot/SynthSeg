@@ -1423,7 +1423,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
     path_labels = [None] * len(path_images) if labels_dir is None else utils.list_images_in_folder(labels_dir)
 
     # initialisation
-    _, _, n_dims, _, _, image_res = utils.get_volume_info(path_images[0], return_volume=False)
+    _, _, n_dims, _, _, image_res = utils.get_volume_info(path_images[0], return_volume=False, aff_ref=np.eye(4))
     data_res = np.squeeze(utils.reformat_to_n_channels_array(data_res, n_dims, n_channels=1))
     slice_thickness = utils.reformat_to_list(slice_thickness, length=n_dims)
 
@@ -1437,7 +1437,9 @@ def simulate_upsampled_anisotropic_images(image_dir,
         # downsample image
         path_im_downsampled = os.path.join(downsample_image_result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_im_downsampled)) | recompute:
-            im, im_shape, aff, n_dims, _, h, image_res = utils.get_volume_info(path_image, return_volume=True)
+            im, _, aff, n_dims, _, h, image_res = utils.get_volume_info(path_image, return_volume=True)
+            im, aff_aligned = align_volume_to_ref(im, aff, aff_ref=np.eye(4), return_aff=True)
+            im_shape = list(im.shape[:n_dims])
             sigma = blurring_sigma_for_downsampling(image_res, data_res, thickness=slice_thickness)
             sigma = [0 if data_res[i] == image_res[i] else sigma[i] for i in range(n_dims)]
 
@@ -1451,7 +1453,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
                 im = np.squeeze(model.predict(utils.add_axis(im, axis=[0, -1])))
             else:
                 im = blur_volume(im, sigma, mask=None)
-            utils.save_volume(im, aff, h, path_im_downsampled)
+            utils.save_volume(im, aff_aligned, h, path_im_downsampled)
 
             # downsample blurred image
             voxsize = ' '.join([str(r) for r in data_res])
