@@ -462,13 +462,6 @@ def strip_extension(path):
 
 def strip_suffix(path):
     """Strip classical image suffix from a filename."""
-    path = path.replace('_seg', '')
-    path = path.replace('.seg', '')
-    path = path.replace('seg', '')
-    path = path.replace('_seg_1', '')
-    path = path.replace('_seg_2', '')
-    path = path.replace('seg_1_', '')
-    path = path.replace('seg_2_', '')
     path = path.replace('_aseg', '')
     path = path.replace('aseg', '')
     path = path.replace('.aseg', '')
@@ -486,6 +479,13 @@ def strip_suffix(path):
     path = path.replace('GSP_FS_4p5', 'GSP')
     path = path.replace('.nii_crispSegmentation', '')
     path = path.replace('_crispSegmentation', '')
+    path = path.replace('_seg', '')
+    path = path.replace('.seg', '')
+    path = path.replace('seg', '')
+    path = path.replace('_seg_1', '')
+    path = path.replace('_seg_2', '')
+    path = path.replace('seg_1_', '')
+    path = path.replace('seg_2_', '')
     return path
 
 

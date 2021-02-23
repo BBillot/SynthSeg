@@ -1169,7 +1169,7 @@ def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
             utils.save_volume(im, tmp_aff, tmp_h, path_result)
 
 
-def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, recompute=True):
+def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, ref_aff_dir=None, recompute=True):
     """Converts all images in image_dir to nifty format.
     :param image_dir: path of directory with images to convert
     :param result_dir: path of directory where converted images will be writen
@@ -1181,10 +1181,16 @@ def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, recompute=Tr
     # create result dir
     utils.mkdir(result_dir)
 
-    # loop over images
+    # list images
     path_images = utils.list_images_in_folder(image_dir)
+    if ref_aff_dir is not None:
+        path_ref_images = utils.list_images_in_folder(ref_aff_dir)
+    else:
+        path_ref_images = [None] * len(path_images)
+
+    # loop over images
     loop_info = utils.LoopInfo(len(path_images), 10, 'converting', True)
-    for idx, path_image in enumerate(path_images):
+    for idx, (path_image, path_ref) in enumerate(zip(path_images, path_ref_images)):
         loop_info.update(idx)
 
         # convert images to nifty format
@@ -1193,6 +1199,8 @@ def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, recompute=Tr
             im, tmp_aff, h = utils.load_volume(path_image, im_only=False)
             if aff is not None:
                 tmp_aff = aff
+            elif path_ref is not None:
+                _, tmp_aff, h = utils.load_volume(path_ref, im_only=False)
             utils.save_volume(im, tmp_aff, h, path_result)
 
 
