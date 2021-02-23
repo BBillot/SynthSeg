@@ -7,8 +7,8 @@ import keras.layers as KL
 import numpy.random as npr
 
 # project imports
-from SynthSeg import metrics_model
 from SynthSeg.training import train_model
+from SynthSeg import metrics_model as metrics
 
 # third-party imports
 from ext.lab2im import utils
@@ -25,11 +25,11 @@ def supervised_training(image_dir,
                         batchsize=1,
                         output_shape=None,
                         flipping=True,
-                        scaling_bounds=.015,
+                        scaling_bounds=.15,
                         rotation_bounds=15,
                         shearing_bounds=.012,
                         translation_bounds=False,
-                        nonlin_std=4.,
+                        nonlin_std=3.,
                         nonlin_shape_factor=.04,
                         bias_field_std=.5,
                         bias_shape_factor=.025,
@@ -45,7 +45,8 @@ def supervised_training(image_dir,
                         wl2_epochs=5,
                         dice_epochs=100,
                         steps_per_epoch=1000,
-                        checkpoint=None):
+                        checkpoint=None,
+                        reinitialise_momentum=False):
 
     # check epochs
     assert (wl2_epochs > 0) | (dice_epochs > 0), \
@@ -60,13 +61,6 @@ def supervised_training(image_dir,
     label_list, n_neutral_labels = utils.get_list_labels(label_list=path_segmentation_labels, labels_dir=labels_dir,
                                                          FS_sort=True)
     n_labels = np.size(label_list)
-
-    # prepare model folder
-    utils.mkdir(model_dir)
-
-    # prepare log folder
-    log_dir = os.path.join(model_dir, 'logs')
-    utils.mkdir(log_dir)
 
     # create augmentation model and input generator
     im_shape, _, _, n_channels, _, _ = utils.get_volume_info(path_images[0], aff_ref=np.eye(4))
@@ -88,9 +82,6 @@ def supervised_training(image_dir,
                                                   bias_shape_factor=bias_shape_factor)
     unet_input_shape = augmentation_model.output[0].get_shape().as_list()[1:]
 
-    # input generator
-    input_generator = utils.build_training_generator(build_model_inputs(path_images, path_labels, batchsize), batchsize)
-
     # prepare the segmentation model
     unet_model = nrn_models.unet(nb_features=unet_feat_count,
                                  input_shape=unet_input_shape,
@@ -104,16 +95,20 @@ def supervised_training(image_dir,
                                  activation=activation,
                                  input_model=augmentation_model)
 
+    # input generator
+    input_generator = utils.build_training_generator(build_model_inputs(path_images, path_labels, batchsize), batchsize)
+
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
     if wl2_epochs > 0:
         wl2_model = models.Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
-        wl2_model = metrics_model.metrics_model(label_list=label_list, input_model=wl2_model, metrics='wl2')
+        wl2_model = metrics.metrics_model(wl2_model, label_list, 'wl2')
         train_model(wl2_model, input_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, 'wl2', checkpoint)
         checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
 
     # fine-tuning with dice metric
-    dice_model = metrics_model.metrics_model(label_list=label_list, input_model=unet_model, metrics='dice')
-    train_model(dice_model, input_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, 'dice', checkpoint)
+    dice_model = metrics.metrics_model(unet_model, label_list, 'dice')
+    train_model(dice_model, input_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, 'dice', checkpoint,
+                reinitialise_momentum=reinitialise_momentum)
 
 
 def build_augmentation_model(im_shape,
@@ -184,7 +179,7 @@ def build_augmentation_model(im_shape,
 
     # intensity augmentation
     image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.IntensityAugmentation(0, clip=False, normalise=True, gamma_std=.5, separate_channels=True)(image)
+    image = layers.IntensityAugmentation(10, clip=False, normalise=True, gamma_std=.5, separate_channels=True)(image)
     image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_augmented')(image)
 
     # convert labels back to original values and reset unwanted labels to zero

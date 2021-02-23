@@ -18,7 +18,7 @@ parser.add_argument("--output_shape", type=int, dest="output_shape", default=Non
 # ----------------------------------------------- Augmentation parameters ----------------------------------------------
 # spatial deformation parameters
 parser.add_argument("--no_flipping", action='store_false', dest="flipping")
-parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=0.15)
+parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=.15)
 parser.add_argument("--rotation", dest="rotation_bounds", type=infer, default=15)
 parser.add_argument("--shearing", dest="shearing_bounds", type=infer, default=.012)
 parser.add_argument("--translation", dest="translation_bounds", type=infer, default=False)
@@ -26,7 +26,7 @@ parser.add_argument("--nonlin_std", type=float, dest="nonlin_std", default=3.)
 parser.add_argument("--nonlin_shape_factor", type=float, dest="nonlin_shape_factor", default=.04)
 
 # bias field parameters
-parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.3)
+parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.5)
 parser.add_argument("--bias_shape_factor", type=float, dest="bias_shape_factor", default=.025)
 
 # -------------------------------------------- UNet architecture parameters --------------------------------------------
@@ -45,6 +45,7 @@ parser.add_argument("--wl2_epochs", type=int, dest="wl2_epochs", default=5)
 parser.add_argument("--dice_epochs", type=int, dest="dice_epochs", default=100)
 parser.add_argument("--steps_per_epoch", type=int, dest="steps_per_epoch", default=1000)
 parser.add_argument("--checkpoint", type=str, dest="checkpoint", default=None)
+parser.add_argument("--reinitialise_momentum", action='store_true', dest="reinitialise_momentum")
 
 args = parser.parse_args()
 supervised_training(**vars(args))

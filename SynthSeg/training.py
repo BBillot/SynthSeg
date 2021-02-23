@@ -34,11 +34,11 @@ def training(labels_dir,
              use_specific_stats_for_channel=False,
              mix_prior_and_random=False,
              flipping=True,
-             scaling_bounds=0.15,
+             scaling_bounds=.15,
              rotation_bounds=15,
              shearing_bounds=.012,
              translation_bounds=False,
-             nonlin_std=4.,
+             nonlin_std=3.,
              nonlin_shape_factor=.04,
              randomise_res=False,
              build_distance_maps=False,
@@ -205,9 +205,6 @@ def training(labels_dir,
         segmentation_labels = generation_labels
     n_segmentation_labels = len(segmentation_labels)
 
-    # prepare model folder
-    utils.mkdir(model_dir)
-
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
                                      generation_labels=generation_labels,
@@ -280,9 +277,11 @@ def train_model(model,
                 n_steps,
                 model_dir,
                 metric_type,
-                path_checkpoint=None):
+                path_checkpoint=None,
+                reinitialise_momentum=False):
 
-    # prepare log folder
+    # prepare model and log folders
+    utils.mkdir(model_dir)
     log_dir = os.path.join(model_dir, 'logs')
     utils.mkdir(log_dir)
 
@@ -297,7 +296,7 @@ def train_model(model,
     compile_model = True
     init_epoch = 0
     if path_checkpoint is not None:
-        if metric_type in path_checkpoint:
+        if (not reinitialise_momentum) & (metric_type in path_checkpoint):
             custom_l2i = {key: value for (key, value) in getmembers(l2i_layers, isclass) if key != 'Layer'}
             custom_nrn = {key: value for (key, value) in getmembers(nrn_layers, isclass) if key != 'Layer'}
             custom_objects = {**custom_l2i, **custom_nrn, 'tf': tf, 'keras': keras, 'loss': metrics.IdentityLoss().loss}

@@ -35,7 +35,7 @@ parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=0.15
 parser.add_argument("--rotation", dest="rotation_bounds", type=infer, default=15)
 parser.add_argument("--shearing", dest="shearing_bounds", type=infer, default=.012)
 parser.add_argument("--translation", dest="translation_bounds", type=infer, default=False)
-parser.add_argument("--nonlin_std", type=float, dest="nonlin_std", default=4.)
+parser.add_argument("--nonlin_std", type=float, dest="nonlin_std", default=3.)
 parser.add_argument("--nonlin_shape_factor", type=float, dest="nonlin_shape_factor", default=.04)
 
 # blurring/resampling parameters
@@ -44,7 +44,7 @@ parser.add_argument("--distance_maps", action='store_true', dest="build_distance
 parser.add_argument("--data_res", dest="data_res", type=infer, default=None)
 parser.add_argument("--thickness", dest="thickness", type=infer, default=None)
 parser.add_argument("--downsample", action='store_true', dest="downsample")
-parser.add_argument("--blur_range", type=float, dest="blur_range", default=1.15)
+parser.add_argument("--blur_range", type=float, dest="blur_range", default=1.03)
 
 # bias field parameters
 parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.5)
