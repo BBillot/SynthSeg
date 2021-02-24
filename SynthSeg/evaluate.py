@@ -162,6 +162,7 @@ def dice_evaluation(gt_dir,
                     seg_dir,
                     label_list,
                     compute_distances=False,
+                    compute_score_whole_structure=False,
                     path_dice=None,
                     path_hausdorff=None,
                     path_mean_distance=None,
@@ -174,22 +175,32 @@ def dice_evaluation(gt_dir,
     :param seg_dir: path of directory with label maps to compare to gt_dir. Matched to gt label maps by sorting order.
     :param label_list: list of label values for which to compute evaluation metrics. Can be a sequence, a 1d numpy
     array, or the path to such array.
+    :param compute_distances: (optional) whether to compute distances (Hausdorff and mean distance) between the surfaces
+    of GT and predicted labels. Default is False.
+    :param compute_score_whole_structure: (optional) whether to also compute the selected scores for the whole segmented
+    structure (i.e. scores are computed for a single structure obtained by regrouping all non-zero values). If True, the
+    resulting scores are added as an extra row to the result matrices. Default is False.
     :param path_dice: path where the resulting Dice will be writen as numpy array.
     Default is None, where the array is not saved.
+    :param path_hausdorff: path where the resulting Hausdorff distances will be writen as numpy array (only if
+    compute_distances is True). Default is None, where the array is not saved.
+    :param path_mean_distance: path where the resulting mean distances will be writen as numpy array (only if
+    compute_distances is True). Default is None, where the array is not saved.
     :param crop_margin_around_gt: (optional) margin by which to crop around the gt volumes, in order to copute the
     scores more efficiently. If None, no cropping is performed.
     :param recompute: (optional) whether to recompute the already existing results. Default is True.
     :param verbose: (optional) whether to print out info about the remaining number of cases.
-    :return: numpy array containing all dice scores (labels in rows, subjects in columns).
+    :return: numpy array containing all Dice scores (labels in rows, subjects in columns). Also returns numpy arrays
+    with the same structures for Hausdorff and mean distances if compute_distances is True.
     """
 
     # check whether to recompute
+    compute_dice = not os.path.isfile(path_dice) if (path_dice is not None) else True
     if compute_distances:
         compute_hausdorff = not os.path.isfile(path_hausdorff) if (path_hausdorff is not None) else True
         compute_mean_dist = not os.path.isfile(path_mean_distance) if (path_mean_distance is not None) else True
     else:
         compute_hausdorff = compute_mean_dist = False
-    compute_dice = not os.path.isfile(path_dice) if (path_dice is not None) else True
 
     if compute_dice | compute_hausdorff | compute_mean_dist | recompute:
 
@@ -201,11 +212,17 @@ def dice_evaluation(gt_dir,
 
         # load labels list
         label_list, _ = utils.get_list_labels(label_list=label_list, FS_sort=True, labels_dir=gt_dir)
+        n_labels = len(label_list)
 
         # initialise result matrices
-        max_dists = np.zeros((label_list.shape[0], len(path_segs)))
-        mean_dists = np.zeros((label_list.shape[0], len(path_segs)))
-        dice_coefs = np.zeros((label_list.shape[0], len(path_segs)))
+        if compute_score_whole_structure:
+            max_dists = np.zeros((n_labels + 1, len(path_segs)))
+            mean_dists = np.zeros((n_labels + 1, len(path_segs)))
+            dice_coefs = np.zeros((n_labels + 1, len(path_segs)))
+        else:
+            max_dists = np.zeros((n_labels, len(path_segs)))
+            mean_dists = np.zeros((n_labels, len(path_segs)))
+            dice_coefs = np.zeros((n_labels, len(path_segs)))
 
         # loop over segmentations
         loop_info = utils.LoopInfo(len(path_segs), 10, 'evaluating')
@@ -222,8 +239,16 @@ def dice_evaluation(gt_dir,
                 gt_labels, cropping = edit_volumes.crop_volume_around_region(gt_labels, margin=crop_margin_around_gt)
                 seg = edit_volumes.crop_volume_with_idx(seg, cropping)
 
-            # compute dice scores
-            dice_coefs[:, idx] = fast_dice(gt_labels, seg, label_list)
+            # compute Dice scores
+            dice_coefs[:n_labels, idx] = fast_dice(gt_labels, seg, label_list)
+
+            # compute Dice scores for whole structures
+            if compute_score_whole_structure:
+                temp_gt = (gt_labels > 0) * 1
+                temp_seg = (seg > 0) * 1
+                dice_coefs[-1, idx] = dice(temp_gt, temp_seg)
+            else:
+                temp_gt = temp_seg = None
 
             # compute average and Hausdorff distances
             if compute_distances:
@@ -231,6 +256,8 @@ def dice_evaluation(gt_dir,
                 # compute unique label values
                 unique_gt_labels = np.unique(gt_labels)
                 unique_seg_labels = np.unique(seg)
+
+                # compute max/mean surface distances for all labels
                 for index, label in enumerate(label_list):
                     if (label in unique_gt_labels) & (label in unique_seg_labels):
                         mask_gt = np.where(gt_labels == label, True, False)
@@ -240,7 +267,11 @@ def dice_evaluation(gt_dir,
                         max_dists[index, idx] = max(gt_labels.shape)
                         mean_dists[index, idx] = max(gt_labels.shape)
 
-        # write dice results
+                # compute max/mean distances for whole structure
+                if compute_score_whole_structure:
+                    max_dists[-1, idx], mean_dists[-1, idx] = surface_distances(temp_gt, temp_seg)
+
+        # write results
         if path_dice is not None:
             utils.mkdir(os.path.dirname(path_dice))
             np.save(path_dice, dice_coefs)

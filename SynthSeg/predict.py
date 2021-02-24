@@ -183,6 +183,7 @@ def predict(path_images,
                                  eval_folder,
                                  evaluation_label_list,
                                  compute_distances=compute_distances,
+                                 compute_score_whole_structure=False,
                                  path_dice=os.path.join(eval_folder, 'dice.npy'),
                                  path_hausdorff=os.path.join(eval_folder, 'hausdorff.npy'),
                                  path_mean_distance=os.path.join(eval_folder, 'mean_distance.npy'),
@@ -407,7 +408,7 @@ def postprocess(prediction, pad_shape, im_shape, crop, n_dims, labels, keep_bigg
     # get posteriors and segmentation
     post_patch = np.squeeze(prediction)
 
-    # reset posteriors to zero outside the largest connectd component of each topological class
+    # reset posteriors to zero outside the largest connected component of each topological class
     if keep_biggest_of_each_group:
         topology_classes = np.array([0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 14, 5])
         if n_neutral_labels != len(labels):

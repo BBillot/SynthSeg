@@ -1175,6 +1175,8 @@ def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, ref_aff_dir=
     :param result_dir: path of directory where converted images will be writen
     :param aff: (optional) affine matrix in homogeneous coordinates with which to write the images.
     Can also be 'FS' to write images with FreeSurfer typical affine matrix.
+    :param ref_aff_dir: (optional) alternatively to providing a fixed aff, different affine matrices can be used for
+    each image in image_dir by matching them to corresponding volumes contained in ref_aff_dir.
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
 
