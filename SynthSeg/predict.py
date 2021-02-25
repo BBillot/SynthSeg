@@ -438,11 +438,11 @@ def postprocess(prediction, pad_shape, im_shape, crop, n_dims, labels, keep_bigg
         if aff_ref == 'FS':
             aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
             seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
-            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
+            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff)
         elif aff_ref == 'identity':
             aff_ref = np.eye(4)
             seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
-            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
+            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff)
 
     # paste patches back to matrix of original image size
     if crop is not None:

@@ -168,10 +168,8 @@ class ImageGenerator:
         list_images = list()
         list_labels = list()
         for i in range(self.batchsize):
-            list_images.append(edit_volumes.align_volume_to_ref(image[i], np.eye(4),
-                                                                aff_ref=self.aff, n_dims=self.n_dims))
-            list_labels.append(edit_volumes.align_volume_to_ref(labels[i], np.eye(4),
-                                                                aff_ref=self.aff, n_dims=self.n_dims))
+            list_images.append(edit_volumes.align_volume_to_ref(image[i], np.eye(4), aff_ref=self.aff))
+            list_labels.append(edit_volumes.align_volume_to_ref(labels[i], np.eye(4), aff_ref=self.aff))
         image = np.stack(list_images, axis=0)
         labels = np.stack(list_labels, axis=0)
         return np.squeeze(image), np.squeeze(labels)
