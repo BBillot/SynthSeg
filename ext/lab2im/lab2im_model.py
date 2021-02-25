@@ -103,8 +103,7 @@ def lab2im_model(labels_shape,
 
     # intensity augmentation
     image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.IntensityAugmentation(noise_std=0, clip=None, normalise=True, gamma_std=.2,
-                                         separate_channels=True)(image)
+    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.2)(image)
 
     # convert labels back to original values and reset unwanted labels to zero
     labels = convert_labels(labels, generation_labels)

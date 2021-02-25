@@ -183,7 +183,7 @@ def labels_to_image_model(labels_shape,
 
     # intensity augmentation
     image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.IntensityAugmentation(0, clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
+    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
 
     # loop over channels
     channels = list()

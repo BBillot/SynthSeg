@@ -917,15 +917,20 @@ class IntensityAugmentation(Layer):
 
     :param noise_std: maximum value of the standard deviation of the Gaussian white noise used in 1 (it will be sampled
     from the range [0, noise_std]). Set to 0 to skip this step.
-    :param clip: If not False, this enables to clip the input tensor between the given values. This can either be:
-    a number (in which case we clip between 0 and the given value), or a list or a numpy array with two elements.
-    :param normalise: whether to apply min-max normalistion. Default is True.
+    :param clip: clip the input tensor between the given values. Can either be: a number (in which case we clip between
+    0 and the given value), or a list or a numpy array with two elements. Default is 0, where no clipping occurs.
+    :param normalise: whether to apply min-max normalistion, to normalise between 0 and 1. Default is True.
+    :param norm_perc: percentiles of the sorted intensity values to take for robust normalisation. Can either be:
+    a number (in which case the robust minimum is the provided percentile of sorted values, and the maximum is the
+    1 - norm_perc percentile), or a list/numpy array of 2 elements (percentiles for the minimum and maximum values).
+    The minimum and maximum values are computed separately for each channel if separate_channels is True.
+    Default is 0, where we simply take the minimum and maximum values.
     :param gamma_std: standard deviation of the normal distribution from which we sample gamma (in log domain).
-    Set to 0 to skip this step.
+    Default is 0, where no gamma augmentation occurs.
     :param separate_channels: whether to augment all channels separately. Default is True.
     """
 
-    def __init__(self, noise_std=0, clip=None, normalise=True, norm_perc=0, gamma_std=.4, separate_channels=True,
+    def __init__(self, noise_std=0, clip=0, normalise=True, norm_perc=0, gamma_std=0, separate_channels=True,
                  **kwargs):
 
         # shape attributes
@@ -938,8 +943,10 @@ class IntensityAugmentation(Layer):
         # inputs
         self.noise_std = noise_std
         self.clip = clip
+        self.clip_values = None
         self.normalise = normalise
         self.norm_perc = norm_perc
+        self.perc = None
         self.gamma_std = gamma_std
         self.separate_channels = separate_channels
 
@@ -962,11 +969,16 @@ class IntensityAugmentation(Layer):
         self.flatten_shape = self.flatten_shape * self.n_channels if not self.separate_channels else self.flatten_shape
         self.expand_minmax_dim = self.n_dims if self.separate_channels else self.n_dims + 1
         self.one = tf.ones([1], dtype='int32')
-        if self.clip is None:
-            self.clip = [0, 300]
-        elif self.clip is not False:
-            self.clip = utils.reformat_to_list(self.clip)
-            self.clip = self.clip if len(self.clip) == 2 else [0, self.clip[0]]
+        if self.clip:
+            self.clip_values = utils.reformat_to_list(self.clip)
+            self.clip_values = self.clip_values if len(self.clip_values) == 2 else [0, self.clip_values[0]]
+        else:
+            self.clip_values = None
+        if self.norm_perc:
+            self.perc = utils.reformat_to_list(self.norm_perc)
+            self.perc = self.perc if len(self.perc) == 2 else [self.perc[0], 1 - self.perc[0]]
+        else:
+            self.perc = None
         super(IntensityAugmentation, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
@@ -993,28 +1005,29 @@ class IntensityAugmentation(Layer):
             inputs = inputs + noise
 
         # clip images to given values
-        if self.clip is not False:
-            inputs = K.clip(inputs, self.clip[0], self.clip[1])
+        if self.clip_values is not None:
+            inputs = K.clip(inputs, self.clip_values[0], self.clip_values[1])
 
         # normalise
         if self.normalise:
             # define robust min and max by sorting values and taking percentile
-            if self.norm_perc > 0:
+            if self.perc is not None:
                 if self.separate_channels:
                     shape = tf.concat([batchsize, self.flatten_shape * self.one, self.n_channels * self.one], 0)
                 else:
                     shape = tf.concat([batchsize, self.flatten_shape * self.one], 0)
                 intensities = tf.sort(tf.reshape(inputs, shape), axis=1)
-                m = intensities[:, max(int(self.norm_perc * self.flatten_shape), 0), ...]
-                M = intensities[:, min(int((1 - self.norm_perc) * self.flatten_shape), self.flatten_shape - 1), ...]
+                m = intensities[:, max(int(self.perc[0] * self.flatten_shape), 0), ...]
+                M = intensities[:, min(int(self.perc[1] * self.flatten_shape), self.flatten_shape - 1), ...]
             # simple min and max
             else:
                 m = K.min(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
                 M = K.max(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
             # normalise
-            m = l2i_et.expand_dims(m, axis=[1] * self.expand_minmax_dim)
-            M = l2i_et.expand_dims(M, axis=[1] * self.expand_minmax_dim)
-            inputs = (inputs - m) / (M - m)
+            m_expanded = l2i_et.expand_dims(m, axis=[1] * self.expand_minmax_dim)
+            M_expanded = l2i_et.expand_dims(M, axis=[1] * self.expand_minmax_dim)
+            inputs = tf.clip_by_value(inputs, m_expanded, M_expanded)
+            inputs = (inputs - m_expanded) / (M_expanded - m_expanded)
 
         # apply voxel-wise exponentiation
         if self.gamma_std > 0:
