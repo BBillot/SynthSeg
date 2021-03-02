@@ -11,6 +11,8 @@ parser.add_argument("path_images", type=str, help="path single image or path of 
 parser.add_argument("--model", type=str, default=None, dest="path_model", help="model file path")
 parser.add_argument("--label_list", type=str, dest="segmentation_label_list", default=None,
                     help="path label list")
+parser.add_argument("--names_list", type=str, dest="segmentation_names_list", default=None,
+                    help="path list of label names")
 
 # Saving paths
 parser.add_argument("--out_seg", type=str, dest="path_segmentations", default=None, help="segmentations folder/path")

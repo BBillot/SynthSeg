@@ -46,8 +46,10 @@ del args['threads']
 
 # default parameters
 path_label_list = os.path.join(synthseg_home, 'data/labels_classes_priors/SynthSeg_segmentation_labels.npy')
+path_names_list = os.path.join(synthseg_home, 'data/labels_classes_priors/SynthSeg_segmentation_names.npy')
 path_model = os.path.join(synthseg_home, 'models/SynthSeg.h5')
 args['segmentation_label_list'] = path_label_list
+args['segmentation_names_list'] = path_names_list
 args['path_model'] = path_model
 args['sigma_smoothing'] = 0.5
 args['keep_biggest_component'] = True

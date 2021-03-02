@@ -23,6 +23,7 @@ def predict(path_images,
             path_segmentations=None,
             path_posteriors=None,
             path_volumes=None,
+            segmentation_names_list=None,
             padding=None,
             cropping=None,
             resample=None,
@@ -59,6 +60,9 @@ def predict(path_images,
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
+    :param segmentation_names_list: (optional) List of names correponding to the names of the segmentation labels.
+    Only used when path_volumes is provided. Must be of the same size as segmentation_label_list. Can be given as a
+    list, a numpy array of strings, or the path to such a numpy array. Default is None.
     :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) crop the images to the specified shape before predicting the segmentation maps.
@@ -100,7 +104,11 @@ def predict(path_images,
 
     # prepare volume file if needed
     if path_volumes is not None:
-        csv_header = [['subject'] + [str(lab) for lab in label_list[1:]]]
+        if segmentation_names_list is not None:
+            csv_header = [[''] + utils.reformat_to_list(segmentation_names_list, load_as_numpy=True)]
+            csv_header += [[''] + [str(lab) for lab in label_list[1:]]]
+        else:
+            csv_header = [['subjects'] + [str(lab) for lab in label_list[1:]]]
         with open(path_volumes, 'w') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(csv_header)
@@ -165,7 +173,6 @@ def predict(path_images,
             volumes = np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1)))
             volumes = np.around(volumes * np.prod(im_res), 3)
             row = [os.path.basename(path_image).replace('.nii.gz', '')] + [str(vol) for vol in volumes]
-            row += [np.sum(volumes[:int(len(volumes) / 2)]), np.sum(volumes[int(len(volumes) / 2):])]
             with open(path_volumes, 'a') as csvFile:
                 writer = csv.writer(csvFile)
                 writer.writerow(row)
