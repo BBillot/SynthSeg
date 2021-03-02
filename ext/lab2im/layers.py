@@ -1024,10 +1024,10 @@ class IntensityAugmentation(Layer):
                 m = K.min(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
                 M = K.max(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
             # normalise
-            m_expanded = l2i_et.expand_dims(m, axis=[1] * self.expand_minmax_dim)
-            M_expanded = l2i_et.expand_dims(M, axis=[1] * self.expand_minmax_dim)
-            inputs = tf.clip_by_value(inputs, m_expanded, M_expanded)
-            inputs = (inputs - m_expanded) / (M_expanded - m_expanded)
+            m = l2i_et.expand_dims(m, axis=[1] * self.expand_minmax_dim)
+            M = l2i_et.expand_dims(M, axis=[1] * self.expand_minmax_dim)
+            inputs = tf.clip_by_value(inputs, m, M)
+            inputs = (inputs - m) / (M - m)
 
         # apply voxel-wise exponentiation
         if self.gamma_std > 0:

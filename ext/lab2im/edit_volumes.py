@@ -132,17 +132,24 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.02, max_perc
     :return: rescaled volume
     """
 
-    # sort intensities
+    # select only positive intensities
     if use_positive_only:
-        intensities = np.sort(volume[volume > 0])
+        intensities = volume[volume > 0]
     else:
-        intensities = np.sort(volume.flatten())
+        intensities = volume.flatten()
 
-    # define robust max and min
-    idx_min = max(int(intensities.shape[0] * min_percentile), 0)
-    robust_min = np.maximum(0, intensities[idx_min])
-    idx_max = min(int(intensities.shape[0] * max_percentile), intensities.shape[0] - 1)
-    robust_max = intensities[idx_max]
+    if (min_percentile == 0) & (max_percentile == 1):
+        robust_min = np.min(intensities)
+        robust_max = np.max(intensities)
+
+    else:
+        # sort intensities
+        intensities = np.sort(intensities)
+        # define robust max and min
+        idx_min = max(int(intensities.shape[0] * min_percentile), 0)
+        robust_min = np.maximum(0, intensities[idx_min])
+        idx_max = min(int(intensities.shape[0] * max_percentile), intensities.shape[0] - 1)
+        robust_max = intensities[idx_max]
 
     # trim values outside range
     volume = np.clip(volume, robust_min, robust_max)
