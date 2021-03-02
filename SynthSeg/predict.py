@@ -305,10 +305,10 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
     if n_dims > 2:
         if aff_ref == 'FS':
             aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
-            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
+            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False, n_dims=n_dims)
         elif aff_ref == 'identity':
             aff_ref = np.eye(4)
-            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False)
+            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False, n_dims=n_dims)
 
     # normalise image
     if n_channels == 1:
@@ -438,11 +438,11 @@ def postprocess(prediction, pad_shape, im_shape, crop, n_dims, labels, keep_bigg
         if aff_ref == 'FS':
             aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
             seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
-            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff)
+            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
         elif aff_ref == 'identity':
             aff_ref = np.eye(4)
             seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
-            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff)
+            post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
 
     # paste patches back to matrix of original image size
     if crop is not None:
