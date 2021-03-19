@@ -46,7 +46,8 @@ def supervised_training(image_dir,
                         dice_epochs=100,
                         steps_per_epoch=1000,
                         checkpoint=None,
-                        reinitialise_momentum=False):
+                        reinitialise_momentum=False,
+                        freeze_layers=False):
 
     # check epochs
     assert (wl2_epochs > 0) | (dice_epochs > 0), \
@@ -104,6 +105,11 @@ def supervised_training(image_dir,
         wl2_model = metrics.metrics_model(wl2_model, label_list, 'wl2')
         train_model(wl2_model, input_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, 'wl2', checkpoint)
         checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
+
+    # freeze all layers but last if necessary (use -2 because the very last layer only applies softmax activation)
+    if freeze_layers:
+        for layer in unet_model.layers[:-2]:
+            layer.trainable = False
 
     # fine-tuning with dice metric
     dice_model = metrics.metrics_model(unet_model, label_list, 'dice')

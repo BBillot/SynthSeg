@@ -46,6 +46,7 @@ parser.add_argument("--dice_epochs", type=int, dest="dice_epochs", default=100)
 parser.add_argument("--steps_per_epoch", type=int, dest="steps_per_epoch", default=1000)
 parser.add_argument("--checkpoint", type=str, dest="checkpoint", default=None)
 parser.add_argument("--reinitialise_momentum", action='store_true', dest="reinitialise_momentum")
+parser.add_argument("--freeze_layers", action='store_true', dest="freeze_layers")
 
 args = parser.parse_args()
 supervised_training(**vars(args))

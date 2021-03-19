@@ -592,7 +592,7 @@ class GaussianBlur(Layer):
             mask = None
 
         # redefine the kernels at each new step when blur_range is activated
-        if self.kernels is None:
+        if self.blur_range is not None:
             self.kernels = l2i_et.gaussian_kernel(self.sigma, blur_range=self.blur_range, separable=self.separable)
 
         if self.separable:
@@ -891,19 +891,24 @@ class BiasFieldCorruption(Layer):
         if not self.several_inputs:
             inputs = [inputs]
 
-        # sampling shapes
-        batchsize = tf.split(tf.shape(inputs[0]), [1, -1])[0]
-        std_shape = tf.concat([batchsize, tf.convert_to_tensor(self.std_shape, dtype='int32')], 0)
-        bias_shape = tf.concat([batchsize, tf.convert_to_tensor(self.small_bias_shape, dtype='int32')], axis=0)
+        if self.bias_field_std > 0:
 
-        # sample small bias field
-        bias_field = tf.random.normal(bias_shape, stddev=tf.random.uniform(std_shape, maxval=self.bias_field_std))
+            # sampling shapes
+            batchsize = tf.split(tf.shape(inputs[0]), [1, -1])[0]
+            std_shape = tf.concat([batchsize, tf.convert_to_tensor(self.std_shape, dtype='int32')], 0)
+            bias_shape = tf.concat([batchsize, tf.convert_to_tensor(self.small_bias_shape, dtype='int32')], axis=0)
 
-        # resize bias field and take exponential
-        bias_field = nrn_layers.Resize(size=self.inshape[0][1:self.n_dims + 1], interp_method='linear')(bias_field)
-        bias_field = tf.math.exp(bias_field)
+            # sample small bias field
+            bias_field = tf.random.normal(bias_shape, stddev=tf.random.uniform(std_shape, maxval=self.bias_field_std))
 
-        return [tf.math.multiply(bias_field, v) for v in inputs]
+            # resize bias field and take exponential
+            bias_field = nrn_layers.Resize(size=self.inshape[0][1:self.n_dims + 1], interp_method='linear')(bias_field)
+            bias_field = tf.math.exp(bias_field)
+
+            return [tf.math.multiply(bias_field, v) for v in inputs]
+
+        else:
+            return inputs
 
 
 class IntensityAugmentation(Layer):

@@ -160,7 +160,7 @@ class BrainGenerator:
         :param bias_field_std: (optional) If strictly positive, this triggers the corruption of synthesised images with
         a bias field. It is obtained by sampling a first small tensor from a normal distribution, resizing it to full
         size, and rescaling it to positive values by taking the voxel-wise exponential. bias_field_std designates the
-        std dev of the normal distribution from which we sample the first tensor. Set to False to deactivate biad field.
+        std dev of the normal distribution from which we sample the first tensor. Set to 0 to deactivate bias field.
         :param bias_shape_factor: (optional) If bias_field_std is strictly positive, this designates the ratio between
         the size of the input label maps and the size of the first sampled tensor for synthesising the bias field.
         """

@@ -296,13 +296,14 @@ def train_model(model,
     compile_model = True
     init_epoch = 0
     if path_checkpoint is not None:
+        if metric_type in path_checkpoint:
+            init_epoch = int(os.path.basename(path_checkpoint).split(metric_type)[1][1:-3])
         if (not reinitialise_momentum) & (metric_type in path_checkpoint):
             custom_l2i = {key: value for (key, value) in getmembers(l2i_layers, isclass) if key != 'Layer'}
             custom_nrn = {key: value for (key, value) in getmembers(nrn_layers, isclass) if key != 'Layer'}
             custom_objects = {**custom_l2i, **custom_nrn, 'tf': tf, 'keras': keras, 'loss': metrics.IdentityLoss().loss}
             model = models.load_model(path_checkpoint, custom_objects=custom_objects)
             compile_model = False
-            init_epoch = int(os.path.basename(path_checkpoint).split(metric_type)[1][1:-3])
         else:
             model.load_weights(path_checkpoint, by_name=True)
 
