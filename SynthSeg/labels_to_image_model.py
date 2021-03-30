@@ -193,7 +193,7 @@ def labels_to_image_model(labels_shape,
         channel._keras_shape = tuple(channel.get_shape().as_list())
 
         if randomise_res:
-            max_res = np.array([9.] * 3)
+            max_res = np.array([8.] * 3)
             resolution, blur_res = layers.SampleResolution(atlas_res, max_res, .05, return_thickness=True)(means_input)
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, resolution, thickness=blur_res)
             channel = layers.DynamicGaussianBlur(0.75 * max_res / np.array(atlas_res), blur_range)([channel, sigma])
