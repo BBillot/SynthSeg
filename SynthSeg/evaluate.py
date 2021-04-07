@@ -225,7 +225,7 @@ def dice_evaluation(gt_dir,
             dice_coefs = np.zeros((n_labels, len(path_segs)))
 
         # loop over segmentations
-        loop_info = utils.LoopInfo(len(path_segs), 10, 'evaluating')
+        loop_info = utils.LoopInfo(len(path_segs), 10, 'evaluating', print_time=True)
         for idx, (path_gt, path_seg) in enumerate(zip(path_gt_labels, path_segs)):
             if verbose:
                 loop_info.update(idx)
