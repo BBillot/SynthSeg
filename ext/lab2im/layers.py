@@ -119,7 +119,6 @@ class RandomSpatialDeformation(Layer):
             inputshape = input_shape
         self.inshape = inputshape[0][1:]
         self.n_dims = len(self.inshape) - 1
-        self.built = True
 
         self.apply_affine_trans = (self.scaling_bounds is not False) | (self.rotation_bounds is not False) | \
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
@@ -136,6 +135,7 @@ class RandomSpatialDeformation(Layer):
 
         self.inter_method = utils.reformat_to_list(self.inter_method, length=self.n_inputs, dtype='str')
 
+        self.built = True
         super(RandomSpatialDeformation, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
@@ -550,7 +550,7 @@ class GaussianBlur(Layer):
         self.separable = None
         self.kernels = None
         self.convnd = None
-        super().__init__(**kwargs)
+        super(GaussianBlur, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
@@ -581,6 +581,9 @@ class GaussianBlur(Layer):
 
         # prepare convolution
         self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
+
+        self.built = True
+        super(GaussianBlur, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
 
@@ -642,7 +645,7 @@ class DynamicGaussianBlur(Layer):
         self.convnd = None
         self.blur_range = random_blur_range
         self.separable = None
-        super().__init__(**kwargs)
+        super(DynamicGaussianBlur, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
@@ -657,6 +660,8 @@ class DynamicGaussianBlur(Layer):
         self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
         self.max_sigma = utils.reformat_to_list(self.max_sigma, length=self.n_dims)
         self.separable = np.linalg.norm(np.array(self.max_sigma)) > 5
+        self.built = True
+        super(DynamicGaussianBlur, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
         image = inputs[0]
@@ -984,6 +989,8 @@ class IntensityAugmentation(Layer):
             self.perc = self.perc if len(self.perc) == 2 else [self.perc[0], 1 - self.perc[0]]
         else:
             self.perc = None
+
+        self.built = True
         super(IntensityAugmentation, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
