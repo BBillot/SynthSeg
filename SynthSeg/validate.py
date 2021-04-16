@@ -103,8 +103,9 @@ def validate_training(image_dir,
                     verbose=False)
 
 
-def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_first_dice_row=True,
-                           size_max_circle=100, figsize=(11, 6), fontsize=18, remove_legend=False):
+def plot_validation_curves(list_net_validation_dirs, architecture_names=None, eval_indices=None,
+                           skip_first_dice_row=True, size_max_circle=100, figsize=(11, 6), y_lim=None, fontsize=18,
+                           remove_legend=False):
     """This function plots the validation curves of several networks, based on the results of validate_training().
     It takes as input a list of validation folders (one for each network), each containing subfolders with dice scores
     for the corresponding validated epoch.
@@ -119,11 +120,16 @@ def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_fir
     if eval_indices is not None:
         eval_indices = utils.reformat_to_list(eval_indices, load_as_numpy=True)
 
+    architecture_names = utils.reformat_to_list(architecture_names, len(list_net_validation_dirs))
+    if architecture_names is None:
+        architecture_names = [None] * len(list_net_validation_dirs)
+
     # loop over architectures
     plt.figure(figsize=figsize)
-    for net_val_dir in list_net_validation_dirs:
+    for net_val_dir, net_name in zip(list_net_validation_dirs, architecture_names):
 
-        net_name = os.path.basename(os.path.dirname(net_val_dir))
+        if net_name is None:
+            net_name = os.path.basename(os.path.dirname(net_val_dir))
         list_epochs_dir = utils.list_subfolders(net_val_dir, whole_path=False)
 
         # loop over epochs
@@ -160,6 +166,8 @@ def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_fir
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.ylabel('Dice scores', fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
+    if y_lim is not None:
+        plt.ylim(y_lim[0], y_lim[1] + 0.01)  # set right/left limits of plot
     plt.title('Validation curves', fontsize=fontsize)
     if not remove_legend:
         plt.legend(fontsize=fontsize)
@@ -167,7 +175,8 @@ def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_fir
     plt.show()
 
 
-def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11, 6), fontsize=18, remove_legend=False):
+def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11, 6), fontsize=18,
+                        y_lim=None, remove_legend=False):
     """This function draws the learning curve of several trainings on the same graph.
     :param path_tensorboard_files: list of tensorboard files corresponding to the models to plot.
     :param architecture_names: list of the names of the models
@@ -184,15 +193,18 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11,
     plt.figure(figsize=figsize)
     for path_tensorboard_file, name in zip(path_tensorboard_files, architecture_names):
 
+        path_tensorboard_file = utils.reformat_to_list(path_tensorboard_file)
+
         # extract loss at the end of all epochs
         list_losses = list()
         list_epochs = list()
         logging.getLogger('tensorflow').disabled = True
-        for e in summary_iterator(path_tensorboard_file):
-            for v in e.summary.value:
-                if v.tag == 'loss' or v.tag == 'accuracy' or v.tag == 'epoch_loss':
-                    list_losses.append(v.simple_value)
-                    list_epochs.append(e.step)
+        for path in path_tensorboard_file:
+            for e in summary_iterator(path):
+                for v in e.summary.value:
+                    if v.tag == 'loss' or v.tag == 'accuracy' or v.tag == 'epoch_loss':
+                        list_losses.append(v.simple_value)
+                        list_epochs.append(e.step)
         plt.plot(np.array(list_epochs), 1-np.array(list_losses), label=name, linewidth=2)
 
     # finalise plot
@@ -201,6 +213,8 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11,
         plt.legend(fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
     plt.ylabel('Soft Dice scores', fontsize=fontsize)
+    if y_lim is not None:
+        plt.ylim(y_lim[0], y_lim[1] + 0.01)  # set right/left limits of plot
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.title('Learning curves', fontsize=fontsize)
     plt.tight_layout(pad=1)
