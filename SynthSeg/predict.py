@@ -40,7 +40,9 @@ def predict(path_images,
             evaluation_label_list=None,
             compute_distances=False,
             recompute=True,
-            verbose=True):
+            verbose=True,
+            cumsum=False):  # ,
+            # flip=False):
     """
     This function uses trained models to segment images.
     It is crucial that the inputs match the architecture parameters of the trained model.
@@ -140,7 +142,8 @@ def predict(path_images,
 
                 # build network
                 net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
-                                  nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
+                                  nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing,
+                                  cumsum)
 
             if verbose:
                 loop_info.update(idx)
@@ -343,7 +346,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
 
 def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv_size, nb_conv_per_level,
-                unet_feat_count, feat_multiplier, activation, sigma_smoothing):
+                unet_feat_count, feat_multiplier, activation, sigma_smoothing, do_cumsum):
 
     assert os.path.isfile(model_file), "The provided model path does not exist."
 
@@ -351,6 +354,15 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
     net = None
     n_dims, n_channels = utils.get_dims(input_shape, max_channels=10)
     resample = utils.reformat_to_list(resample, length=n_dims)
+
+    # add cumsum if necessary
+    if do_cumsum:
+        from SynthSeg.labels_to_image_model import insert_cumsum
+        im_input = KL.Input(shape=input_shape, name='pre_resample_input')
+        cumsum = layers.NormalisedCumsum(reverse=[False, False, True], name='cumsum_out')(im_input)
+        image = KL.Lambda(lambda x: insert_cumsum(x[0], x[1], n_channels, n_dims), name='insert_cumsum')([im_input, cumsum])
+        net = Model(inputs=im_input, outputs=image)
+        input_shape = input_shape[:-1] + [n_channels * (n_dims + 1)]
 
     # build preprocessing model
     if resample is not None:
@@ -384,7 +396,8 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
                           layer_nb_feats=None,
                           conv_dropout=0,
                           batch_norm=-1,
-                          input_model=net)
+                          input_model=net,
+                          cumsum=do_cumsum)
     net.load_weights(model_file, by_name=True)
 
     # build postprocessing model
@@ -417,11 +430,15 @@ def postprocess(prediction, pad_shape, im_shape, crop, n_dims, labels, keep_bigg
 
     # reset posteriors to zero outside the largest connected component of each topological class
     if keep_biggest_of_each_group:
+
+        # set up the topology classes
         topology_classes = np.array([0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 14, 5])
         if n_neutral_labels != len(labels):
             left = topology_classes[n_neutral_labels:]
             topology_classes = np.concatenate([topology_classes, left + np.max(left) - np.min(left) + 1])
         unique_topology_classes = np.unique(topology_classes)
+
+        # get biggest cc of each class
         post_patch_mask = post_patch > 0.2
         for topology_class in unique_topology_classes[1:]:
             tmp_topology_indices = np.where(topology_classes == topology_class)[0]

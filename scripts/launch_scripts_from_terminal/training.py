@@ -67,5 +67,7 @@ parser.add_argument("--dice_epochs", type=int, dest="dice_epochs", default=100)
 parser.add_argument("--steps_per_epoch", type=int, dest="steps_per_epoch", default=1000)
 parser.add_argument("--checkpoint", type=str, dest="checkpoint", default=None)
 
+parser.add_argument("--cumsum", action='store_true', dest="cumsum")
+
 args = parser.parse_args()
 training(**vars(args))

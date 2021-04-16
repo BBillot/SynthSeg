@@ -1290,3 +1290,86 @@ class MaskEdges(Layer):
         tensor = inputs * mask
 
         return tensor, mask
+
+
+class NormalisedCumsum(Layer):
+
+    def __init__(self, reverse=False, apply_noise=False, max_noise=.8, noise_shape_factor=.015, **kwargs):
+
+        # shape
+        self.n_dims = None
+        self.n_channels = None
+
+        # cumsum direction
+        self.reverse = reverse
+        self.list_reverse = None
+
+        # noise
+        self.apply_noise = apply_noise
+        self.max_noise = max_noise
+        self.noise_shape_factor = noise_shape_factor
+        self.list_apply_noise = None
+        self.list_initial_noise_shape = None
+
+        super(NormalisedCumsum, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["reverse"] = self.reverse
+        config["apply_noise"] = self.apply_noise
+        config["max_noise"] = self.max_noise
+        config["noise_shape_factor"] = self.noise_shape_factor
+        return config
+
+    def build(self, input_shape):
+
+        # shape
+        self.n_dims = len(input_shape) - 2
+        self.n_channels = input_shape[-1]
+
+        # cumsum direction
+        self.list_reverse = utils.reformat_to_list(self.reverse, length=self.n_dims)
+
+        # noise
+        self.list_apply_noise = utils.reformat_to_list(self.apply_noise, length=self.n_dims)
+        self.list_initial_noise_shape = list()
+        for i, apply_noise in enumerate(self.list_apply_noise):
+            if apply_noise:
+                tmp_shape = [input_shape[j+1] if j != i else 1 for j in range(self.n_dims)]
+                initial_noise_shape = utils.get_resample_shape(tmp_shape, self.noise_shape_factor, self.n_channels)
+                self.list_initial_noise_shape.append(initial_noise_shape)
+            else:
+                self.list_initial_noise_shape.append(None)
+
+        self.built = True
+        super(NormalisedCumsum, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+
+        # loop over axes
+        list_normed_cumsum = list()
+        for i, (reverse, initial_noise_shape) in enumerate(zip(self.list_reverse, self.list_initial_noise_shape)):
+
+            # compute normalised cumsum in specified direction (i.e reverse or not)
+            cumsum = tf.cumsum(inputs, axis=i+1, reverse=reverse)
+            max_val = tf.expand_dims(tf.math.reduce_max(cumsum, axis=i+1), axis=i+1)
+            cumsum = tf.where(cumsum > 0, cumsum / max_val, cumsum)
+
+            # sample noise field if necessary
+            if initial_noise_shape is not None:
+                batchsize = tf.split(tf.shape(inputs), [1, -1])[0]
+                noise_shape = tf.concat([batchsize, tf.convert_to_tensor(initial_noise_shape, dtype='int32')], axis=0)
+                noise = tf.random.uniform(noise_shape, maxval=tf.random.uniform(batchsize, maxval=1/self.max_noise-1))
+                noise = nrn_layers.Resize(size=tuple(max_val.get_shape())[1:-1])(noise)
+                cumsum = K.switch(K.greater(tf.random.uniform(batchsize, 0, 1), 0.5), cumsum / (1 + noise), cumsum)
+            list_normed_cumsum.append(cumsum)
+
+        # reorder cumsums along channel dimension: x_channel1, y_channel1, z_channel1, x_channel2, ...
+        list_cumsum_channels = [tf.split(tens, [1] * self.n_channels, axis=-1) for tens in list_normed_cumsum]
+        list_channels = list()
+        for i in range(self.n_channels):
+            list_channels += [split_channel[i] for split_channel in list_cumsum_channels]
+        return tf.concat(list_channels, axis=-1)
+
+    def compute_output_shape(self, input_shape):
+        return tuple(input_shape[:self.n_dims + 1] + (self.n_channels * self.n_dims,))
