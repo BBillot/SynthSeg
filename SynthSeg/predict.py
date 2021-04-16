@@ -40,9 +40,8 @@ def predict(path_images,
             evaluation_label_list=None,
             compute_distances=False,
             recompute=True,
-            verbose=True,
-            cumsum=False):  # ,
-            # flip=False):
+            verbose=True):  # ,
+           #  flip=False):
     """
     This function uses trained models to segment images.
     It is crucial that the inputs match the architecture parameters of the trained model.
@@ -142,8 +141,7 @@ def predict(path_images,
 
                 # build network
                 net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
-                                  nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing,
-                                  cumsum)
+                                  nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
 
             if verbose:
                 loop_info.update(idx)
@@ -346,7 +344,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
 
 def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv_size, nb_conv_per_level,
-                unet_feat_count, feat_multiplier, activation, sigma_smoothing, do_cumsum):
+                unet_feat_count, feat_multiplier, activation, sigma_smoothing):
 
     assert os.path.isfile(model_file), "The provided model path does not exist."
 
@@ -354,15 +352,6 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
     net = None
     n_dims, n_channels = utils.get_dims(input_shape, max_channels=10)
     resample = utils.reformat_to_list(resample, length=n_dims)
-
-    # add cumsum if necessary
-    if do_cumsum:
-        from SynthSeg.labels_to_image_model import insert_cumsum
-        im_input = KL.Input(shape=input_shape, name='pre_resample_input')
-        cumsum = layers.NormalisedCumsum(reverse=[False, False, True], name='cumsum_out')(im_input)
-        image = KL.Lambda(lambda x: insert_cumsum(x[0], x[1], n_channels, n_dims), name='insert_cumsum')([im_input, cumsum])
-        net = Model(inputs=im_input, outputs=image)
-        input_shape = input_shape[:-1] + [n_channels * (n_dims + 1)]
 
     # build preprocessing model
     if resample is not None:
@@ -396,8 +385,7 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
                           layer_nb_feats=None,
                           conv_dropout=0,
                           batch_norm=-1,
-                          input_model=net,
-                          cumsum=do_cumsum)
+                          input_model=net)
     net.load_weights(model_file, by_name=True)
 
     # build postprocessing model

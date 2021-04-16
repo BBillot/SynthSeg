@@ -87,8 +87,7 @@ def unet(nb_features,
          layer_nb_feats=None,
          conv_dropout=0,
          batch_norm=None,
-         input_model=None,
-         cumsum=False):
+         input_model=None):
     """
     unet-style keras model with an overdose of parametrization.
 
@@ -180,8 +179,7 @@ def unet(nb_features,
                          batch_norm=batch_norm,
                          layer_nb_feats=lnf,
                          conv_dropout=conv_dropout,
-                         input_model=enc_model,
-                         cumsum=cumsum)
+                         input_model=enc_model)
     final_model = dec_model
 
     if add_prior_layer:
@@ -451,8 +449,7 @@ def conv_dec(nb_features,
              layer_nb_feats=None,
              batch_norm=None,
              conv_dropout=0,
-             input_model=None,
-             cumsum=False):
+             input_model=None):
     """
     Fully Convolutional Decoder
 
@@ -514,9 +511,6 @@ def conv_dec(nb_features,
             cat_tensor = input_model.get_layer(conv_name).output
             name = '%s_merge_%d' % (prefix, nb_levels + level)
             last_tensor = KL.concatenate([cat_tensor, last_tensor], axis=ndims + 1, name=name)
-        if cumsum & (level == nb_levels - 2):
-            cumsum_channels = input_model.get_layer('cumsum_out').output
-            last_tensor = KL.concatenate([last_tensor, cumsum_channels], axis=ndims + 1, name=name+'_cumsum')
 
         # convolution layers
         for conv in range(nb_conv_per_level):

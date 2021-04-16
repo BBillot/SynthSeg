@@ -41,8 +41,7 @@ class BrainGenerator:
                  downsample=False,
                  blur_range=1.15,
                  bias_field_std=0.5,
-                 bias_shape_factor=0.025,
-                 do_cumsum=False):
+                 bias_shape_factor=0.025):
         """
         This class is wrapper around the labels_to_image_model model. It contains the GPU model that generates images
         from labels maps, and a python generator that suplies the input data for this model.
@@ -226,8 +225,6 @@ class BrainGenerator:
         self.bias_field_std = bias_field_std
         self.bias_shape_factor = bias_shape_factor
 
-        self.do_cumsum = do_cumsum
-
         # build transformation model
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
 
@@ -263,8 +260,7 @@ class BrainGenerator:
                                                 downsample=self.downsample,
                                                 blur_range=self.blur_range,
                                                 bias_field_std=self.bias_field_std,
-                                                bias_shape_factor=self.bias_shape_factor,
-                                                do_cumsum=self.do_cumsum)
+                                                bias_shape_factor=self.bias_shape_factor)
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
 

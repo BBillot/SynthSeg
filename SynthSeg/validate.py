@@ -33,8 +33,7 @@ def validate_training(image_dir,
                       feat_multiplier=2,
                       activation='elu',
                       compute_distances=False,
-                      recompute=True,
-                      cumsum=False):
+                      recompute=True):
     """This function validates models saved at different epochs of the same training.
     All models are assumed to be in the same folder.contained in models_dir.
     The results of each model are saved in a subfolder in validation_main_dir.
@@ -101,8 +100,7 @@ def validate_training(image_dir,
                     evaluation_label_list=evaluation_label_list,
                     compute_distances=compute_distances,
                     recompute=recompute,
-                    verbose=False,
-                    cumsum=cumsum)
+                    verbose=False)
 
 
 def plot_validation_curves(list_net_validation_dirs, eval_indices=None, skip_first_dice_row=True,
