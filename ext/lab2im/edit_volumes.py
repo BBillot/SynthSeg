@@ -64,8 +64,8 @@ from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
 
 # project imports
 from . import utils
-from .layers import GaussianBlur
-from .edit_tensors import convert_labels, blurring_sigma_for_downsampling
+from .layers import GaussianBlur, ConvertLabels
+from .edit_tensors import blurring_sigma_for_downsampling
 
 
 # ---------------------------------------------------- edit volume -----------------------------------------------------
@@ -1714,13 +1714,10 @@ def smoothing_gpu_model(label_shape, label_list, connectivity=1):
     :return: gpu smoothing model
     """
 
-    # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
+    # convert labels so values are in [0, ..., N-1] and use one hot encoding
     n_labels = label_list.shape[0]
-    _, lut = utils.rearrange_label_list(label_list)
-
-    # convert labels to new_label_list and use one hot encoding
     labels_in = KL.Input(shape=label_shape, name='lab_input', dtype='int32')
-    labels = convert_labels(labels_in, lut)
+    labels = ConvertLabels(label_list)(labels_in)
     labels = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels)
 
     # count neighbouring voxels
@@ -1735,7 +1732,7 @@ def smoothing_gpu_model(label_shape, label_list, connectivity=1):
 
     # take the argmax and convert labels to original values
     labels = KL.Lambda(lambda x: tf.math.argmax(x, -1))(labels)
-    labels = convert_labels(labels, label_list)
+    labels = ConvertLabels(np.arange(n_labels), label_list)(labels)
     return Model(inputs=labels_in, outputs=labels)
 
 
@@ -1805,7 +1802,8 @@ def upsample_labels_in_dir(labels_dir,
 
     # load label list and corresponding LUT to make sure that labels go from 0 to N-1
     label_list, _ = utils.get_list_labels(path_label_list, labels_dir=path_labels, FS_sort=True)
-    new_label_list, lut = utils.rearrange_label_list(label_list)
+    new_label_list = np.arange(len(label_list), dtype='int32')
+    lut = utils.get_mapping_lut(label_list)
 
     # loop over label maps
     loop_info = utils.LoopInfo(len(path_labels), 5, 'upsampling', True)

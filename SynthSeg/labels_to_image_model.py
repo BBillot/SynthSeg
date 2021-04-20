@@ -62,10 +62,12 @@ def labels_to_image_model(labels_shape,
     If not None, can be a sequence or a 1d numpy array. It should be organised as follows: background label first, then
     non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same hemisphere (can be left or right),
     and finally all the corresponding contralateral structures (in the same order).
-    :param output_labels: list of all the label values to keep in the output label maps, in no particular order.
-    Should be a subset of the values contained in generation_labels.
-    Label values that are in generation_labels but not in output_labels are reset to zero.
-    Can be a sequence or a 1d numpy array. By default output_labels is equal to generation_labels.
+    :param output_labels: (optional) list of the same length as generation_labels to indicate which values to use in the
+    label maps returned by this model, i.e. all occurences of generation_labels[i] in the input label maps will be
+    converted to output_labels[i] in the returned label maps. Examples:
+    Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
+    Set output_labels[i]=generation_labels[i] to keep the value generation_labels[i] in the returned maps.
+    Can be a list or a 1d numpy array. By default output_labels is equal to generation_labels.
     :param n_neutral_labels: number of non-sided generation labels.
     :param atlas_res: resolution of the input label maps.
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
@@ -138,28 +140,19 @@ def labels_to_image_model(labels_shape,
     # get shapes
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
-    # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
-    new_generation_labels, lut = utils.rearrange_label_list(generation_labels)
-
     # define model inputs
-    labels_input = KL.Input(shape=labels_shape + [1], name='labels_input')
-    means_input = KL.Input(shape=list(new_generation_labels.shape) + [n_channels], name='means_input')
-    stds_input = KL.Input(shape=list(new_generation_labels.shape) + [n_channels], name='std_devs_input')
-
-    # convert labels to new_label_list
-    labels = l2i_et.convert_labels(labels_input, lut)
+    labels_input = KL.Input(shape=labels_shape + [1], name='labels_input', dtype='int32')
+    means_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
+    stds_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='std_devs_input')
 
     # deform labels
-    if (scaling_bounds is not False) | (rotation_bounds is not False) | (shearing_bounds is not False) | \
-       (translation_bounds is not False) | (nonlin_std > 0):
-        labels._keras_shape = tuple(labels.get_shape().as_list())
-        labels = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
-                                                 rotation_bounds=rotation_bounds,
-                                                 shearing_bounds=shearing_bounds,
-                                                 translation_bounds=translation_bounds,
-                                                 nonlin_std=nonlin_std,
-                                                 nonlin_shape_factor=nonlin_shape_factor,
-                                                 inter_method='nearest')(labels)
+    labels = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
+                                             rotation_bounds=rotation_bounds,
+                                             shearing_bounds=shearing_bounds,
+                                             translation_bounds=translation_bounds,
+                                             nonlin_std=nonlin_std,
+                                             nonlin_shape_factor=nonlin_shape_factor,
+                                             inter_method='nearest')(labels_input)
 
     # cropping
     if crop_shape != labels_shape:
@@ -170,11 +163,11 @@ def labels_to_image_model(labels_shape,
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
         labels._keras_shape = tuple(labels.get_shape().as_list())
-        labels = layers.RandomFlip(get_ras_axes(aff, n_dims)[0], True, new_generation_labels, n_neutral_labels)(labels)
+        labels = layers.RandomFlip(get_ras_axes(aff, n_dims)[0], True, generation_labels, n_neutral_labels)(labels)
 
     # build synthetic image
     labels._keras_shape = tuple(labels.get_shape().as_list())
-    image = layers.SampleConditionalGMM()([labels, means_input, stds_input])
+    image = layers.SampleConditionalGMM(generation_labels)([labels, means_input, stds_input])
 
     # apply bias field
     if bias_field_std > 0:
@@ -221,11 +214,8 @@ def labels_to_image_model(labels_shape,
     if crop_shape != output_shape:
         labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
 
-    # convert labels back to original values and reset unwanted labels to zero
-    labels = l2i_et.convert_labels(labels, generation_labels)
-    labels._keras_shape = tuple(labels.get_shape().as_list())
-    reset_values = [v for v in generation_labels if v not in output_labels]
-    labels = layers.ResetValuesToZero(reset_values, name='labels_out')(labels) if reset_values else labels
+    # convert labels back to original values (i.e. in generation_labels) and map them to segmentation values
+    labels = layers.ConvertLabels(generation_labels, dest_values=output_labels, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])

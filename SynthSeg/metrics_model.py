@@ -1,4 +1,5 @@
 # python imports
+import numpy as np
 import tensorflow as tf
 import keras.layers as KL
 from keras.models import Model
@@ -21,7 +22,7 @@ def metrics_model(input_model, label_list, metrics='dice'):
     labels_gt = input_model.get_layer('labels_out').output
 
     # convert gt labels to probabilistic values
-    labels_gt = l2i_et.convert_labels(labels_gt, utils.rearrange_label_list(label_list)[1])
+    labels_gt = layers.ConvertLabels(np.unique(label_list))(labels_gt)
     labels_gt = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels_gt)
     labels_gt = KL.Reshape(input_shape)(labels_gt)
 
@@ -34,7 +35,6 @@ def metrics_model(input_model, label_list, metrics='dice'):
 
     elif metrics == 'wl2':
         last_tensor = layers.WeightedL2Loss(target_value=5)([labels_gt, last_tensor])
-        # last_tensor = layers.WeightedL2Loss(target_value=15)([labels_gt, last_tensor])
 
     else:
         raise Exception('metrics should either be "dice or "wl2, got {}'.format(metrics))

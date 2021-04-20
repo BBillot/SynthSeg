@@ -28,6 +28,7 @@ def predict(path_images,
             cropping=None,
             resample=None,
             aff_ref='FS',
+            sort_label_list=False,
             sigma_smoothing=0,
             keep_biggest_component=False,
             conv_size=3,
@@ -100,8 +101,9 @@ def predict(path_images,
 
     # get label and classes lists
     label_list, n_neutral_labels = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
-    if evaluation_label_list is None:
-        evaluation_label_list = segmentation_label_list
+    if sort_label_list:
+        label_list = np.sort(label_list)
+        label_list = label_list[(label_list != 31) & (label_list != 63)]
 
     # prepare volume file if needed
     if path_volumes is not None:
@@ -182,9 +184,10 @@ def predict(path_images,
     # evaluate
     if gt_folder is not None:
 
-        # find path evaluation folder
-        path_first_result = path_segmentations[0] if (path_segmentations[0] is not None) else path_posteriors[0]
-        eval_folder = os.path.dirname(path_first_result)
+        # find path where segmentations are saved evaluation folder, and get labels on which to evaluate
+        eval_folder = os.path.dirname(path_segmentations[0])
+        if evaluation_label_list is None:
+            evaluation_label_list = segmentation_label_list
 
         # compute evaluation metrics
         evaluate.dice_evaluation(gt_folder,

@@ -20,8 +20,8 @@ from ext.neuron import models as nrn_models
 
 def training(labels_dir,
              model_dir,
-             path_generation_labels=None,
-             path_segmentation_labels=None,
+             generation_labels=None,
+             segmentation_labels=None,
              save_generation_labels=None,
              batchsize=1,
              n_channels=1,
@@ -74,15 +74,17 @@ def training(labels_dir,
 
     #---------------------------------------------- Generation parameters ----------------------------------------------
     # label maps parameters
-    :param path_generation_labels: (optional) list of all possible label values in the input label maps.
-    Default is None, where the label values are directly gotten from the provided label maps.
-    If not None, must be the path to a 1d numpy array, which should be organised as follows: background label first,
-    then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same hemisphere (can be left or
-    right), and finally all the corresponding contralateral structures (in the same order).
-    :param path_segmentation_labels: (optional) path to a numpy array of all the label values to keep in the output
-    label maps, in no particular order. Should be a subset of the values contained in path_generation_labels.
-    Labels that are in path_generation_labels but not in path_segmentation_labels are reset to zero.
-    By default segmentation labels are equal to generation labels.
+    :param generation_labels: (optional) list of all possible label values in the input label maps.
+    Default is None, where the label values are directly gotten from the provided label maps. If not None, must be a
+    list, or a 1d numpy array, or the path to such an array, which should be organised as follows: background label
+    first, then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same hemisphere (can be
+    left or right), and finally all the corresponding contralateral structures (in the same order).
+    :param segmentation_labels: (optional) list of the same length as generation_labels to indicate which values to use
+    in the training label maps, i.e. all occurences of generation_labels[i] in the input label maps will be converted to
+    output_labels[i] in the returned label maps. Examples:
+    Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
+    Set output_labels[i]=generation_labels[i] if you wish to keep the value generation_labels[i] in the returned maps.
+    Can be a list or a 1d numpy array, or the path to such an array. Default is output_labels = generation_labels.
     :param save_generation_labels: (optional) path where to write the computed list of generation labels.
 
     # output-related parameters
@@ -195,12 +197,12 @@ def training(labels_dir,
         'either wl2_epochs or dice_epochs must be positive, had {0} and {1}'.format(wl2_epochs, dice_epochs)
 
     # get label lists
-    generation_labels, n_neutral_labels = utils.get_list_labels(label_list=path_generation_labels,
+    generation_labels, n_neutral_labels = utils.get_list_labels(label_list=generation_labels,
                                                                 labels_dir=labels_dir,
                                                                 save_label_list=save_generation_labels,
                                                                 FS_sort=True)
-    if path_segmentation_labels is not None:
-        segmentation_labels, _ = utils.get_list_labels(label_list=path_segmentation_labels, FS_sort=True)
+    if segmentation_labels is not None:
+        segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
     else:
         segmentation_labels = generation_labels
     n_segmentation_labels = len(segmentation_labels)

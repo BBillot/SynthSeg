@@ -177,7 +177,8 @@ class RandomSpatialDeformation(Layer):
             list_trans.append(elastic_trans)
 
         # apply deformations and return tensors with correct dtype
-        inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in zip(self.inter_method, inputs)]
+        if self.apply_affine_trans | self.apply_elastic_trans:
+            inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in zip(self.inter_method, inputs)]
         return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
 
 
@@ -249,8 +250,8 @@ class RandomFlip(Layer):
 
     """This function flips the input tensors along the specified axes with a probability of 0.5.
     The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
-    If specified, this layer can also swap all values, such that the flip tensors stay consistent with spatial the
-    native spatial orientation (especially convenient when flipping label maps in the righ/left dimension).
+    If specified, this layer can also swap corresponding values, such that the flip tensors stay consistent with the
+    native spatial orientation (especially when flipping in the righ/left dimension).
     :param flip_axis: integer, or list of integers specifying the dimensions along which to flip. The values exclude the
     batch dimension (e.g. 0 will flip the tensor along the first axis after the batch dimension). Default is None, where
     the tensors can be flipped along any of the axes (except batch and channel axes).
@@ -306,7 +307,7 @@ class RandomFlip(Layer):
         self.swap_labels = utils.reformat_to_list(swap_labels)
         self.label_list = label_list
         self.n_neutral_labels = n_neutral_labels
-        self.swapped_label_list = None
+        self.swap_lut = None
 
         super(RandomFlip, self).__init__(**kwargs)
 
@@ -339,7 +340,9 @@ class RandomFlip(Layer):
             else:
                 rl_split = np.split(self.label_list, [self.n_neutral_labels,
                                                       self.n_neutral_labels + int((n_labels-self.n_neutral_labels)/2)])
-                self.swapped_label_list = np.concatenate((rl_split[0], rl_split[2], rl_split[1]))
+                label_list_swap = np.concatenate((rl_split[0], rl_split[2], rl_split[1]))
+                swap_lut = utils.get_mapping_lut(self.label_list, label_list_swap)
+                self.swap_lut = tf.convert_to_tensor(swap_lut, dtype='int32')
 
         self.built = True
         super(RandomFlip, self).build(input_shape)
@@ -371,9 +374,7 @@ class RandomFlip(Layer):
         return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
 
     def _single_swap(self, inputs):
-        return K.switch(inputs[1],
-                        tf.gather(tf.convert_to_tensor(self.swapped_label_list, dtype='int32'), inputs[0]),
-                        inputs[0])
+        return K.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
 
     def _single_flip(self, inputs):
         if self.flip_axis is None:
@@ -387,38 +388,68 @@ class RandomFlip(Layer):
 class SampleConditionalGMM(Layer):
     """This layer generates an image by sampling a Gaussian Mixture Model conditioned on a label map given as input.
     The parameters of the GMM are given as two additional inputs to the layer (means and standard deviations):
-    image = SampleConditionalGMM()([label_map, means, stds])
+    image = SampleConditionalGMM(generation_labels)([label_map, means, stds])
 
-    label_map: input label map of shape [batchsize, shape_dim1, ..., shape_dimn, channel]. Its values must be in
-               [0, ..., N-1], where N is the number of label values in label_map.
+    generation_labels: list of all possible label values contained in the input label maps. Must be a list or a 1D numpy
+    array of size N, where N is the total number of possible label values.
+    label_map: input label map of shape [batchsize, shape_dim1, ..., shape_dimn, n_channel].
+    All the values of label_map must be contained in generation_labels, but the input label_map doesn't necesseraly have
+    to contain all the values in generation_labels.
     means: tensor containing the mean values of all Gaussian distributions of the GMM.
-           It must be of shape [batchsize, n_gaussians, channel]. All the label values must have a corresponding
-           Gaussian, but not all gaussians must be present in label_map (i.e. n_gaussians>=N).
+           It must be of shape [batchsize, N, n_channel], and in the same order as generation label,
+           i.e. the ith value of generation_labels will be associated to the ith value of means.
     stds: same as means but for the standard deviations of the GMM.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, generation_labels, **kwargs):
+        self.generation_labels = generation_labels
         self.n_labels = None
         self.n_channels = None
+        self.max_label = None
+        self.indices = None
+        self.shape = None
         super(SampleConditionalGMM, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["generation_labels"] = self.generation_labels
+        return config
+
     def build(self, input_shape):
+
+        # check n_labels and n_channels
         assert len(input_shape) == 3, 'should have three inputs: labels, means, std devs (in that order).'
-        self.n_labels = input_shape[1][1]
         self.n_channels = input_shape[1][-1]
+        self.n_labels = len(self.generation_labels)
+        assert self.n_labels == input_shape[1][1], 'means should have the same number of values as generation_labels'
+        assert self.n_labels == input_shape[2][1], 'stds should have the same number of values as generation_labels'
+
+        # scatter parameters (to build mean/std lut)
+        self.max_label = np.max(self.generation_labels) + 1
+        indices = np.concatenate([self.generation_labels + self.max_label * i for i in range(self.n_channels)], axis=-1)
+        self.shape = tf.convert_to_tensor([np.max(indices) + 1], dtype='int32')
+        self.indices = tf.convert_to_tensor(utils.add_axis(indices, axis=[0, -1]), dtype='int32')
+
         self.built = True
         super(SampleConditionalGMM, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
 
-        # reformat inputs
-        labels = tf.concat([tf.cast(inputs[0], dtype='int32') + self.n_labels * i for i in range(self.n_channels)], -1)
-        means = tf.concat([inputs[1][..., i] for i in range(self.n_channels)], 1)
-        stds = tf.concat([inputs[2][..., i] for i in range(self.n_channels)], 1)
+        # reformat labels and scatter indices
+        batch = tf.split(tf.shape(inputs[0]), [1, -1])[0]
+        tmp_indices = tf.tile(self.indices, tf.concat([batch, tf.convert_to_tensor([1, 1], dtype='int32')], axis=0))
+        labels = tf.concat([tf.cast(inputs[0], dtype='int32') + self.max_label * i for i in range(self.n_channels)], -1)
 
-        # build mean and std maps
-        means_map = tf.map_fn(lambda x: tf.gather(x[1], x[0]), [labels, means], dtype=tf.float32)
-        stds_map = tf.map_fn(lambda x: tf.gather(x[1], x[0]), [labels, stds], dtype=tf.float32)
+        # build mean map
+        means = tf.concat([inputs[1][..., i] for i in range(self.n_channels)], 1)
+        tile_shape = tf.concat([batch, tf.convert_to_tensor([1, ], dtype='int32')], axis=0)
+        means = tf.tile(tf.expand_dims(tf.scatter_nd(tmp_indices, means, self.shape), 0), tile_shape)
+        means_map = tf.map_fn(lambda x: tf.gather(x[0], x[1]), [means, labels], dtype=tf.float32)
+
+        # same for stds
+        stds = tf.concat([inputs[2][..., i] for i in range(self.n_channels)], 1)
+        stds = tf.tile(tf.expand_dims(tf.scatter_nd(tmp_indices, stds, self.shape), 0), tile_shape)
+        stds_map = tf.map_fn(lambda x: tf.gather(x[0], x[1]), [stds, labels], dtype=tf.float32)
 
         return stds_map * tf.random.normal(tf.shape(labels)) + means_map
 
@@ -1157,6 +1188,39 @@ class ResetValuesToZero(Layer):
         for i in range(self.n_values):
             inputs = tf.where(tf.equal(inputs, values[i]), tf.zeros_like(inputs), inputs)
         return inputs
+
+
+class ConvertLabels(Layer):
+    """Convert all labels in a tensor by the corresponding given set of values.
+    labels_converted = ConvertLabels(source_values, dest_values)(labels).
+    labels must be an int32 tensor, and labels_converted will also be int32.
+
+    :param source_values: list of all the possible values in labels. Must be a list or a 1D numpy array.
+    :param dest_values: list of all the target label values. Must be ordered the same as source values:
+    labels[labels == source_values[i]] = dest_values[i].
+    If None (default), dest_values is equal to [0, ..., N-1], where N is the total number of values in source_values,
+    which enables to remap label maps to [0, ..., N-1].
+    """
+
+    def __init__(self, source_values, dest_values=None, **kwargs):
+        self.source_values = source_values
+        self.dest_values = dest_values
+        self.lut = None
+        super(ConvertLabels, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["source_values"] = self.source_values
+        config["dest_values"] = self.dest_values
+        return config
+
+    def build(self, input_shape):
+        self.lut = tf.convert_to_tensor(utils.get_mapping_lut(self.source_values, dest=self.dest_values), dtype='int32')
+        self.built = True
+        super(ConvertLabels, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+        return tf.gather(self.lut, tf.cast(inputs, dtype='int32'))
 
 
 class PadAroundCentre(Layer):

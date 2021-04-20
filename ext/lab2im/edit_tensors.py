@@ -246,12 +246,6 @@ def resample_tensor(tensor,
         return tensor
 
 
-def convert_labels(label_map, labels_list):
-    """Change all labels in label_map by the values in labels_list"""
-    return KL.Lambda(lambda x: tf.gather(tf.convert_to_tensor(labels_list, dtype='int32'),
-                                         tf.cast(x, dtype='int32')))(label_map)
-
-
 def expand_dims(tensor, axis=0):
     axis = utils.reformat_to_list(axis)
     for ax in axis:

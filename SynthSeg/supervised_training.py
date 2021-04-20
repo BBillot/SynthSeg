@@ -15,7 +15,6 @@ from ext.lab2im import utils
 from ext.lab2im import layers
 from ext.neuron import models as nrn_models
 from ext.lab2im.edit_volumes import get_ras_axes
-from ext.lab2im.edit_tensors import convert_labels
 
 
 def supervised_training(image_dir,
@@ -139,29 +138,18 @@ def build_augmentation_model(im_shape,
     n_dims, _ = utils.get_dims(im_shape)
     crop_shape = get_shapes(im_shape, output_shape, output_div_by_n)
 
-    # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
-    new_seg_labels, lut = utils.rearrange_label_list(segmentation_labels)
-
     # define model inputs
     image_input = KL.Input(shape=im_shape+[n_channels], name='image_input')
     labels_input = KL.Input(shape=im_shape + [1], name='labels_input')
 
-    # convert labels to new_label_list
-    labels = convert_labels(labels_input, lut)
-
     # deform labels
-    if (scaling_bounds is not False) | (rotation_bounds is not False) | (shearing_bounds is not False) | \
-       (translation_bounds is not False) | (nonlin_std > 0):
-        labels._keras_shape = tuple(labels.get_shape().as_list())
-        labels, image = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
-                                                        rotation_bounds=rotation_bounds,
-                                                        shearing_bounds=shearing_bounds,
-                                                        translation_bounds=translation_bounds,
-                                                        nonlin_std=nonlin_std,
-                                                        nonlin_shape_factor=nonlin_shape_factor,
-                                                        inter_method=['nearest', 'linear'])([labels, image_input])
-    else:
-        image = image_input
+    labels, image = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
+                                                    rotation_bounds=rotation_bounds,
+                                                    shearing_bounds=shearing_bounds,
+                                                    translation_bounds=translation_bounds,
+                                                    nonlin_std=nonlin_std,
+                                                    nonlin_shape_factor=nonlin_shape_factor,
+                                                    inter_method=['nearest', 'linear'])([labels_input, image_input])
 
     # crop labels
     if crop_shape != im_shape:
@@ -174,8 +162,8 @@ def build_augmentation_model(im_shape,
         assert aff is not None, 'aff should not be None if flipping is True'
         labels._keras_shape = tuple(labels.get_shape().as_list())
         image._keras_shape = tuple(image.get_shape().as_list())
-        labels, image = layers.RandomFlip(flip_axis=get_ras_axes(aff, n_dims)[0], swap_labels=[True, False],
-                                          label_list=new_seg_labels, n_neutral_labels=n_neutral_labels)([labels, image])
+        labels, image = layers.RandomFlip(get_ras_axes(aff, n_dims)[0], [True, False],
+                                          segmentation_labels, n_neutral_labels)([labels, image])
 
     # apply bias field
     if bias_field_std > 0:
@@ -187,9 +175,6 @@ def build_augmentation_model(im_shape,
     image._keras_shape = tuple(image.get_shape().as_list())
     image = layers.IntensityAugmentation(10, clip=False, normalise=True, gamma_std=.5, separate_channels=True)(image)
     image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_augmented')(image)
-
-    # convert labels back to original values and reset unwanted labels to zero
-    labels = convert_labels(labels, segmentation_labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)

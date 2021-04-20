@@ -40,11 +40,12 @@ class ImageGenerator:
         :param generation_labels: (optional) list of all possible label values in the input label maps.
         Default is None, where the label values are directly gotten from the provided label maps.
         If not None, can be a sequence or a 1d numpy array, or the path to a 1d numpy array.
-        :param output_labels: (optional) list of all the label values to keep in the output label maps.
-        Should be a subset of the values contained in generation_labels.
-        Label values that are in generation_labels but not in output_labels are reset to zero.
-        Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
-        By default output labels are equal to generation labels.
+        :param output_labels: (optional) list of the same length as generation_labels to indicate which values to use in
+        the label maps returned by this function, i.e. all occurences of generation_labels[i] in the input label maps
+        will be converted to output_labels[i] in the returned label maps. Examples:
+        Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
+        Set output_labels[i]=generation_labels[i] to keep the value generation_labels[i] in the returned maps.
+        Can be a list or a 1d numpy array. By default output_labels is equal to generation_labels.
 
         # output-related parameters
         :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.

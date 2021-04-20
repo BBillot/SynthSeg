@@ -38,8 +38,8 @@ steps_per_epoch = 1000
 
 training(labels_dir=path_training_label_maps,
          model_dir=path_model_dir,
-         path_generation_labels=generation_labels,
-         path_segmentation_labels=segmentation_labels,
+         generation_labels=generation_labels,
+         segmentation_labels=segmentation_labels,
          target_res=target_res,
          output_shape=output_shape,
          path_generation_classes=generation_classes,

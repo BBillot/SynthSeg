@@ -190,8 +190,9 @@ def dice_evaluation(gt_dir,
     scores more efficiently. If None, no cropping is performed.
     :param recompute: (optional) whether to recompute the already existing results. Default is True.
     :param verbose: (optional) whether to print out info about the remaining number of cases.
-    :return: numpy array containing all Dice scores (labels in rows, subjects in columns). Also returns numpy arrays
-    with the same structures for Hausdorff and mean distances if compute_distances is True.
+    :return: numpy array containing all Dice scores (rows=ROIs in the same order as they appear in label_list,
+    columns=subjects sorted by their names in alphabetical order). Also returns numpy arrays for Hausdorff and mean
+    distances if compute_distances is True (same structure as the Dice result matrix).
     """
 
     # check whether to recompute

@@ -60,11 +60,12 @@ class BrainGenerator:
         If flipping is true (i.e. right/left flipping is enabled), generation_labels should be organised as follows:
         background label first, then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same
         hemisphere (can be left or right), and finally all the corresponding contralateral structures in the same order.
-        :param output_labels: (optional) list of all the label values to keep in the output label maps (in no particular
-        order). Should be a subset of the values contained in generation_labels.
-        Label values that are in generation_labels but not in output_labels are reset to zero.
-        Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
-        By default output labels are equal to generation labels.
+        :param output_labels: (optional) list of the same length as generation_labels to indicate which values to use in
+        the label maps returned by this function, i.e. all occurences of generation_labels[i] in the input label maps
+        will be converted to output_labels[i] in the returned label maps. Examples:
+        Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
+        Set output_labels[i]=generation_labels[i] to keep the value generation_labels[i] in the returned maps.
+        Can be a list or a 1d numpy array. By default output_labels is equal to generation_labels.
         :param n_neutral_labels: (optional) number of non-sided generation labels.
         Default is total number of label values.
 
@@ -195,7 +196,7 @@ class BrainGenerator:
         if generation_classes is not None:
             self.generation_classes = utils.load_array_if_path(generation_classes)
             assert self.generation_classes.shape == self.generation_labels.shape, \
-                'if provided, generation labels should have the same shape as generation_labels'
+                'if provided, generation_classes should have the same shape as generation_labels'
             unique_classes = np.unique(self.generation_classes)
             assert np.array_equal(unique_classes, np.arange(np.max(unique_classes)+1)), \
                 'generation_classes should a linear range between 0 and its maximum value.'

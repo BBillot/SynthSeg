@@ -1,13 +1,12 @@
 # python imports
 import numpy as np
-import tensorflow as tf
 import keras.layers as KL
 from keras.models import Model
 
 # project imports
 from . import utils
 from . import layers
-from .edit_tensors import convert_labels, resample_tensor, blurring_sigma_for_downsampling
+from .edit_tensors import resample_tensor, blurring_sigma_for_downsampling
 
 
 def lab2im_model(labels_shape,
@@ -34,10 +33,12 @@ def lab2im_model(labels_shape,
     :param n_channels: number of channels to be synthetised.
     :param generation_labels: list of all possible label values in the input label maps.
     Can be a sequence or a 1d numpy array.
-    :param output_labels: list of all the label values to keep in the output label maps.
-    Should be a subset of the values contained in generation_labels.
-    Label values that are in generation_labels but not in output_labels are reset to zero.
-    Can be a sequence or a 1d numpy array. By default output_labels is equal to generation_labels.
+    :param output_labels: list of the same length as generation_labels to indicate which values to use in the label maps
+    returned by this model, i.e. all occurences of generation_labels[i] in the input label maps will be converted to
+    output_labels[i] in the returned label maps. Examples:
+    Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
+    Set output_labels[i]=generation_labels[i] if you wish to keep the value generation_labels[i] in the returned maps.
+    Can be a list or a 1d numpy array. By default output_labels is equal to generation_labels.
     :param atlas_res: resolution of the input label maps.
     Can be a number (isotropic resolution), a sequence, or a 1d numpy array.
     :param target_res: target resolution of the generated images and corresponding label maps.
@@ -62,21 +63,13 @@ def lab2im_model(labels_shape,
     # get shapes
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
-    # create new_label_list and corresponding LUT to make sure that labels go from 0 to N-1
-    new_generation_label_list, lut = utils.rearrange_label_list(generation_labels)
-
     # define model inputs
-    labels_input = KL.Input(shape=labels_shape+[1], name='labels_input')
-    means_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='means_input')
-    stds_input = KL.Input(shape=list(new_generation_label_list.shape) + [n_channels], name='stds_input')
-
-    # convert labels to new_label_list
-    labels = convert_labels(labels_input, lut)
+    labels_input = KL.Input(shape=labels_shape+[1], name='labels_input', dtype='int32')
+    means_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
+    stds_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='stds_input')
 
     # deform labels
-    labels._keras_shape = tuple(labels.get_shape().as_list())
-    labels = layers.RandomSpatialDeformation(inter_method='nearest')(labels)
-    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'))(labels)
+    labels = layers.RandomSpatialDeformation(inter_method='nearest')(labels_input)
 
     # cropping
     if crop_shape != labels_shape:
@@ -85,7 +78,15 @@ def lab2im_model(labels_shape,
 
     # build synthetic image
     labels._keras_shape = tuple(labels.get_shape().as_list())
-    image = layers.SampleConditionalGMM()([labels, means_input, stds_input])
+    image = layers.SampleConditionalGMM(generation_labels)([labels, means_input, stds_input])
+
+    # apply bias field
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.BiasFieldCorruption(.3, .025, same_bias_for_all_channels=False)(image)
+
+    # intensity augmentation
+    image._keras_shape = tuple(image.get_shape().as_list())
+    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.2)(image)
 
     # blur image
     sigma = blurring_sigma_for_downsampling(atlas_res, target_res)
@@ -97,21 +98,10 @@ def lab2im_model(labels_shape,
         image = resample_tensor(image, output_shape, interp_method='linear')
         labels = resample_tensor(labels, output_shape, interp_method='nearest')
 
-    # apply bias field
-    image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.BiasFieldCorruption(.3, .025, same_bias_for_all_channels=False)(image)
-
-    # intensity augmentation
-    image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.2)(image)
-
     # convert labels back to original values and reset unwanted labels to zero
-    labels = convert_labels(labels, generation_labels)
-    labels._keras_shape = tuple(labels.get_shape().as_list())
-    labels = layers.ResetValuesToZero([lab for lab in generation_labels if lab not in output_labels])(labels)
+    labels = layers.ConvertLabels(generation_labels, dest_values=output_labels, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
-    labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
     brain_model = Model(inputs=[labels_input, means_input, stds_input], outputs=[image, labels])
 

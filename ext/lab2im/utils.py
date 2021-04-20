@@ -227,11 +227,14 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
         right = list()
         for la in label_list:
             if la in neutral_FS_labels:
-                neutral.append(la)
+                if la not in neutral:
+                    neutral.append(la)
             elif (0 < la < 14) | (16 < la < 21) | (24 < la < 40) | (20100 < la < 20110):
-                left.append(la)
+                if la not in left:
+                    left.append(la)
             elif (39 < la < 72) | (20000 < la < 20010):
-                right.append(la)
+                if la not in right:
+                    right.append(la)
             else:
                 raise Exception('label {} not in our current FS classification, '
                                 'please update get_list_labels in utils.py'.format(la))
@@ -843,15 +846,27 @@ class LoopInfo:
                 print(self.text + ' {}'.format(iteration))
 
 
-def rearrange_label_list(label_list):
-    """This functions maps a list of N values between 0 and N-1, and gives the corresponding look-up table."""
-    label_list = np.array(reformat_to_list(label_list))
-    n_labels = label_list.shape[0]
-    new_label_list = np.arange(n_labels)
-    lut = np.zeros(np.max(label_list) + 1, dtype='int32')
-    for n in range(n_labels):
-        lut[int(label_list[n])] = n
-    return new_label_list, lut
+def get_mapping_lut(source, dest=None):
+    """This functions returns the look-up table to map a list of N values (source) to another list (dest).
+    If the second list is not given, we assume it is equal to [0, ..., N-1]."""
+
+    # initialise
+    source = np.array(reformat_to_list(source), dtype='int32')
+    n_labels = source.shape[0]
+
+    # build new label list if neccessary
+    if dest is None:
+        dest = np.arange(n_labels, dtype='int32')
+    else:
+        assert len(source) == len(dest), 'label_list and new_label_list should have the same length'
+        dest = np.array(reformat_to_list(dest, dtype='int'))
+
+    # build look-up table
+    lut = np.zeros(np.max(source) + 1, dtype='int32')
+    for source, dest in zip(source, dest):
+        lut[source] = dest
+
+    return lut
 
 
 def build_training_generator(gen, batchsize):
