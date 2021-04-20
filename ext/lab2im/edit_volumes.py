@@ -487,12 +487,9 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
 
                 # several possibilities
                 elif isinstance(correct_label, (tuple, list)):
-                    mask = np.zeros(new_labels.shape, dtype='bool')
 
                     # crop around label to correct
-                    for lab in correct_label:
-                        mask = mask | (new_labels == lab)
-                    _, crop = crop_volume_around_region(mask, margin=10)
+                    _, crop = crop_volume_around_region(new_labels, masking_labels=incorrect_label, margin=10)
                     if n_dims == 2:
                         tmp_labels = new_labels[crop[0]:crop[2], crop[1]:crop[3], ...]
                     elif n_dims == 3:

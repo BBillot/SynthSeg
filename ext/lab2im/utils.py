@@ -229,10 +229,10 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
             if la in neutral_FS_labels:
                 if la not in neutral:
                     neutral.append(la)
-            elif (0 < la < 14) | (16 < la < 21) | (24 < la < 40) | (20100 < la < 20110):
+            elif (0 < la < 14) | (16 < la < 21) | (24 < la < 40) | (135 < la < 138) | (20100 < la < 20110):
                 if la not in left:
                     left.append(la)
-            elif (39 < la < 72) | (20000 < la < 20010):
+            elif (39 < la < 72) | (162 < la < 165) | (20000 < la < 20010):
                 if la not in right:
                     right.append(la)
             else:

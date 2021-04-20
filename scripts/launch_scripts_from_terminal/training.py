@@ -11,8 +11,8 @@ parser.add_argument("model_dir", type=str)
 
 # ---------------------------------------------- Generation parameters ----------------------------------------------
 # label maps parameters
-parser.add_argument("--generation_labels", type=str, dest="path_generation_labels", default=None)
-parser.add_argument("--segmentation_labels", type=str, dest="path_segmentation_labels", default=None)
+parser.add_argument("--generation_labels", type=str, dest="generation_labels", default=None)
+parser.add_argument("--segmentation_labels", type=str, dest="segmentation_labels", default=None)
 parser.add_argument("--save_generation_labels", type=str, dest="save_generation_labels", default=None)
 
 # output-related parameters
@@ -22,7 +22,7 @@ parser.add_argument("--target_res", type=float, dest="target_res", default=None)
 parser.add_argument("--output_shape", type=int, dest="output_shape", default=None)
 
 # GMM-sampling parameters
-parser.add_argument("--generation_classes", type=str, dest="path_generation_classes", default=None)
+parser.add_argument("--generation_classes", type=str, dest="generation_classes", default=None)
 parser.add_argument("--prior_type", type=str, dest="prior_distributions", default='uniform')
 parser.add_argument("--prior_means", type=str, dest="prior_means", default=None)
 parser.add_argument("--prior_stds", type=str, dest="prior_stds", default=None)

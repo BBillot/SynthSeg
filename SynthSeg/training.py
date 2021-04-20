@@ -27,7 +27,7 @@ def training(labels_dir,
              n_channels=1,
              target_res=None,
              output_shape=None,
-             path_generation_classes=None,
+             generation_classes=None,
              prior_distributions='uniform',
              prior_means=None,
              prior_stds=None,
@@ -98,10 +98,11 @@ def training(labels_dir,
     Default is None, where no cropping is performed.
 
     # GMM-sampling parameters
-    :param path_generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
+    :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
     distribution. Regouped labels will thus share the same Gaussian when samling a new image. Should be the path to a 1d
     numpy array with the same length as generation_labels. and contain values between 0 and K-1, where K is the total
     number of classes. Default is all labels have different classes.
+    Can be a list or a 1d numpy array, or the path to such an array.
     :param prior_distributions: (optional) type of distribution from which we sample the GMM parameters.
     Can either be 'uniform', or 'normal'. Default is 'uniform'.
     :param prior_means: (optional) hyperparameters controlling the prior distributions of the GMM means. Because
@@ -217,7 +218,7 @@ def training(labels_dir,
                                      target_res=target_res,
                                      output_shape=output_shape,
                                      output_div_by_n=2 ** n_levels,
-                                     generation_classes=path_generation_classes,
+                                     generation_classes=generation_classes,
                                      prior_distributions=prior_distributions,
                                      prior_means=prior_means,
                                      prior_stds=prior_stds,
