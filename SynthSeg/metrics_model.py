@@ -16,13 +16,14 @@ def metrics_model(input_model, label_list, metrics='dice'):
     last_tensor = input_model.outputs[0]
     input_shape = last_tensor.get_shape().as_list()[1:]
 
-    # get deformed labels
+    # check shapes
     n_labels = input_shape[-1]
+    label_list = np.unique(label_list)
     assert n_labels == len(label_list), 'label_list should be as long as the posteriors channels'
-    labels_gt = input_model.get_layer('labels_out').output
 
-    # convert gt labels to probabilistic values
-    labels_gt = layers.ConvertLabels(np.unique(label_list))(labels_gt)
+    # get GT and convert it to probabilistic values
+    labels_gt = input_model.get_layer('labels_out').output
+    labels_gt = layers.ConvertLabels(label_list)(labels_gt)
     labels_gt = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels_gt)
     labels_gt = KL.Reshape(input_shape)(labels_gt)
 
