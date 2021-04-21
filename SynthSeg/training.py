@@ -1,6 +1,7 @@
 # python imports
 import os
 import keras
+import numpy as np
 import tensorflow as tf
 from keras import models
 import keras.callbacks as KC
@@ -206,7 +207,7 @@ def training(labels_dir,
         segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
     else:
         segmentation_labels = generation_labels
-    n_segmentation_labels = len(segmentation_labels)
+    n_segmentation_labels = len(np.unique(segmentation_labels))
 
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
