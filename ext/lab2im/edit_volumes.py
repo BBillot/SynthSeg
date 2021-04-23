@@ -229,27 +229,28 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
     and the updated affine matrix if aff is not None.
     """
 
-    n_dims, _ = utils.get_dims(volume.shape)
+    new_vol = volume.copy()
+    n_dims, _ = utils.get_dims(new_vol.shape)
 
     # mask ROIs for cropping
     if mask is None:
         if masking_labels is not None:
-            masked_volume, mask = mask_label_map(volume, masking_values=masking_labels, return_mask=True)
+            masked_volume, mask = mask_label_map(new_vol, masking_values=masking_labels, return_mask=True)
         else:
-            mask = volume > threshold
+            mask = new_vol > threshold
 
     # find cropping indices
     if np.any(mask):
         indices = np.nonzero(mask)
         min_idx = np.maximum(np.array([np.min(idx) for idx in indices]) - margin, 0)
-        max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(volume.shape[:n_dims]))
+        max_idx = np.minimum(np.array([np.max(idx) for idx in indices]) + 1 + margin, np.array(new_vol.shape[:n_dims]))
         cropping = np.concatenate([min_idx, max_idx])
 
         # crop volume
         if n_dims == 3:
-            volume = volume[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], min_idx[2]:max_idx[2], ...]
+            new_vol = new_vol[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], min_idx[2]:max_idx[2], ...]
         elif n_dims == 2:
-            volume = volume[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], ...]
+            new_vol = new_vol[min_idx[0]:max_idx[0], min_idx[1]:max_idx[1], ...]
         else:
             raise ValueError('cannot crop volumes with more than 3 dimensions')
     else:
@@ -260,9 +261,9 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
         if n_dims == 2:
             min_idx = np.append(min_idx, 0)
         aff[0:3, -1] = aff[0:3, -1] + aff[:3, :3] @ min_idx
-        return volume, cropping, aff
+        return new_vol, cropping, aff
     else:
-        return volume, cropping
+        return new_vol, cropping
 
 
 def crop_volume_with_idx(volume, crop_idx, aff=None):
@@ -469,8 +470,6 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
     list_incorrect_labels = utils.reformat_to_list(utils.load_array_if_path(list_incorrect_labels))
     volume_labels = np.unique(new_labels)
     n_dims, _ = utils.get_dims(new_labels.shape)
-    previous_correct_labels = None
-    distance_map_list = None
 
     # use list of correct values
     if list_correct_labels is not None:
@@ -488,21 +487,26 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
                 # several possibilities
                 elif isinstance(correct_label, (tuple, list)):
 
-                    # crop around label to correct
-                    _, crop = crop_volume_around_region(new_labels, masking_labels=incorrect_label, margin=10)
-                    if n_dims == 2:
-                        tmp_labels = new_labels[crop[0]:crop[2], crop[1]:crop[3], ...]
-                    elif n_dims == 3:
-                        tmp_labels = new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...]
-                    else:
-                        raise ValueError('cannot correct volumes with more than 3 dimensions')
+                    # make sure at least one correct label is present
+                    if not any([lab in volume_labels for lab in correct_label]):
+                        print('no correct values found in volume, please adjust: '
+                              'incorrect: {}, correct: {}'.format(incorrect_label, correct_label))
+
+                    # crop around incorrect label until we find incorrect labels
+                    correct_label_not_found = True
+                    margin_mult = 1
+                    tmp_labels = None
+                    crop = None
+                    while correct_label_not_found:
+                        tmp_labels, crop = crop_volume_around_region(new_labels,
+                                                                     masking_labels=incorrect_label,
+                                                                     margin=10 * margin_mult)
+                        correct_label_not_found = not any([lab in np.unique(tmp_labels) for lab in correct_label])
+                        margin_mult += 1
 
                     # calculate distance maps for all new label candidates
                     incorrect_voxels = np.where(tmp_labels == incorrect_label)
-                    if correct_label != previous_correct_labels:
-                        distance_map_list = [distance_transform_edt(np.logical_not(tmp_labels == lab))
-                                             for lab in correct_label]
-                        previous_correct_labels = correct_label
+                    distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_label]
                     distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
 
                     # select nearest value
@@ -643,9 +647,10 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
     :return: eroded label map, and gpu blurring model is return_model is True.
     """
     # reformat labels_to_erode and erode
+    new_labels = labels.copy()
     labels_to_erode = utils.reformat_to_list(labels_to_erode)
     erosion_factors = utils.reformat_to_list(erosion_factors, length=len(labels_to_erode))
-    labels_shape = list(labels.shape)
+    labels_shape = list(new_labels.shape)
     n_dims, _ = utils.get_dims(labels_shape)
 
     # loop over labels to erode
@@ -654,7 +659,7 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
         assert erosion_factor > 0, 'all erosion factors should be strictly positive, had {}'.format(erosion_factor)
 
         # get mask of current label value
-        mask = (labels == label_to_erode)
+        mask = (new_labels == label_to_erode)
 
         # erode as usual if erosion factor is int
         if int(erosion_factor) == erosion_factor:
@@ -676,7 +681,7 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
         # crop label map and mask around values to change
         mask = mask & np.logical_not(eroded_mask)
         cropped_lab_mask, cropping = crop_volume_around_region(mask, margin=3)
-        croppped_labels = crop_volume_with_idx(labels, cropping)
+        croppped_labels = crop_volume_with_idx(new_labels, cropping)
 
         # calculate distance maps for all labels in cropped_labels
         labels_list = np.unique(croppped_labels)
@@ -688,14 +693,14 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
         idx_correct_lab = np.argmin(candidate_distances, axis=0)
         croppped_labels[cropped_lab_mask] = np.array(labels_list)[idx_correct_lab]
         if n_dims == 2:
-            labels[cropping[0]:cropping[2], cropping[1]:cropping[3], ...] = croppped_labels
+            new_labels[cropping[0]:cropping[2], cropping[1]:cropping[3], ...] = croppped_labels
         elif n_dims == 3:
-            labels[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5], ...] = croppped_labels
+            new_labels[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5], ...] = croppped_labels
 
         if return_model:
-            return labels, model
+            return new_labels, model
         else:
-            return labels
+            return new_labels
 
 
 def get_largest_connected_component(mask):
