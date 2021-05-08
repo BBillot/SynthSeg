@@ -706,11 +706,17 @@ class DynamicGaussianBlur(Layer):
         return image
 
     def _single_blur(self, inputs):
-        blurred_channel = list()
-        for n in range(self.n_channels):
-            blurred = self.convnd(tf.expand_dims(inputs[0], 0), inputs[1], [1] * (self.n_dims + 2), padding='SAME')
-            blurred_channel.append(tf.squeeze(blurred, axis=0))
-        return tf.concat(blurred_channel, -1)
+        if self.n_channels > 1:
+            split_channels = tf.split(inputs[0], [1] * self.n_channels, axis=-1)
+            blurred_channel = list()
+            for channel in split_channels:
+                blurred = self.convnd(tf.expand_dims(channel, 0), inputs[1], [1] * (self.n_dims + 2), padding='SAME')
+                blurred_channel.append(tf.squeeze(blurred, axis=0))
+            output = tf.concat(blurred_channel, -1)
+        else:
+            output = self.convnd(tf.expand_dims(inputs[0], 0), inputs[1], [1] * (self.n_dims + 2), padding='SAME')
+            output = tf.squeeze(output, axis=0)
+        return output
 
 
 class MimicAcquisition(Layer):
