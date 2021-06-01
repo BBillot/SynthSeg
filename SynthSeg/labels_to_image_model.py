@@ -225,7 +225,7 @@ def labels_to_image_model(labels_shape,
     labels = l2i_et.convert_labels(labels, generation_labels)
     labels._keras_shape = tuple(labels.get_shape().as_list())
     reset_values = [v for v in generation_labels if v not in output_labels]
-    labels = layers.ResetValuesToZero(reset_values, name='labels_out')(labels) if reset_values else labels
+    labels = layers.ResetValuesToZero(reset_values, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
