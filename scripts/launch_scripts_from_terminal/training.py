@@ -14,6 +14,7 @@ parser.add_argument("model_dir", type=str)
 parser.add_argument("--generation_labels", type=str, dest="generation_labels", default=None)
 parser.add_argument("--segmentation_labels", type=str, dest="segmentation_labels", default=None)
 parser.add_argument("--save_generation_labels", type=str, dest="save_generation_labels", default=None)
+parser.add_argument("--noisy_patches", type=str, dest="patch_dir", default=None)
 
 # output-related parameters
 parser.add_argument("--batch_size", type=int, dest="batchsize", default=1)

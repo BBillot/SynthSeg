@@ -15,6 +15,7 @@ class BrainGenerator:
                  labels_dir,
                  generation_labels=None,
                  output_labels=None,
+                 patch_dir=None,
                  n_neutral_labels=None,
                  batchsize=1,
                  n_channels=1,
@@ -167,6 +168,7 @@ class BrainGenerator:
 
         # prepare data files
         self.labels_paths = utils.list_images_in_folder(labels_dir)
+        self.path_patches = utils.list_images_in_folder(patch_dir) if (patch_dir is not None) else None
 
         # generation parameters
         self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
@@ -273,7 +275,8 @@ class BrainGenerator:
                                                     prior_stds=self.prior_stds,
                                                     prior_distributions=self.prior_distributions,
                                                     use_specific_stats_for_channel=self.use_specific_stats_for_channel,
-                                                    mix_prior_and_random=mix_prior_and_random)
+                                                    mix_prior_and_random=mix_prior_and_random,
+                                                    path_patches=self.path_patches)
         return model_inputs_generator
 
     def _build_brain_generator(self):
