@@ -458,16 +458,24 @@ class SampleConditionalGMM(Layer):
 
 
 class SampleResolution(Layer):
-    """Pad the input tensor to the specified shape with the given value.
-    The input tensor is expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
-    :param pad_shape: shape to pad the tensor to. Can either be a number (all axes padded to the same shape), or a
-    list/numpy array of length n_dims.
-    :param value: value to pad the tensors with. Default is 0.
+    """Sample resolution. Provide an input tensor to this layer to get an output with the same batchsize.
     """
 
-    def __init__(self, min_resolution, max_resolution, prob_min=0, return_thickness=False, **kwargs):
+    def __init__(self,
+                 min_resolution,
+                 max_res_iso=None,
+                 max_res_aniso=None,
+                 prob_iso=0.1,
+                 prob_min=0.05,
+                 return_thickness=True,
+                 **kwargs):
+
         self.min_res = min_resolution
-        self.max_res = max_resolution
+        self.max_res_iso_input = max_res_iso
+        self.max_res_iso = None
+        self.max_res_aniso_input = max_res_aniso
+        self.max_res_aniso = None
+        self.prob_iso = prob_iso
         self.prob_min = prob_min
         self.return_thickness = return_thickness
         self.n_dims = len(self.min_res)
@@ -478,20 +486,39 @@ class SampleResolution(Layer):
     def get_config(self):
         config = super().get_config()
         config["min_resolution"] = self.min_res
-        config["max_resolution"] = self.max_res
+        config["max_res_iso"] = self.max_res_iso
+        config["max_res_aniso"] = self.max_res_aniso
+        config["prob_iso"] = self.prob_iso
         config["prob_min"] = self.prob_min
         config["return_thickness"] = self.return_thickness
         return config
 
     def build(self, input_shape):
 
-        # check dimension
-        assert len(self.min_res) == len(self.max_res), \
-            'min and max resolution must have the same length, had {0} and {1}'.format(self.min_res, self.max_res)
+        # check maximum resolutions
+        assert ((self.max_res_iso_input is not None) | (self.max_res_aniso_input is not None)), \
+            'at least one of maximinum isotropic or anisotropic resolutions must be provided, received none'
 
-        # make sure min and max resolutions are np array
+        # reformat resolutions as numpy arrays
         self.min_res = np.array(self.min_res)
-        self.max_res = np.array(self.max_res)
+        if self.max_res_iso_input is not None:
+            self.max_res_iso = np.array(self.max_res_iso_input)
+            assert len(self.min_res) == len(self.max_res_iso), \
+                'min and isotropic max resolution must have the same length, ' \
+                'had {0} and {1}'.format(self.min_res, self.max_res_iso)
+            if np.array_equal(self.min_res, self.max_res_iso):
+                self.max_res_iso = None
+        if self.max_res_aniso_input is not None:
+            self.max_res_aniso = np.array(self.max_res_aniso_input)
+            assert len(self.min_res) == len(self.max_res_aniso), \
+                'min and anisotopic max resolution must have the same length, ' \
+                'had {} and {}'.format(self.min_res, self.max_res_aniso)
+            if np.array_equal(self.min_res, self.max_res_aniso):
+                self.max_res_aniso = None
+
+        # check prob iso
+        if (self.max_res_iso is not None) & (self.max_res_aniso is not None) & (self.prob_iso == 0):
+            raise Exception('prob iso is 0 while sampling either isotropic and anisotropic resolutions is enabled')
 
         if input_shape:
             self.add_batchsize = True
@@ -518,14 +545,33 @@ class SampleResolution(Layer):
             mask = tf.tensor_scatter_nd_update(tf.zeros(shape, dtype='bool'), indices, tf.ones(batch, dtype='bool'))
 
         # return min resolution as tensor if min=max
-        if np.array_equal(self.min_res, self.max_res):
+        if (self.max_res_iso is None) & (self.max_res_aniso is None):
             new_resolution = self.min_res_tens
-        else:
-            # sample new resolution for each dimension
-            new_resolution = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res)
-            new_resolution = K.switch(tf.squeeze(K.greater(tf.random.uniform([1], 0, 1), 1 - self.prob_min)),
+
+        # sample isotropic resolution only
+        elif (self.max_res_iso is not None) & (self.max_res_aniso is None):
+            new_resolution_iso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_iso)
+            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_min)),
                                       self.min_res_tens,
-                                      tf.where(mask, new_resolution, self.min_res_tens))
+                                      new_resolution_iso)
+
+        # sample anisotropic resolution only
+        elif (self.max_res_iso is None) & (self.max_res_aniso is not None):
+            new_resolution_aniso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_aniso)
+            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_min)),
+                                      self.min_res_tens,
+                                      tf.where(mask, new_resolution_aniso, self.min_res_tens))
+
+        # sample either anisotropic or isotropic resolution
+        else:
+            new_resolution_iso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_iso)
+            new_resolution_aniso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_aniso)
+            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_iso)),
+                                      new_resolution_iso,
+                                      tf.where(mask, new_resolution_aniso, self.min_res_tens))
+            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_min)),
+                                      self.min_res_tens,
+                                      new_resolution)
 
         if self.return_thickness:
             return [new_resolution, tf.random.uniform(tf.shape(self.min_res_tens), self.min_res_tens, new_resolution)]
