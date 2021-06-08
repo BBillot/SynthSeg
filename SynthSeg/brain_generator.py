@@ -35,7 +35,6 @@ class BrainGenerator:
                  nonlin_std=4.,
                  nonlin_shape_factor=0.0625,
                  randomise_res=False,
-                 buil_distance_maps=False,
                  data_res=None,
                  thickness=None,
                  downsample=False,
@@ -215,7 +214,6 @@ class BrainGenerator:
         self.nonlin_shape_factor = nonlin_shape_factor
         # blurring parameters
         self.randomise_res = randomise_res
-        self.buil_distance_maps = buil_distance_maps
         self.data_res = utils.load_array_if_path(data_res)
         assert not (self.randomise_res & (self.data_res is not None)), \
             'randomise_res and data_res cannot be provided at the same time'
@@ -255,7 +253,6 @@ class BrainGenerator:
                                                 nonlin_std=self.nonlin_std,
                                                 nonlin_shape_factor=self.nonlin_shape_factor,
                                                 randomise_res=self.randomise_res,
-                                                buil_distance_maps=self.buil_distance_maps,
                                                 data_res=self.data_res,
                                                 thickness=self.thickness,
                                                 downsample=self.downsample,

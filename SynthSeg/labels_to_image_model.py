@@ -30,7 +30,6 @@ def labels_to_image_model(labels_shape,
                           nonlin_std=4.,
                           nonlin_shape_factor=.0625,
                           randomise_res=False,
-                          buil_distance_maps=False,
                           data_res=None,
                           thickness=None,
                           downsample=False,
@@ -190,12 +189,8 @@ def labels_to_image_model(labels_shape,
             resolution, blur_res = layers.SampleResolution(atlas_res, max_res, .05, return_thickness=True)(means_input)
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, resolution, thickness=blur_res)
             channel = layers.DynamicGaussianBlur(0.75 * max_res / np.array(atlas_res), blur_range)([channel, sigma])
-            if buil_distance_maps:
-                channel, dist = layers.MimicAcquisition(atlas_res, atlas_res, output_shape, True)([channel, resolution])
-                channels.extend([channel, dist])
-            else:
-                channel = layers.MimicAcquisition(atlas_res, atlas_res, output_shape, False)([channel, resolution])
-                channels.append(channel)
+            channel = layers.MimicAcquisition(atlas_res, atlas_res, output_shape, False)([channel, resolution])
+            channels.append(channel)
 
         else:
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])

@@ -19,7 +19,6 @@ from ext.neuron import models as nrn_models
 def predict(path_images,
             path_model,
             segmentation_label_list,
-            dist_map=False,
             path_segmentations=None,
             path_posteriors=None,
             path_volumes=None,
@@ -51,8 +50,6 @@ def predict(path_images,
     :param segmentation_label_list: List of labels for which to compute Dice scores. It should contain the same values
     as the segmentation label list used for training the network.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array.
-    :param dist_map: (optional) whether the input will contain distance maps channels (between each intenisty channels)
-    Default is False.
     :param path_segmentations: (optional) path where segmentations will be writen.
     Should be a dir, if path_images is a dir, and afile if path_images is a file.
     Should not be None, if path_posteriors is None.
@@ -130,7 +127,7 @@ def predict(path_images,
 
             # preprocess image and get information
             image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, crop_idx = \
-                preprocess_image(path_image, n_levels, cropping, padding, aff_ref=aff_ref, dist_map=dist_map)
+                preprocess_image(path_image, n_levels, cropping, padding, aff_ref=aff_ref)
             model_input_shape = list(image.shape[1:])
 
             # prepare net for first image or if input's size has changed
@@ -284,7 +281,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
     return images_to_segment, out_seg, out_posteriors, out_volumes, recompute_list
 
 
-def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='FS', dist_map=False):
+def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='FS'):
 
     # read image and corresponding info
     im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
@@ -331,14 +328,13 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
             im = (im - m) / (M - m)
     else:
         for i in range(im.shape[-1]):
-            if (not dist_map) | (dist_map & (i % 2 == 0)):
-                channel = im[..., i]
-                m = np.min(channel)
-                M = np.max(channel)
-                if M == m:
-                    im[..., i] = np.zeros(channel.shape)
-                else:
-                    im[..., i] = (channel - m) / (M - m)
+            channel = im[..., i]
+            m = np.min(channel)
+            M = np.max(channel)
+            if M == m:
+                im[..., i] = np.zeros(channel.shape)
+            else:
+                im[..., i] = (channel - m) / (M - m)
 
     # add batch and channel axes
     im = utils.add_axis(im) if n_channels > 1 else utils.add_axis(im, axis=[0, -1])
