@@ -175,12 +175,16 @@ def cohens_d(volumes_x, volumes_y):
 def dice_evaluation(gt_dir,
                     seg_dir,
                     label_list,
+                    mask_dir=None,
                     compute_distances=False,
                     compute_score_whole_structure=False,
                     path_dice=None,
                     path_hausdorff=None,
                     path_mean_distance=None,
                     crop_margin_around_gt=10,
+                    list_incorrect_labels=None,
+                    list_correct_labels=None,
+                    use_nearest_label=False,
                     recompute=True,
                     verbose=True):
     """This function computes Dice scores between two sets of labels maps in gt_dir (ground truth) and seg_dir
@@ -222,12 +226,20 @@ def dice_evaluation(gt_dir,
         # get list label maps to compare
         path_gt_labels = utils.list_images_in_folder(gt_dir)
         path_segs = utils.list_images_in_folder(seg_dir)
+        path_gt_labels = utils.reformat_to_list(path_gt_labels, length=len(path_segs))
         if len(path_gt_labels) != len(path_segs):
             print('gt and segmentation folders must have the same amount of label maps.')
+        if mask_dir is not None:
+            path_masks = utils.list_images_in_folder(mask_dir)
+            if len(path_masks) != len(path_segs):
+                print('not the same amount of masks and segmentations.')
+        else:
+            path_masks = [None] * len(path_segs)
 
         # load labels list
         label_list, _ = utils.get_list_labels(label_list=label_list, FS_sort=True, labels_dir=gt_dir)
         n_labels = len(label_list)
+        max_label = np.max(label_list) + 1
 
         # initialise result matrices
         if compute_score_whole_structure:
@@ -241,18 +253,25 @@ def dice_evaluation(gt_dir,
 
         # loop over segmentations
         loop_info = utils.LoopInfo(len(path_segs), 10, 'evaluating', print_time=True)
-        for idx, (path_gt, path_seg) in enumerate(zip(path_gt_labels, path_segs)):
+        for idx, (path_gt, path_seg, path_mask) in enumerate(zip(path_gt_labels, path_segs, path_masks)):
             if verbose:
                 loop_info.update(idx)
 
             # load gt labels and segmentation
             gt_labels = utils.load_volume(path_gt, dtype='int')
             seg = utils.load_volume(path_seg, dtype='int')
+            if path_mask is not None:
+                mask = utils.load_volume(path_mask, dtype='bool')
+                gt_labels[mask] = max_label
+                seg[mask] = max_label
 
             # crop images
             if crop_margin_around_gt is not None:
                 gt_labels, cropping = edit_volumes.crop_volume_around_region(gt_labels, margin=crop_margin_around_gt)
                 seg = edit_volumes.crop_volume_with_idx(seg, cropping)
+
+            if list_incorrect_labels is not None:
+                seg = edit_volumes.correct_label_map(seg, list_incorrect_labels, list_correct_labels, use_nearest_label)
 
             # compute Dice scores
             dice_coefs[:n_labels, idx] = fast_dice(gt_labels, seg, label_list)
