@@ -44,7 +44,7 @@ def dice(x, y):
     return 2 * np.sum(x * y) / (np.sum(x) + np.sum(y))
 
 
-def surface_distances(x, y, hausdorff_percentile=1):
+def surface_distances(x, y, hausdorff_percentile=1, return_coordinate_max_distance=False):
     """Computes the maximum boundary distance (Haussdorff distance), and the average boundary distance of two masks.
     x and y should be boolean or 0/1 numpy arrays of the same size."""
 
@@ -98,7 +98,18 @@ def surface_distances(x, y, hausdorff_percentile=1):
         y_mean_dist_to_x = max(x.shape)
     mean_dist = (x_mean_dist_to_y + y_mean_dist_to_x) / 2
 
-    return max_dist, mean_dist
+    if return_coordinate_max_distance:
+        indices_x_surface = np.where(x_edge == 1)
+        idx_max_distance_x = np.where(x_dists_to_y == max_dist)[0]
+        if idx_max_distance_x.size != 0:
+            coordinate_max_distance = np.stack(indices_x_surface).transpose()[idx_max_distance_x]
+        else:
+            indices_y_surface = np.where(y_edge == 1)
+            idx_max_distance_y = np.where(y_dists_to_x == max_dist)[0]
+            coordinate_max_distance = np.stack(indices_y_surface).transpose()[idx_max_distance_y]
+        return max_dist, mean_dist, coordinate_max_distance
+    else:
+        return max_dist, mean_dist
 
 
 def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None, alternative='two-sided'):
@@ -115,7 +126,10 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None
 
     # take all rows if indices not specified
     if eval_indices is None:
-        eval_indices = np.arange(dice_ref.shape[0])
+        if len(dice_ref.shape) > 1:
+            eval_indices = np.arange(dice_ref.shape[0])
+        else:
+            eval_indices = []
 
     # loop over all evaluation label values
     pvalues = list()
