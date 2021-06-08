@@ -275,20 +275,22 @@ def crop_volume_with_idx(volume, crop_idx, aff=None):
     :return: the cropped volume, and the updated affine matrix if aff is not None.
     """
 
+    new_volume = volume.copy()
+
     # crop image
     n_dims = int(np.array(crop_idx).shape[0] / 2)
     if n_dims == 2:
-        volume = volume[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3], ...]
+        new_volume = new_volume[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3], ...]
     elif n_dims == 3:
-        volume = volume[crop_idx[0]:crop_idx[3], crop_idx[1]:crop_idx[4], crop_idx[2]:crop_idx[5], ...]
+        new_volume = new_volume[crop_idx[0]:crop_idx[3], crop_idx[1]:crop_idx[4], crop_idx[2]:crop_idx[5], ...]
     else:
         raise Exception('cannot crop volumes with more than 3 dimensions')
 
     if aff is not None:
         aff[0:3, -1] = aff[0:3, -1] + aff[:3, :3] @ crop_idx[:3]
-        return volume, aff
+        return new_volume, aff
     else:
-        return volume
+        return new_volume
 
 
 def pad_volume(volume, padding_shape, padding_value=0, aff=None):
@@ -703,8 +705,8 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
             return new_labels
 
 
-def get_largest_connected_component(mask):
-    components, n_components = scipy_label(mask)
+def get_largest_connected_component(mask, structure=None):
+    components, n_components = scipy_label(mask, structure)
     return components == np.argmax(np.bincount(components.flat)[1:]) + 1 if n_components > 0 else mask.copy()
 
 
