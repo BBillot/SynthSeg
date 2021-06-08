@@ -103,13 +103,13 @@ def validate_training(image_dir,
                     verbose=False)
 
 
-def plot_validation_curves(list_net_validation_dirs, architecture_names=None, eval_indices=None,
+def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_indices=None,
                            skip_first_dice_row=True, size_max_circle=100, figsize=(11, 6), y_lim=None, fontsize=18,
-                           remove_legend=False):
+                           list_linestyles=None, list_colours=None, plot_legend=False):
     """This function plots the validation curves of several networks, based on the results of validate_training().
     It takes as input a list of validation folders (one for each network), each containing subfolders with dice scores
     for the corresponding validated epoch.
-    :param list_net_validation_dirs: list of all the validation folders of the trainings to plot.
+    :param list_validation_dirs: list of all the validation folders of the trainings to plot.
     :param eval_indices: (optional) compute the average Dice loss on a subset of labels indicated by the specified
     indices. Can be a sequence, 1d numpy array, or the path to such an array.
     :param skip_first_dice_row: if eval_indices is None, skip the first row of the dice matrices (usually background)
@@ -117,19 +117,46 @@ def plot_validation_curves(list_net_validation_dirs, architecture_names=None, ev
     :param figsize: (optional) size of the figure to draw.
     :param fontsize: (optional) fontsize used for the graph."""
 
+    n_curves = len(list_validation_dirs)
+
     if eval_indices is not None:
         eval_indices = utils.reformat_to_list(eval_indices, load_as_numpy=True)
 
-    architecture_names = utils.reformat_to_list(architecture_names, len(list_net_validation_dirs))
+    # reformat model names
     if architecture_names is None:
-        architecture_names = [None] * len(list_net_validation_dirs)
+        architecture_names = [os.path.basename(os.path.dirname(d)) for d in list_validation_dirs]
+    else:
+        architecture_names = utils.reformat_to_list(architecture_names, len(list_validation_dirs))
+
+    # prepare legend labels
+    if plot_legend is False:
+        list_legend_labels = ['_nolegend_'] * n_curves
+    elif plot_legend is True:
+        list_legend_labels = architecture_names
+    else:
+        list_legend_labels = architecture_names
+        list_legend_labels = ['_nolegend_' if i >= plot_legend else list_legend_labels[i] for i in range(n_curves)]
+
+    # prepare linestyles
+    if list_linestyles is not None:
+        list_linestyles = utils.reformat_to_list(list_linestyles)
+    else:
+        list_linestyles = [None] * n_curves
+
+    # prepare curve colours
+    if list_colours is not None:
+        list_colours = utils.reformat_to_list(list_colours)
+    else:
+        list_colours = [None] * n_curves
 
     # loop over architectures
     plt.figure(figsize=figsize)
-    for net_val_dir, net_name in zip(list_net_validation_dirs, architecture_names):
+    for idx, (net_val_dir, net_name, linestyle, colour, legend_label) in enumerate(zip(list_validation_dirs,
+                                                                                       architecture_names,
+                                                                                       list_linestyles,
+                                                                                       list_colours,
+                                                                                       list_legend_labels)):
 
-        if net_name is None:
-            net_name = os.path.basename(os.path.dirname(net_val_dir))
         list_epochs_dir = utils.list_subfolders(net_val_dir, whole_path=False)
 
         # loop over epochs
@@ -158,8 +185,8 @@ def plot_validation_curves(list_net_validation_dirs, architecture_names=None, ev
             print('\n'+net_name)
             print('epoch max score: %d' % epoch_max_score)
             print('max score: %0.3f' % max_score)
-            plt.plot(list_epochs, list_net_dice_scores, label=net_name)
-            plt.scatter(epoch_max_score, max_score, s=size_max_circle)
+            plt.plot(list_epochs, list_net_dice_scores, label=legend_label, linestyle=linestyle, color=colour)
+            plt.scatter(epoch_max_score, max_score, s=size_max_circle, color=colour)
 
     # finalise plot
     plt.grid()
@@ -169,7 +196,7 @@ def plot_validation_curves(list_net_validation_dirs, architecture_names=None, ev
     if y_lim is not None:
         plt.ylim(y_lim[0], y_lim[1] + 0.01)  # set right/left limits of plot
     plt.title('Validation curves', fontsize=fontsize)
-    if not remove_legend:
+    if plot_legend:
         plt.legend(fontsize=fontsize)
     plt.tight_layout(pad=1)
     plt.show()
