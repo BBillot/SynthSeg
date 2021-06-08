@@ -113,6 +113,7 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
     :param n_dims: (optional) number of dimensions, to avoid confusion in multi-channel case. Default is None, where
     n_dims is automatically inferred.
     """
+    mkdir(os.path.dirname(path))
     if dtype is not None:
         volume = volume.astype(dtype=dtype)
     if '.npz' in path:
@@ -206,10 +207,10 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
         # go through all labels files and compute unique list of labels
         labels_paths = list_images_in_folder(labels_dir)
         label_list = np.empty(0)
-        loop_info = LoopInfo(len(labels_paths), 10, 'processing')
+        loop_info = LoopInfo(len(labels_paths), 10, 'processing', print_time=True)
         for lab_idx, path in enumerate(labels_paths):
             loop_info.update(lab_idx)
-            y = load_volume(path)
+            y = load_volume(path, dtype='int32')
             y_unique = np.unique(y)
             label_list = np.unique(np.concatenate((label_list, y_unique))).astype('int')
 
@@ -221,7 +222,8 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     if FS_sort:
         neutral_FS_labels = [0, 14, 15, 16, 21, 22, 23, 24, 72, 77, 80, 85, 101, 102, 103, 104, 105, 165, 251, 252, 253,
                              254, 255, 258, 259, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340,
-                             502, 506, 507, 508, 509, 511, 512, 514, 515, 516, 530]
+                             502, 506, 507, 508, 509, 511, 512, 514, 515, 516, 517, 530,
+                             531, 532, 533, 534, 535, 536, 537]
         neutral = list()
         left = list()
         right = list()

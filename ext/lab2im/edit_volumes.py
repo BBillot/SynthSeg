@@ -470,8 +470,8 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
     # initialisation
     new_labels = labels.copy()
     list_incorrect_labels = utils.reformat_to_list(utils.load_array_if_path(list_incorrect_labels))
-    volume_labels = np.unique(new_labels)
-    n_dims, _ = utils.get_dims(new_labels.shape)
+    volume_labels = np.unique(labels)
+    n_dims, _ = utils.get_dims(labels.shape)
 
     # use list of correct values
     if list_correct_labels is not None:
@@ -483,7 +483,7 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
 
                 # only one possible value to replace with
                 if isinstance(correct_label, (int, float, np.int64, np.int32, np.int16, np.int8)):
-                    incorrect_voxels = np.where(new_labels == incorrect_label)
+                    incorrect_voxels = np.where(labels == incorrect_label)
                     new_labels[incorrect_voxels] = correct_label
 
                 # several possibilities
@@ -500,7 +500,7 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
                     tmp_labels = None
                     crop = None
                     while correct_label_not_found:
-                        tmp_labels, crop = crop_volume_around_region(new_labels,
+                        tmp_labels, crop = crop_volume_around_region(labels,
                                                                      masking_labels=incorrect_label,
                                                                      margin=10 * margin_mult)
                         correct_label_not_found = not any([lab in np.unique(tmp_labels) for lab in correct_label])
@@ -511,15 +511,10 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
                     distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_label]
                     distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
 
-                    # select nearest value
+                    # select nearest values and use them to correct label map
                     idx_correct_lab = np.argmin(distances_correct, axis=0)
-                    tmp_labels[incorrect_voxels] = np.array(correct_label)[idx_correct_lab]
-
-                    # paste back
-                    if n_dims == 2:
-                        new_labels[crop[0]:crop[2], crop[1]:crop[3], ...] = tmp_labels
-                    else:
-                        new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...] = tmp_labels
+                    incorrect_voxels = tuple([incorrect_voxels[i] + crop[i] for i in range(n_dims)])
+                    new_labels[incorrect_voxels] = np.array(correct_label)[idx_correct_lab]
 
     # use nearest label
     else:
@@ -529,36 +524,41 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
             if incorrect_label in volume_labels:
 
                 # loop around regions
-                components, n_components = scipy_label(new_labels == incorrect_label)
+                components, n_components = scipy_label(labels == incorrect_label)
                 loop_info = utils.LoopInfo(n_components + 1, 100, 'correcting')
                 for i in range(1, n_components + 1):
                     loop_info.update(i)
 
                     # crop each region
                     _, crop = crop_volume_around_region(components, masking_labels=i, margin=1)
-                    tmp_labels = crop_volume_with_idx(new_labels, crop)
-                    correct_label = np.delete(np.unique(tmp_labels), np.where(np.unique(tmp_labels) == incorrect_label))
+                    tmp_labels = crop_volume_with_idx(labels, crop)
+                    tmp_new_labels = crop_volume_with_idx(new_labels, crop)
 
-                    if len(correct_label) == 1:
-                        tmp_labels = correct_label[0] * np.ones_like(tmp_labels)
+                    # list all possible correct labels
+                    correct_labels = np.unique(tmp_labels)
+                    for il in list_incorrect_labels:
+                        correct_labels = np.delete(correct_labels, np.where(correct_labels == il))
+
+                    if len(correct_labels) == 1:
+                        tmp_new_labels = correct_labels[0] * np.ones_like(tmp_labels)
                     else:
                         if remove_zero:
-                            correct_label = np.delete(correct_label, np.where(correct_label == 0))
+                            correct_labels = np.delete(correct_labels, np.where(correct_labels == 0))
 
                         # calculate distance maps for all new label candidates
                         incorrect_voxels = np.where(tmp_labels == incorrect_label)
-                        distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_label]
+                        distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_labels]
                         distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
 
                         # select nearest value
                         idx_correct_lab = np.argmin(distances_correct, axis=0)
-                        tmp_labels[incorrect_voxels] = np.array(correct_label)[idx_correct_lab]
+                        tmp_new_labels[incorrect_voxels] = np.array(correct_labels)[idx_correct_lab]
 
                     # paste back
                     if n_dims == 2:
-                        new_labels[crop[0]:crop[2], crop[1]:crop[3], ...] = tmp_labels
+                        new_labels[crop[0]:crop[2], crop[1]:crop[3], ...] = tmp_new_labels
                     else:
-                        new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...] = tmp_labels
+                        new_labels[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], ...] = tmp_new_labels
 
     # smoothing
     if smooth:
@@ -1338,6 +1338,127 @@ def samseg_images_in_dir(image_dir,
                 shutil.rmtree(path_im_result_dir)
 
 
+def nifty_reg_images_in_dir(image_dir,
+                            reference_dir,
+                            input_transformation_dir=None,
+                            result_dir=None,
+                            result_transformation_dir=None,
+                            nifty_reg_function='reg_resample',
+                            interpolation=None,
+                            same_reference=False,
+                            same_transformation=False,
+                            path_nifty_reg='/home/benjamin/Softwares/niftyreg-gpu/build/reg-apps',
+                            recompute=True):
+    """This function launches mri_convert on all images contained in image_dir, and writes the results in result_dir.
+    The interpolation type can be specified (i.e. 'nearest'), as well as a folder containing references for resampling.
+    reference_dir can be the path of a single *image* if same_reference=True.
+    :param image_dir: path of directory with images to convert
+    :param reference_dir: path of directory with reference images. References are matched to images by sorting order.
+    If same_reference is false, references and images are matched by sorting order. This can also be the path to a
+    single image that will be used as reference for all images im image_dir (set same_reference to True in that case).
+    :param result_dir: path of directory where converted images will be writen
+    :param interpolation: (optional) interpolation type, can be 'inter' (default), 'cubic', 'nearest', 'trilinear'
+    :param same_reference: (optional) whether to use a single image as reference for all images to interpolate.
+    :param path_nifty_reg: (optional) path of the folder containing nigty-reg funtions
+    :param recompute: (optional) whether to recompute result files even if they already exists
+    """
+
+    # create result dirs
+    if result_dir is not None:
+        utils.mkdir(result_dir)
+    if result_transformation_dir is not None:
+        utils.mkdir(result_transformation_dir)
+
+    nifty_reg = os.path.join(path_nifty_reg, nifty_reg_function)
+
+    # list reference and floating images
+    path_images = utils.list_images_in_folder(image_dir)
+    if same_reference:
+        path_references = utils.reformat_to_list(reference_dir, length=len(path_images))
+    else:
+        path_references = utils.list_images_in_folder(reference_dir)
+        assert len(path_references) == len(path_images), 'different number of files in image_dir and reference_dir'
+
+    # list input transformations
+    if input_transformation_dir is not None:
+        if same_transformation:
+            path_input_transfs = utils.reformat_to_list(input_transformation_dir, length=len(path_images))
+        else:
+            path_input_transfs = utils.list_files(input_transformation_dir)
+            assert len(path_input_transfs) == len(path_images), 'different number of transformations and images'
+    else:
+        path_input_transfs = [None] * len(path_images)
+
+    # define flag input trans
+    if input_transformation_dir is not None:
+        if nifty_reg_function == 'reg_aladin':
+            flag_input_trans = '-inaff'
+        elif nifty_reg_function == 'reg_f3d':
+            flag_input_trans = '-aff'
+        elif nifty_reg_function == 'reg_resample':
+            flag_input_trans = '-trans'
+        else:
+            raise Exception('nifty_reg_function can only be "reg_aladin", "reg_f3d", or "reg_resample"')
+    else:
+        flag_input_trans = None
+
+    # define flag result transformation
+    if result_transformation_dir is not None:
+        if nifty_reg_function == 'reg_aladin':
+            flag_result_trans = '-aff'
+        elif nifty_reg_function == 'reg_f3d':
+            flag_result_trans = '-cpp'
+        else:
+            raise Exception('result_transformation_dir can only be used with "reg_aladin" or "reg_f3d"')
+    else:
+        flag_result_trans = None
+
+    # loop over images
+    loop_info = utils.LoopInfo(len(path_images), 10, 'processing', True)
+    for idx, (path_image, path_ref, path_input_trans) in enumerate(zip(path_images,
+                                                                       path_references,
+                                                                       path_input_transfs)):
+        loop_info.update(idx)
+
+        # define path registered image
+        if result_dir is not None:
+            path_result = os.path.join(result_dir, os.path.basename(path_image))
+            result_already_computed = os.path.isfile(path_result)
+        else:
+            path_result = None
+            result_already_computed = True
+
+        # define path resulting transformation
+        if result_transformation_dir is not None:
+            if nifty_reg_function == 'reg_aladin':
+                path_result_trans = os.path.join(result_transformation_dir, utils.strip_extension(path_image) + '.txt')
+                result_trans_already_computed = os.path.isfile(path_result_trans)
+            else:
+                path_result_trans = os.path.join(result_transformation_dir, os.path.basename(path_image))
+                result_trans_already_computed = os.path.isfile(path_result_trans)
+        else:
+            path_result_trans = None
+            result_trans_already_computed = True
+
+        if (not result_already_computed) | (not result_trans_already_computed) | recompute:
+
+            # build main command
+            cmd = utils.mkcmd(nifty_reg, '-ref', path_ref, '-flo', path_image, '-pad 0')
+
+            # add options
+            if path_result is not None:
+                cmd = utils.mkcmd(cmd, '-res', path_result)
+            if flag_input_trans is not None:
+                cmd = utils.mkcmd(cmd, flag_input_trans, path_input_trans)
+            if flag_result_trans is not None:
+                cmd = utils.mkcmd(cmd, flag_result_trans, path_result_trans)
+            if interpolation is not None:
+                cmd = utils.mkcmd(cmd, '-inter', interpolation)
+
+            # execute
+            os.system(cmd)
+
+
 def upsample_anisotropic_images(image_dir,
                                 resample_image_result_dir,
                                 resample_like_dir,
@@ -1566,15 +1687,15 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
 
 # ----------------------------------------------- edit label maps in dir -----------------------------------------------
 
-def correct_labels_in_dir(labels_dir, results_dir, list_incorrect_labels, list_correct_labels=None,
-                          use_nearest_label=False, smooth=False, recompute=True):
+def correct_labels_in_dir(labels_dir, results_dir, incorrect_labels, correct_labels=None,
+                          use_nearest_label=False, remove_zero=False, smooth=False, recompute=True):
     """This function corrects label values for all label maps in a folder with either
     - a list a given values,
     - or with the nearest label value.
     :param labels_dir: path of directory with input label maps
     :param results_dir: path of directory where corrected label maps will be writen
-    :param list_incorrect_labels: list of all label values to correct (e.g. [1, 2, 3, 4]).
-    :param list_correct_labels: (optional) list of correct label values to replace the incorrect ones.
+    :param incorrect_labels: list of all label values to correct (e.g. [1, 2, 3, 4]).
+    :param correct_labels: (optional) list of correct label values to replace the incorrect ones.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
     each voxel to correct. In that case, the different correct values must be specified inside a list whithin
@@ -1597,7 +1718,7 @@ def correct_labels_in_dir(labels_dir, results_dir, list_incorrect_labels, list_c
         path_result = os.path.join(results_dir, os.path.basename(path_label))
         if (not os.path.isfile(path_result)) | recompute:
             im, aff, h = utils.load_volume(path_label, im_only=False, dtype='int32')
-            im = correct_label_map(im, list_incorrect_labels, list_correct_labels, use_nearest_label, smooth)
+            im = correct_label_map(im, incorrect_labels, correct_labels, use_nearest_label, remove_zero, smooth)
             utils.save_volume(im, aff, h, path_result)
 
 
