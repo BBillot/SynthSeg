@@ -19,6 +19,7 @@ def validate_training(image_dir,
                       validation_main_dir,
                       segmentation_label_list,
                       sort_label_list=False,
+                      topology_classes=None,
                       evaluation_label_list=None,
                       flip=False,
                       step_eval=1,
@@ -69,7 +70,7 @@ def validate_training(image_dir,
     utils.mkdir(validation_main_dir)
 
     # loop over models
-    list_models = utils.list_files(models_dir, expr=['dice', 'h5'], cond_type='and')[::step_eval]
+    list_models = utils.list_files(models_dir, expr=['dice', '0.h5'], cond_type='and')[::step_eval]
     loop_info = utils.LoopInfo(len(list_models), 1, 'validating', True)
     for model_idx, path_model in enumerate(list_models):
 
