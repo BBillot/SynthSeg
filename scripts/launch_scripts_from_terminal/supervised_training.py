@@ -35,7 +35,6 @@ parser.add_argument("--conv_per_level", type=int, dest="nb_conv_per_level", defa
 parser.add_argument("--conv_size", type=int, dest="conv_size", default=3)
 parser.add_argument("--unet_feat", type=int, dest="unet_feat_count", default=24)
 parser.add_argument("--feat_mult", type=int, dest="feat_multiplier", default=2)
-parser.add_argument("--dropout", type=float, dest="dropout", default=0.)
 parser.add_argument("--activation", type=str, dest="activation", default='elu')
 
 # ------------------------------------------------- Training parameters ------------------------------------------------

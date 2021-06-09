@@ -180,7 +180,6 @@ def training(labels_dir,
     :param conv_size: (optional) size of the convolution kernels. Default is 2.
     :param unet_feat_count: (optional) number of feature for the first layr of the Unet. Default is 24.
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 2.
-    :param dropout: (optional) probability of dropout for the Unet. Deafult is 0, where no dropout is applied.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
 
     # ----------------------------------------------- Training parameters ----------------------------------------------
@@ -253,7 +252,6 @@ def training(labels_dir,
                                  nb_labels=n_segmentation_labels,
                                  feat_mult=feat_multiplier,
                                  nb_conv_per_level=nb_conv_per_level,
-                                 conv_dropout=dropout,
                                  batch_norm=-1,
                                  activation=activation,
                                  input_model=labels_to_image_model)
