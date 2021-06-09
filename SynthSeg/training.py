@@ -23,7 +23,6 @@ def training(labels_dir,
              model_dir,
              generation_labels=None,
              segmentation_labels=None,
-             save_generation_labels=None,
              patch_dir=None,
              batchsize=1,
              n_channels=1,
@@ -46,7 +45,7 @@ def training(labels_dir,
              data_res=None,
              thickness=None,
              downsample=False,
-             blur_range=1.15,
+             blur_range=1.03,
              bias_field_std=.5,
              bias_shape_factor=.025,
              n_levels=5,
@@ -54,7 +53,6 @@ def training(labels_dir,
              conv_size=3,
              unet_feat_count=24,
              feat_multiplier=2,
-             dropout=0,
              activation='elu',
              lr=1e-4,
              lr_decay=0,
@@ -86,7 +84,6 @@ def training(labels_dir,
     Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
     Set output_labels[i]=generation_labels[i] if you wish to keep the value generation_labels[i] in the returned maps.
     Can be a list or a 1d numpy array, or the path to such an array. Default is output_labels = generation_labels.
-    :param save_generation_labels: (optional) path where to write the computed list of generation labels.
 
     # output-related parameters
     :param batchsize: (optional) number of images to generate per mini-batch. Default is 1.
@@ -200,7 +197,6 @@ def training(labels_dir,
     # get label lists
     generation_labels, n_neutral_labels = utils.get_list_labels(label_list=generation_labels,
                                                                 labels_dir=labels_dir,
-                                                                save_label_list=save_generation_labels,
                                                                 FS_sort=True)
     if segmentation_labels is not None:
         segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
@@ -240,7 +236,7 @@ def training(labels_dir,
                                      bias_field_std=bias_field_std,
                                      bias_shape_factor=bias_shape_factor)
 
-    # transformation model
+    # generation model
     labels_to_image_model = brain_generator.labels_to_image_model
     unet_input_shape = brain_generator.model_output_shape
 

@@ -255,7 +255,8 @@ class RandomFlip(Layer):
     :param flip_axis: integer, or list of integers specifying the dimensions along which to flip. The values exclude the
     batch dimension (e.g. 0 will flip the tensor along the first axis after the batch dimension). Default is None, where
     the tensors can be flipped along any of the axes (except batch and channel axes).
-    :param swap_labels: list of booleans to specify wether to swap the values of each input
+    :param swap_labels: list of booleans to specify wether to swap the values of each input. All the inputs for which
+    the values need to be swapped must have a int32 ot int64 dtype.
     :param label_list: if swap_labels is True, list of all labels contained in labels. Must be ordered as follows, first
      the neutral labels (i.e. non-sided), then left labels and right labels.
     :param n_neutral_labels: if swap_labels is True, number of non-sided labels
@@ -285,12 +286,15 @@ class RandomFlip(Layer):
               [0, 1, 1, 0, 0, 0, 2],
               [0, 1, 1, 0, 0, 0, 2],
               [0, 0, 0, 0, 0, 0, 2]]
+    Note that the input must have a dtype int32 or int64 for its values to be swapped, otherwise an error will be raised
 
     example 4:
     if labels is the same as in the input of example 3, and image is a float32 image, then we can swap consistently both
     the labels and the image with:
     labels, image = RandomFlip(flip_axis=1, swap_labels=[True, False], label_list=label_list,
                                n_neutral_labels=n_neutral_labels)([labels, image]])
+    Note that the labels must have a dtype int32 or int64 to be swapped, otherwise an error will be raised.
+    This doesn't concern the image input, as its values are not swapped.
     """
 
     def __init__(self, flip_axis=None, swap_labels=False, label_list=None, n_neutral_labels=None, **kwargs):
@@ -362,7 +366,7 @@ class RandomFlip(Layer):
         swapped_inputs = list()
         for i in range(len(inputs)):
             if self.swap_labels[i]:
-                swapped_inputs.append(tf.map_fn(self._single_swap, [inputs[i], rand_flip], dtype=tf.int32))
+                swapped_inputs.append(tf.map_fn(self._single_swap, [inputs[i], rand_flip], dtype=types[i]))
             else:
                 swapped_inputs.append(inputs[i])
 

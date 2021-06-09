@@ -9,19 +9,23 @@ import numpy.random as npr
 # project imports
 from SynthSeg.training import train_model
 from SynthSeg import metrics_model as metrics
+from SynthSeg.labels_to_image_model import get_shapes
 
 # third-party imports
 from ext.lab2im import utils
 from ext.lab2im import layers
 from ext.neuron import models as nrn_models
+from ext.neuron import layers as nrn_layers
+from ext.lab2im import edit_tensors as l2i_et
 from ext.lab2im.edit_volumes import get_ras_axes
 
 
 def supervised_training(image_dir,
                         labels_dir,
                         model_dir,
-                        path_segmentation_labels=None,
+                        segmentation_labels=None,
                         batchsize=1,
+                        target_res=None,
                         output_shape=None,
                         flipping=True,
                         scaling_bounds=.15,
@@ -30,6 +34,10 @@ def supervised_training(image_dir,
                         translation_bounds=False,
                         nonlin_std=3.,
                         nonlin_shape_factor=.04,
+                        data_res=None,
+                        thickness=None,
+                        downsample=False,
+                        blur_range=1.03,
                         bias_field_std=.5,
                         bias_shape_factor=.025,
                         n_levels=5,
@@ -43,9 +51,7 @@ def supervised_training(image_dir,
                         wl2_epochs=5,
                         dice_epochs=100,
                         steps_per_epoch=1000,
-                        checkpoint=None,
-                        reinitialise_momentum=False,
-                        freeze_layers=False):
+                        checkpoint=None):
 
     # check epochs
     assert (wl2_epochs > 0) | (dice_epochs > 0), \
@@ -57,16 +63,19 @@ def supervised_training(image_dir,
     assert len(path_images) == len(path_labels), "There should be as many images as label maps."
 
     # get label lists
-    label_list, n_neutral_labels = utils.get_list_labels(label_list=path_segmentation_labels, labels_dir=labels_dir,
+    label_list, n_neutral_labels = utils.get_list_labels(label_list=segmentation_labels,
+                                                         labels_dir=labels_dir,
                                                          FS_sort=True)
     n_labels = np.size(label_list)
 
-    # create augmentation model and input generator
-    im_shape, _, _, n_channels, _, _ = utils.get_volume_info(path_images[0], aff_ref=np.eye(4))
+    # create augmentation model
+    im_shape, _, _, n_channels, _, atlas_res = utils.get_volume_info(path_images[0], aff_ref=np.eye(4))
     augmentation_model = build_augmentation_model(im_shape,
                                                   n_channels,
                                                   label_list,
                                                   n_neutral_labels,
+                                                  atlas_res,
+                                                  target_res,
                                                   output_shape=output_shape,
                                                   output_div_by_n=2 ** n_levels,
                                                   flipping=flipping,
@@ -77,6 +86,10 @@ def supervised_training(image_dir,
                                                   translation_bounds=translation_bounds,
                                                   nonlin_std=nonlin_std,
                                                   nonlin_shape_factor=nonlin_shape_factor,
+                                                  data_res=data_res,
+                                                  thickness=thickness,
+                                                  downsample=downsample,
+                                                  blur_range=blur_range,
                                                   bias_field_std=bias_field_std,
                                                   bias_shape_factor=bias_shape_factor)
     unet_input_shape = augmentation_model.output[0].get_shape().as_list()[1:]
@@ -103,21 +116,17 @@ def supervised_training(image_dir,
         train_model(wl2_model, input_generator, lr, lr_decay, wl2_epochs, steps_per_epoch, model_dir, 'wl2', checkpoint)
         checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
 
-    # freeze all layers but last if necessary (use -2 because the very last layer only applies softmax activation)
-    if freeze_layers:
-        for layer in unet_model.layers[:-2]:
-            layer.trainable = False
-
     # fine-tuning with dice metric
     dice_model = metrics.metrics_model(unet_model, label_list, 'dice')
-    train_model(dice_model, input_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, 'dice', checkpoint,
-                reinitialise_momentum=reinitialise_momentum)
+    train_model(dice_model, input_generator, lr, lr_decay, dice_epochs, steps_per_epoch, model_dir, 'dice', checkpoint)
 
 
 def build_augmentation_model(im_shape,
                              n_channels,
                              segmentation_labels,
                              n_neutral_labels,
+                             atlas_res,
+                             target_res,
                              output_shape=None,
                              output_div_by_n=None,
                              flipping=True,
@@ -128,17 +137,29 @@ def build_augmentation_model(im_shape,
                              translation_bounds=False,
                              nonlin_std=3.,
                              nonlin_shape_factor=.0625,
-                             bias_field_std=.3,
+                             data_res=None,
+                             thickness=None,
+                             downsample=False,
+                             blur_range=1.03,
+                             bias_field_std=.5,
                              bias_shape_factor=.025):
 
     # reformat resolutions and get shapes
     im_shape = utils.reformat_to_list(im_shape)
     n_dims, _ = utils.get_dims(im_shape)
-    crop_shape = get_shapes(im_shape, output_shape, output_div_by_n)
+    atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims, n_channels)
+    data_res = atlas_res if (data_res is None) else utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
+    thickness = data_res if (thickness is None) else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
+    downsample = utils.reformat_to_list(downsample, n_channels) if downsample else (np.min(thickness - data_res, 1) < 0)
+    atlas_res = atlas_res[0]
+    target_res = atlas_res if (target_res is None) else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
+
+    # get shapes
+    crop_shape, output_shape = get_shapes(im_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
     # define model inputs
     image_input = KL.Input(shape=im_shape+[n_channels], name='image_input')
-    labels_input = KL.Input(shape=im_shape + [1], name='labels_input')
+    labels_input = KL.Input(shape=im_shape + [1], name='labels_input', dtype='int32')
 
     # deform labels
     labels, image = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
@@ -149,13 +170,13 @@ def build_augmentation_model(im_shape,
                                                     nonlin_shape_factor=nonlin_shape_factor,
                                                     inter_method=['nearest', 'linear'])([labels_input, image_input])
 
-    # crop labels
+    # cropping
     if crop_shape != im_shape:
         labels._keras_shape = tuple(labels.get_shape().as_list())
         image._keras_shape = tuple(image.get_shape().as_list())
         labels, image = layers.RandomCrop(crop_shape)([labels, image])
 
-    # flip labels
+    # flipping
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
         labels._keras_shape = tuple(labels.get_shape().as_list())
@@ -167,12 +188,32 @@ def build_augmentation_model(im_shape,
     if bias_field_std > 0:
         image._keras_shape = tuple(image.get_shape().as_list())
         image = layers.BiasFieldCorruption(bias_field_std, bias_shape_factor, False)(image)
-        image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_biased')(image)
 
     # intensity augmentation
     image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.IntensityAugmentation(10, clip=False, normalise=True, gamma_std=.5, separate_channels=True)(image)
-    image = KL.Lambda(lambda x: tf.cast(x, dtype='float32'), name='image_augmented')(image)
+    image = layers.IntensityAugmentation(10, clip=False, normalise=True, gamma_std=.4, separate_channels=True)(image)
+
+    # loop over channels
+    channels = list()
+    split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
+    for i, channel in enumerate(split):
+
+        channel._keras_shape = tuple(channel.get_shape().as_list())
+        sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
+        channel = layers.GaussianBlur(sigma, blur_range)(channel)
+        if downsample[i]:
+            resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
+            channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
+        elif output_shape != crop_shape:
+            channel = nrn_layers.Resize(size=output_shape)(channel)
+        channels.append(channel)
+
+    # concatenate all channels back
+    image = KL.Lambda(lambda x: tf.concat(x, -1))(channels) if len(channels) > 1 else channels[0]
+
+    # resample labels at target resolution
+    if crop_shape != output_shape:
+        labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
@@ -182,9 +223,7 @@ def build_augmentation_model(im_shape,
     return brain_model
 
 
-def build_model_inputs(path_images,
-                       path_label_maps,
-                       batchsize=1):
+def build_model_inputs(path_images, path_label_maps, batchsize=1):
 
     # get label info
     _, _, n_dims, n_channels, _, _ = utils.get_volume_info(path_images[0])
@@ -220,40 +259,3 @@ def build_model_inputs(path_images,
             list_inputs = [item[0] for item in list_inputs]
 
         yield list_inputs
-
-
-def get_shapes(im_shape, crop_shape, output_div_by_n):
-
-    # reformat resolutions to lists
-    im_shape = utils.reformat_to_list(im_shape)
-    n_dims = len(im_shape)
-
-    # crop_shape specified
-    if crop_shape is not None:
-        crop_shape = utils.reformat_to_list(crop_shape, length=n_dims, dtype='int')
-
-        # make sure that crop_shape is smaller or equal to label shape
-        crop_shape = [min(im_shape[i], crop_shape[i]) for i in range(n_dims)]
-
-        # make sure crop_shape is divisible by output_div_by_n
-        if output_div_by_n is not None:
-            tmp_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
-                         for s in crop_shape]
-            if crop_shape != tmp_shape:
-                print('crop_shape {0} not divisible by {1}, changed to {2}'.format(crop_shape, output_div_by_n,
-                                                                                   tmp_shape))
-                crop_shape = tmp_shape
-
-    # no crop_shape specified, so no cropping unless label_shape is not divisible by output_div_by_n
-    else:
-
-        # make sure output shape is divisible by output_div_by_n
-        if output_div_by_n is not None:
-            crop_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
-                          for s in im_shape]
-
-        # if no need to be divisible by n, simply take labels_shape
-        else:
-            crop_shape = im_shape
-
-    return crop_shape
