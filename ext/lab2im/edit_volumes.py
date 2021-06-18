@@ -160,16 +160,18 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.02, max_perc
     return volume
 
 
-def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, return_crop_idx=False):
+def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, return_crop_idx=False, mode='center'):
     """Crop volume by a given margin, or to a given shape.
     :param volume: 2d or 3d numpy array (possibly with multiple channels)
-    :param cropping_margin: (optional) margin by which to crop the volume. Can be an int, sequence or 1d numpy array of
-    size n_dims. Should be given if cropping_shape is None.
+    :param cropping_margin: (optional) margin by which to crop the volume. The cropping margin is applied on both sides.
+    Can be an int, sequence or 1d numpy array of size n_dims. Should be given if cropping_shape is None.
     :param cropping_shape: (optional) shape to which the volume will be cropped. Can be an int, sequence or 1d numpy
     array of size n_dims. Should be given if cropping_margin is None.
     :param aff: (optional) affine matrix of the input volume.
     If not None, this function also returns an updated version of the affine matrix for the cropped volume.
     :param return_crop_idx: (optional) whether to return the cropping indices used to crop the given volume.
+    :param mode: (optional) if cropping_shape is not None, whether to extract the centre of the image (mode='center'),
+    or to randomly crop the volume to the provided shape (mode='random'). Default is 'center'.
     :return: cropped volume, corresponding affine matrix if aff is not None, and cropping indices if return_crop_idx is
     True (in that order).
     """
@@ -191,8 +193,15 @@ def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, ret
         assert (np.array(max_crop_idx) >= np.array(min_crop_idx)).all(), 'cropping_margin is larger than volume shape'
     else:
         cropping_shape = utils.reformat_to_list(cropping_shape, length=n_dims)
-        min_crop_idx = [int((vol_shape[i] - cropping_shape[i]) / 2) for i in range(n_dims)]
-        max_crop_idx = [min_crop_idx[i] + cropping_shape[i] for i in range(n_dims)]
+        if mode == 'center':
+            min_crop_idx = [int((vol_shape[i] - cropping_shape[i]) / 2) for i in range(n_dims)]
+            max_crop_idx = [min_crop_idx[i] + cropping_shape[i] for i in range(n_dims)]
+        elif mode == 'random':
+            crop_max_val = np.array([vol_shape[i] - cropping_shape[i] for i in range(n_dims)])
+            min_crop_idx = np.random.randint(0, high=crop_max_val + 1)
+            max_crop_idx = min_crop_idx + np.array(cropping_shape)
+        else:
+            raise ValueError('mode should be either "center" or "random", had %s' % mode)
         assert (np.array(min_crop_idx) >= 0).all(), 'cropping_shape is larger than volume shape'
     crop_idx = np.concatenate([np.array(min_crop_idx), np.array(max_crop_idx)])
 
