@@ -147,12 +147,13 @@ def build_augmentation_model(im_shape,
     # reformat resolutions and get shapes
     im_shape = utils.reformat_to_list(im_shape)
     n_dims, _ = utils.get_dims(im_shape)
-    atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims, n_channels)
-    data_res = atlas_res if (data_res is None) else utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
-    thickness = data_res if (thickness is None) else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
-    downsample = utils.reformat_to_list(downsample, n_channels) if downsample else (np.min(thickness - data_res, 1) < 0)
-    atlas_res = atlas_res[0]
-    target_res = atlas_res if (target_res is None) else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
+    if data_res is not None:
+        data_res = utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
+        thickness = data_res if thickness is None else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
+        downsample = utils.reformat_to_list(downsample, n_channels) if downsample else np.min(thickness-data_res, 1) < 0
+        target_res = atlas_res if (target_res is None) else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
+    else:
+        target_res = atlas_res
 
     # get shapes
     crop_shape, output_shape = get_shapes(im_shape, output_shape, atlas_res, target_res, output_div_by_n)
@@ -191,29 +192,33 @@ def build_augmentation_model(im_shape,
 
     # intensity augmentation
     image._keras_shape = tuple(image.get_shape().as_list())
-    image = layers.IntensityAugmentation(10, clip=False, normalise=True, gamma_std=.4, separate_channels=True)(image)
+    image = layers.IntensityAugmentation(6, clip=False, normalise=True, gamma_std=.4, separate_channels=True)(image)
 
-    # loop over channels
-    channels = list()
-    split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
-    for i, channel in enumerate(split):
+    # if necessary, loop over channels to 1) blur, 2) downsample to simulated LR, and 3) upsample to target
+    if data_res is not None:
+        channels = list()
+        split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
+        for i, channel in enumerate(split):
 
-        channel._keras_shape = tuple(channel.get_shape().as_list())
-        sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
-        channel = layers.GaussianBlur(sigma, blur_range)(channel)
-        if downsample[i]:
-            resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
-            channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
-        elif output_shape != crop_shape:
-            channel = nrn_layers.Resize(size=output_shape)(channel)
-        channels.append(channel)
+            # blur
+            channel._keras_shape = tuple(channel.get_shape().as_list())
+            sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
+            channel = layers.GaussianBlur(sigma, blur_range)(channel)
 
-    # concatenate all channels back
-    image = KL.Lambda(lambda x: tf.concat(x, -1))(channels) if len(channels) > 1 else channels[0]
+            # resample
+            if downsample[i]:
+                resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
+                channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
+            elif output_shape != crop_shape:
+                channel = nrn_layers.Resize(size=output_shape)(channel)
+            channels.append(channel)
 
-    # resample labels at target resolution
-    if crop_shape != output_shape:
-        labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
+        # concatenate all channels back
+        image = KL.Lambda(lambda x: tf.concat(x, -1))(channels) if len(channels) > 1 else channels[0]
+
+        # resample labels at target resolution
+        if crop_shape != output_shape:
+            labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     labels = KL.Lambda(lambda x: tf.cast(x, dtype='int32'), name='labels_out')(labels)
