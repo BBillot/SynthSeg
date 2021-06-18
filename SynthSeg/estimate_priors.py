@@ -168,7 +168,7 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
     stds = np.zeros((len(path_images), n_classes, n_channels))
 
     # loop over images
-    loop_info = utils.LoopInfo(len(path_images), 10, 'estimating')
+    loop_info = utils.LoopInfo(len(path_images), 10, 'estimating', print_time=True)
     for idx, (path_im, path_la) in enumerate(zip(path_images, path_labels)):
         loop_info.update(idx)
 
