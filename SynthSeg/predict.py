@@ -211,20 +211,30 @@ def predict(path_images,
         if evaluation_label_list is None:
             evaluation_label_list = segmentation_label_list
 
+        # set path of result arrays for surface distance if necessary
+        if compute_distances:
+            path_hausdorff = os.path.join(eval_folder, 'hausdorff.npy')
+            path_hausdorff_99 = os.path.join(eval_folder, 'hausdorff_99.npy')
+            path_hausdorff_95 = os.path.join(eval_folder, 'hausdorff_95.npy')
+            path_mean_distance = os.path.join(eval_folder, 'mean_distance.npy')
+        else:
+            path_hausdorff = path_hausdorff_99 = path_hausdorff_95 = path_mean_distance = None
+
         # compute evaluation metrics
-        evaluate.dice_evaluation(gt_folder,
-                                 eval_folder,
-                                 evaluation_label_list,
-                                 mask_dir=mask_folder,
-                                 compute_distances=compute_distances,
-                                 compute_score_whole_structure=False,
-                                 path_dice=os.path.join(eval_folder, 'dice.npy'),
-                                 path_hausdorff=os.path.join(eval_folder, 'hausdorff.npy'),
-                                 path_mean_distance=os.path.join(eval_folder, 'mean_distance.npy'),
-                                 list_incorrect_labels=list_incorrect_labels,
-                                 list_correct_labels=list_correct_labels,
-                                 recompute=recompute,
-                                 verbose=verbose)
+        evaluate.evaluation(gt_folder,
+                            eval_folder,
+                            evaluation_label_list,
+                            mask_dir=mask_folder,
+                            compute_score_whole_structure=False,
+                            path_dice=os.path.join(eval_folder, 'dice.npy'),
+                            path_hausdorff=path_hausdorff,
+                            path_hausdorff_99=path_hausdorff_99,
+                            path_hausdorff_95=path_hausdorff_95,
+                            path_mean_distance=path_mean_distance,
+                            list_incorrect_labels=list_incorrect_labels,
+                            list_correct_labels=list_correct_labels,
+                            recompute=recompute,
+                            verbose=verbose)
 
 
 def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, recompute):
@@ -245,10 +255,10 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
         images_to_segment = utils.list_images_in_folder(path_images)
         if out_seg is not None:
             utils.mkdir(out_seg)
-            out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii', '_seg.nii') for image in
+            out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii', '_synthseg.nii') for image in
                        images_to_segment]
-            out_seg = [seg_path.replace('.mgz', '_seg.mgz') for seg_path in out_seg]
-            out_seg = [seg_path.replace('.npz', '_seg.npz') for seg_path in out_seg]
+            out_seg = [seg_path.replace('.mgz', '_synthseg.mgz') for seg_path in out_seg]
+            out_seg = [seg_path.replace('.npz', '_synthseg.npz') for seg_path in out_seg]
             recompute_seg = [not os.path.isfile(path_seg) for path_seg in out_seg]
         else:
             out_seg = [out_seg] * len(images_to_segment)
@@ -271,9 +281,9 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
         if out_seg is not None:
             if ('.nii.gz' not in out_seg) & ('.nii' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):
                 utils.mkdir(out_seg)
-                filename = os.path.basename(path_images).replace('.nii', '_seg.nii')
-                filename = filename.replace('mgz', '_seg.mgz')
-                filename = filename.replace('.npz', '_seg.npz')
+                filename = os.path.basename(path_images).replace('.nii', '_synthseg.nii')
+                filename = filename.replace('mgz', '_synthseg.mgz')
+                filename = filename.replace('.npz', '_synthseg.npz')
                 out_seg = [os.path.join(out_seg, filename)]
             else:
                 utils.mkdir(os.path.dirname(out_seg))
