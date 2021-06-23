@@ -87,12 +87,14 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
     :return: the masked volume, and the applied mask if return_mask is True.
     """
 
-    vol_shape = list(volume.shape)
+    # get info
+    new_volume = volume.copy()
+    vol_shape = list(new_volume.shape)
     n_dims, n_channels = utils.get_dims(vol_shape)
 
     # get mask and erode/dilate it
     if mask is None:
-        mask = volume >= threshold
+        mask = new_volume >= threshold
     else:
         assert list(mask.shape[:n_dims]) == vol_shape[:n_dims], 'mask should have shape {0}, or {1}, had {2}'.format(
             vol_shape[:n_dims], vol_shape[:n_dims] + [n_channels], list(mask.shape))
@@ -110,15 +112,15 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
         mask_to_apply = binary_fill_holes(mask_to_apply)
 
     # replace values outside of mask by padding_char
-    if mask_to_apply.shape == volume.shape:
-        volume[np.logical_not(mask_to_apply)] = masking_value
+    if mask_to_apply.shape == new_volume.shape:
+        new_volume[np.logical_not(mask_to_apply)] = masking_value
     else:
-        volume[np.stack([np.logical_not(mask_to_apply)] * n_channels, axis=-1)] = masking_value
+        new_volume[np.stack([np.logical_not(mask_to_apply)] * n_channels, axis=-1)] = masking_value
 
     if return_mask:
-        return volume, mask_to_apply
+        return new_volume, mask_to_apply
     else:
-        return volume
+        return new_volume
 
 
 def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percentile=98, use_positive_only=True):
@@ -174,7 +176,8 @@ def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, ret
         'only one of cropping_margin or cropping_shape should be provided'
 
     # get info
-    vol_shape = volume.shape
+    new_volume = volume.copy()
+    vol_shape = new_volume.shape
     n_dims, _ = utils.get_dims(vol_shape)
 
     # find cropping indices
@@ -199,12 +202,12 @@ def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, ret
 
     # crop volume
     if n_dims == 2:
-        volume = volume[crop_idx[0]: crop_idx[2], crop_idx[1]: crop_idx[3], ...]
+        new_volume = new_volume[crop_idx[0]: crop_idx[2], crop_idx[1]: crop_idx[3], ...]
     elif n_dims == 3:
-        volume = volume[crop_idx[0]: crop_idx[3], crop_idx[1]: crop_idx[4], crop_idx[2]: crop_idx[5], ...]
+        new_volume = new_volume[crop_idx[0]: crop_idx[3], crop_idx[1]: crop_idx[4], crop_idx[2]: crop_idx[5], ...]
 
     # sort outputs
-    output = [volume]
+    output = [new_volume]
     if aff is not None:
         aff[0:3, -1] = aff[0:3, -1] + aff[:3, :3] @ np.array(min_crop_idx)
         output.append(aff)
@@ -276,10 +279,11 @@ def crop_volume_with_idx(volume, crop_idx, aff=None):
     :return: the cropped volume, and the updated affine matrix if aff is not None.
     """
 
+    # get info
     new_volume = volume.copy()
+    n_dims = int(np.array(crop_idx).shape[0] / 2)
 
     # crop image
-    n_dims = int(np.array(crop_idx).shape[0] / 2)
     if n_dims == 2:
         new_volume = new_volume[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3], ...]
     elif n_dims == 3:
@@ -302,8 +306,10 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None):
     :param aff: (optional) affine matrix of the volume
     :return: padded volume, and updated affine matrix if aff is not None.
     """
+
     # get info
-    vol_shape = volume.shape
+    new_volume = volume.copy()
+    vol_shape = new_volume.shape
     n_dims, n_channels = utils.get_dims(vol_shape)
     padding_shape = utils.reformat_to_list(padding_shape, length=n_dims, dtype='int')
 
@@ -311,21 +317,21 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None):
     min_pad_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
     max_pad_margins = np.maximum(np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
     if (min_pad_margins == 0).all():
-        return volume
+        return new_volume
     pad_margins = tuple([(min_pad_margins[i], max_pad_margins[i]) for i in range(n_dims)])
     if n_channels > 1:
         pad_margins = tuple(list(pad_margins) + [[0, 0]])
 
     # pad volume
-    volume = np.pad(volume, pad_margins, mode='constant', constant_values=padding_value)
+    new_volume = np.pad(new_volume, pad_margins, mode='constant', constant_values=padding_value)
 
     if aff is not None:
         if n_dims == 2:
             min_pad_margins = np.append(min_pad_margins, 0)
         aff[:-1, -1] = aff[:-1, -1] - aff[:-1, :-1] @ min_pad_margins
-        return volume, aff
+        return new_volume, aff
     else:
-        return volume
+        return new_volume
 
 
 def flip_volume(volume, axis=None, direction=None, aff=None):
@@ -339,6 +345,7 @@ def flip_volume(volume, axis=None, direction=None, aff=None):
     :return: flipped volume
     """
 
+    new_volume = volume.copy()
     assert (axis is not None) | ((aff is not None) & (direction is not None)), \
         'please provide either axis, or an affine matrix with a direction'
 
@@ -355,7 +362,7 @@ def flip_volume(volume, axis=None, direction=None, aff=None):
             raise ValueError("direction should be 'rl', 'ap', or 'si', had %s" % direction)
 
     # flip volume
-    return np.flip(volume, axis=axis)
+    return np.flip(new_volume, axis=axis)
 
 
 def get_ras_axes(aff, n_dims=3):
@@ -381,6 +388,7 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     """
 
     # work on copy
+    new_volume = volume.copy()
     aff_flo = aff.copy()
 
     # default value for aff_ref
@@ -389,7 +397,7 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
 
     # extract ras axes
     if n_dims is None:
-        n_dims, _ = utils.get_dims(volume.shape)
+        n_dims, _ = utils.get_dims(new_volume.shape)
     ras_axes_ref = get_ras_axes(aff_ref, n_dims=n_dims)
     ras_axes_flo = get_ras_axes(aff_flo, n_dims=n_dims)
 
@@ -397,7 +405,7 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     aff_flo[:, ras_axes_ref] = aff_flo[:, ras_axes_flo]
     for i in range(n_dims):
         if ras_axes_flo[i] != ras_axes_ref[i]:
-            volume = np.swapaxes(volume, ras_axes_flo[i], ras_axes_ref[i])
+            new_volume = np.swapaxes(new_volume, ras_axes_flo[i], ras_axes_ref[i])
             swapped_axis_idx = np.where(ras_axes_flo == ras_axes_ref[i])
             ras_axes_flo[swapped_axis_idx], ras_axes_flo[i] = ras_axes_flo[i], ras_axes_flo[swapped_axis_idx]
 
@@ -405,14 +413,14 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     dot_products = np.sum(aff_flo[:3, :3] * aff_ref[:3, :3], axis=0)
     for i in range(n_dims):
         if dot_products[i] < 0:
-            volume = np.flip(volume, axis=i)
+            new_volume = np.flip(new_volume, axis=i)
             aff_flo[:, i] = - aff_flo[:, i]
-            aff_flo[:3, 3] = aff_flo[:3, 3] - aff_flo[:3, i] * (volume.shape[i] - 1)
+            aff_flo[:3, 3] = aff_flo[:3, 3] - aff_flo[:3, i] * (new_volume.shape[i] - 1)
 
     if return_aff:
-        return volume, aff_flo
+        return new_volume, aff_flo
     else:
-        return volume
+        return new_volume
 
 
 def blur_volume(volume, sigma, mask=None):
@@ -425,22 +433,23 @@ def blur_volume(volume, sigma, mask=None):
     """
 
     # initialisation
-    n_dims, _ = utils.get_dims(volume.shape)
+    new_volume = volume.copy()
+    n_dims, _ = utils.get_dims(new_volume.shape)
     sigma = utils.reformat_to_list(sigma, length=n_dims, dtype='float')
 
     # blur image
-    volume = gaussian_filter(volume, sigma=sigma, mode='nearest')  # nearest refers to edge padding
+    new_volume = gaussian_filter(new_volume, sigma=sigma, mode='nearest')  # nearest refers to edge padding
 
     # correct edge effect if mask is not None
     if mask is not None:
-        assert volume.shape == mask.shape, 'volume and mask should have the same dimensions: ' \
-                                           'got {0} and {1}'.format(volume.shape, mask.shape)
+        assert new_volume.shape == mask.shape, 'volume and mask should have the same dimensions: ' \
+                                               'got {0} and {1}'.format(new_volume.shape, mask.shape)
         mask = (mask > 0) * 1.0
         blurred_mask = gaussian_filter(mask, sigma=sigma, mode='nearest')
-        volume = volume / (blurred_mask + 1e-6)
-        volume[mask == 0] = 0
+        new_volume = new_volume / (blurred_mask + 1e-6)
+        new_volume[mask == 0] = 0
 
-    return volume
+    return new_volume
 
 
 # --------------------------------------------------- edit label map ---------------------------------------------------
