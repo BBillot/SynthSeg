@@ -332,15 +332,15 @@ def evaluation(gt_dir,
         if path_dice is not None:
             utils.mkdir(os.path.dirname(path_dice))
             np.save(path_dice, dice_coefs)
-        if path_hausdorff is not None is not None:
+        if path_hausdorff is not None:
             utils.mkdir(os.path.dirname(path_hausdorff))
             np.save(path_hausdorff, max_dists[..., 0])
-        if path_hausdorff_99 is not None is not None:
+        if path_hausdorff_99 is not None:
             utils.mkdir(os.path.dirname(path_hausdorff_99))
             np.save(path_hausdorff_99, max_dists[..., 1])
-        if path_hausdorff_95 is not None is not None:
+        if path_hausdorff_95 is not None:
             utils.mkdir(os.path.dirname(path_hausdorff_95))
             np.save(path_hausdorff_95, max_dists[..., 2])
-        if path_mean_distance is not None is not None:
+        if path_mean_distance is not None:
             utils.mkdir(os.path.dirname(path_mean_distance))
             np.save(path_mean_distance, max_dists[..., 2])
