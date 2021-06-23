@@ -2058,48 +2058,60 @@ def compute_hard_volumes_in_dir(labels_dir,
     return volumes
 
 
-def build_atlas(labels_dir, align_centre_of_mass=False, margin=15, path_result_atlas=None):
+def build_atlas(labels_dir, label_list, label_order=None, align_centre_of_mass=False, margin=15, path_atlas=None):
     """This function builds a binary atlas (defined by label values > 0) from several label maps.
     :param labels_dir: path of directory with input label maps
     :param align_centre_of_mass: whether to build the atlas by aligning the center of mass of each label map.
     If False, the atlas has the same size as the input label maps, which are assumed to be aligned.
     :param margin: (optional) If align_centre_of_mass is True, margin by which to crop the input label maps around
     their center of mass. Therefore it controls the size of the output atlas: (2*margin + 1)**n_dims.
-    :param path_result_atlas: (optional) path where the output atlas will be writen.
+    :param path_atlas: (optional) path where the output atlas will be writen.
     Default is None, where the atlas is not saved."""
 
-    # list of all label maps
+    # list of all label maps and create result dir
     path_labels = utils.list_images_in_folder(labels_dir)
+    n_label_maps = len(path_labels)
+    utils.mkdir(os.path.dirname(path_atlas))
+
+    # read list labels and create lut
+    label_list = np.array(utils.reformat_to_list(label_list, load_as_numpy=True, dtype='int'))
+    if label_order is not None:
+        label_order = np.array(utils.reformat_to_list(label_order, load_as_numpy=True, dtype='int'))
+    lut = utils.get_mapping_lut(label_list, dest=label_order)
+    n_labels = len(label_list)
 
     # create empty atlas
-    if align_centre_of_mass:
-        atlas = np.zeros([margin * 2] * 3)
-    else:
-        atlas = np.zeros(utils.load_volume(path_labels[0]).shape)
+    shape = [margin * 2] * 3 if align_centre_of_mass else list(utils.load_volume(path_labels[0]).shape)
+    shape = shape + [n_labels] if n_labels > 1 else shape
+    atlas = np.zeros(shape)
 
     # loop over label maps
-    loop_info = utils.LoopInfo(len(path_labels), 10, 'processing', True)
+    loop_info = utils.LoopInfo(n_label_maps, 10, 'processing', True)
     for idx, path_label in enumerate(path_labels):
         loop_info.update(idx)
 
         # load label map and build mask
-        lab = (utils.load_volume(path_label, dtype='int32', aff_ref=np.eye(4)) > 0) * 1
+        lab = utils.load_volume(path_label, dtype='int32', aff_ref=np.eye(4))
+        lab = lut[lab.astype('int')]
+        indices = np.where(lab > 0)
 
+        if len(label_list) > 1:
+            lab = np.identity(n_labels)[lab]
+
+        # crop label map around centre of mass
         if align_centre_of_mass:
-            # find centre of mass
-            indices = np.where(lab > 0)
             centre_of_mass = np.array([np.mean(indices[0]), np.mean(indices[1]), np.mean(indices[2])], dtype='int32')
-            # crop label map around centre of mass
             min_crop = centre_of_mass - margin
             max_crop = centre_of_mass + margin
-            atlas += lab[min_crop[0]:max_crop[0], min_crop[1]:max_crop[1], min_crop[2]:max_crop[2]]
+            atlas += lab[min_crop[0]:max_crop[0], min_crop[1]:max_crop[1], min_crop[2]:max_crop[2], ...]
+        # otherwise just add the one-hot labels
         else:
             atlas += lab
 
     # normalise atlas and save it if necessary
-    atlas /= len(path_labels)
-    if path_result_atlas is not None:
-        utils.save_volume(atlas, None, None, path_result_atlas)
+    atlas /= n_label_maps
+    if path_atlas is not None:
+        utils.save_volume(atlas, None, None, path_atlas)
 
     return atlas
 
