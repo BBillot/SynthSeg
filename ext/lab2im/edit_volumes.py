@@ -121,43 +121,35 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
         return volume
 
 
-def rescale_volume(volume, new_min=0, new_max=255, min_percentile=0.02, max_percentile=0.98, use_positive_only=True):
+def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percentile=98, use_positive_only=True):
     """This function linearly rescales a volume between new_min and new_max.
     :param volume: a numpy array
     :param new_min: (optional) minimum value for the rescaled image.
     :param new_max: (optional) maximum value for the rescaled image.
-    :param min_percentile: (optional) percentile for estimating robust minimum of volume
-    :param max_percentile: (optional) percentile for estimating robust maximum of volume
+    :param min_percentile: (optional) percentile for estimating robust minimum of volume (integer in [0,...100]),
+    where 0 = np.min
+    :param max_percentile: (optional) percentile for estimating robust maximum of volume (integer in [0,...100]),
+    where 100 = np.max
     :param use_positive_only: (optional) whether to use only positive values when estimating the min and max percentile
     :return: rescaled volume
     """
 
     # select only positive intensities
-    if use_positive_only:
-        intensities = volume[volume > 0]
-    else:
-        intensities = volume.flatten()
+    new_volume = volume.copy()
+    intensities = new_volume[new_volume > 0] if use_positive_only else new_volume.flatten()
 
-    if (min_percentile == 0) & (max_percentile == 1):
-        robust_min = np.min(intensities)
-        robust_max = np.max(intensities)
-
-    else:
-        # sort intensities
-        intensities = np.sort(intensities)
-        # define robust max and min
-        idx_min = max(int(intensities.shape[0] * min_percentile), 0)
-        robust_min = np.maximum(0, intensities[idx_min])
-        idx_max = min(int(intensities.shape[0] * max_percentile), intensities.shape[0] - 1)
-        robust_max = intensities[idx_max]
+    # define min and max intensities in original image for normalisation
+    robust_min = np.min(intensities) if min_percentile == 0 else np.percentile(intensities, min_percentile)
+    robust_max = np.max(intensities) if max_percentile == 0 else np.percentile(intensities, max_percentile)
 
     # trim values outside range
-    volume = np.clip(volume, robust_min, robust_max)
+    new_volume = np.clip(new_volume, robust_min, robust_max)
 
     # rescale image
-    volume = new_min + (volume-robust_min) / (robust_max-robust_min) * new_max
-
-    return volume
+    if robust_min != robust_max:
+        return new_min + (new_volume - robust_min) / (robust_max - robust_min) * new_max
+    else:  # avoid dividing by zero
+        return np.zeros_like(new_volume)
 
 
 def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, return_crop_idx=False, mode='center'):
@@ -859,15 +851,17 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
 
 def rescale_images_in_dir(image_dir, result_dir,
                           new_min=0, new_max=255,
-                          min_percentile=0.025, max_percentile=0.975, use_positive_only=True,
+                          min_percentile=2, max_percentile=98, use_positive_only=True,
                           recompute=True):
     """This function linearly rescales all volumes in image_dir between new_min and new_max.
     :param image_dir: path of directory with images to rescale
     :param result_dir: path of directory where rescaled images will be writen
     :param new_min: (optional) minimum value for the rescaled images.
     :param new_max: (optional) maximum value for the rescaled images.
-    :param min_percentile: (optional) percentile for estimating robust minimum of each image.
-    :param max_percentile: (optional) percentile for estimating robust maximum of each image.
+    :param min_percentile: (optional) percentile for estimating robust minimum of volume (integer in [0,...100]),
+    where 0 = np.min
+    :param max_percentile: (optional) percentile for estimating robust maximum of volume (integer in [0,...100]),
+    where 100 = np.max
     :param use_positive_only: (optional) whether to use only positive values when estimating the min and max percentile
     :param recompute: (optional) whether to recompute result files even if they already exists
     """

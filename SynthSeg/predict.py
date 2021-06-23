@@ -358,21 +358,11 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
     # normalise image
     if n_channels == 1:
-        m = np.min(im)
-        M = np.max(im)
-        if M == m:
-            im = np.zeros(im.shape)
-        else:
-            im = (im - m) / (M - m)
+        im = edit_volumes.rescale_volume(im, new_min=0., new_max=1., min_percentile=0, max_percentile=100)
     else:
         for i in range(im.shape[-1]):
-            channel = im[..., i]
-            m = np.min(channel)
-            M = np.max(channel)
-            if M == m:
-                im[..., i] = np.zeros(channel.shape)
-            else:
-                im[..., i] = (channel - m) / (M - m)
+            im[..., i] = edit_volumes.rescale_volume(im[..., i], new_min=0., new_max=1.,
+                                                     min_percentile=0, max_percentile=100)
 
     # flip image along right/left axis
     if flip & (n_dims > 2):
