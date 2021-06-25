@@ -1358,6 +1358,7 @@ def nifty_reg_images_in_dir(image_dir,
                             nifty_reg_function='reg_resample',
                             interpolation=None,
                             same_reference=False,
+                            same_floating=False,
                             same_transformation=False,
                             path_nifty_reg='/home/benjamin/Softwares/niftyreg-gpu/build/reg-apps',
                             recompute=True):
@@ -1385,11 +1386,12 @@ def nifty_reg_images_in_dir(image_dir,
 
     # list reference and floating images
     path_images = utils.list_images_in_folder(image_dir)
+    path_references = utils.list_images_in_folder(reference_dir)
     if same_reference:
-        path_references = utils.reformat_to_list(reference_dir, length=len(path_images))
-    else:
-        path_references = utils.list_images_in_folder(reference_dir)
-        assert len(path_references) == len(path_images), 'different number of files in image_dir and reference_dir'
+        path_references = utils.reformat_to_list(path_references, length=len(path_images))
+    if same_floating:
+        path_images = utils.reformat_to_list(path_images, length=len(path_references))
+    assert len(path_references) == len(path_images), 'different number of files in image_dir and reference_dir'
 
     # list input transformations
     if input_transformation_dir is not None:
@@ -1433,8 +1435,9 @@ def nifty_reg_images_in_dir(image_dir,
         loop_info.update(idx)
 
         # define path registered image
+        name = os.path.basename(path_ref) if same_floating else os.path.basename(path_image)
         if result_dir is not None:
-            path_result = os.path.join(result_dir, os.path.basename(path_image))
+            path_result = os.path.join(result_dir, name)
             result_already_computed = os.path.isfile(path_result)
         else:
             path_result = None
@@ -1443,10 +1446,10 @@ def nifty_reg_images_in_dir(image_dir,
         # define path resulting transformation
         if result_transformation_dir is not None:
             if nifty_reg_function == 'reg_aladin':
-                path_result_trans = os.path.join(result_transformation_dir, utils.strip_extension(path_image) + '.txt')
+                path_result_trans = os.path.join(result_transformation_dir, utils.strip_extension(name) + '.txt')
                 result_trans_already_computed = os.path.isfile(path_result_trans)
             else:
-                path_result_trans = os.path.join(result_transformation_dir, os.path.basename(path_image))
+                path_result_trans = os.path.join(result_transformation_dir, name)
                 result_trans_already_computed = os.path.isfile(path_result_trans)
         else:
             path_result_trans = None
@@ -2058,13 +2061,21 @@ def compute_hard_volumes_in_dir(labels_dir,
     return volumes
 
 
-def build_atlas(labels_dir, label_list, label_order=None, align_centre_of_mass=False, margin=15, path_atlas=None):
+def build_atlas(labels_dir,
+                label_list,
+                align_centre_of_mass=False,
+                margin=15,
+                shape=None,
+                path_atlas=None):
     """This function builds a binary atlas (defined by label values > 0) from several label maps.
     :param labels_dir: path of directory with input label maps
+    :param label_list: list of all labels in the label maps. If there is more than 1 value here, the different channels
+    of the atlas (each corresponding to the probability map of a given label) will in the same order as in this list.
     :param align_centre_of_mass: whether to build the atlas by aligning the center of mass of each label map.
     If False, the atlas has the same size as the input label maps, which are assumed to be aligned.
     :param margin: (optional) If align_centre_of_mass is True, margin by which to crop the input label maps around
     their center of mass. Therefore it controls the size of the output atlas: (2*margin + 1)**n_dims.
+    :param shape: shape of the output atlas.
     :param path_atlas: (optional) path where the output atlas will be writen.
     Default is None, where the atlas is not saved."""
 
@@ -2075,13 +2086,15 @@ def build_atlas(labels_dir, label_list, label_order=None, align_centre_of_mass=F
 
     # read list labels and create lut
     label_list = np.array(utils.reformat_to_list(label_list, load_as_numpy=True, dtype='int'))
-    if label_order is not None:
-        label_order = np.array(utils.reformat_to_list(label_order, load_as_numpy=True, dtype='int'))
-    lut = utils.get_mapping_lut(label_list, dest=label_order)
+    lut = utils.get_mapping_lut(label_list)
     n_labels = len(label_list)
 
     # create empty atlas
-    shape = [margin * 2] * 3 if align_centre_of_mass else list(utils.load_volume(path_labels[0]).shape)
+    im_shape, aff, n_dims, _, h, _ = utils.get_volume_info(path_labels[0], aff_ref=np.eye(4))
+    if align_centre_of_mass:
+        shape = [margin * 2] * n_dims
+    else:
+        shape = utils.reformat_to_list(shape, length=n_dims) if shape is not None else im_shape
     shape = shape + [n_labels] if n_labels > 1 else shape
     atlas = np.zeros(shape)
 
@@ -2092,7 +2105,10 @@ def build_atlas(labels_dir, label_list, label_order=None, align_centre_of_mass=F
 
         # load label map and build mask
         lab = utils.load_volume(path_label, dtype='int32', aff_ref=np.eye(4))
+        lab = correct_label_map(lab, [31, 63, 72], [4, 43, 0])
         lab = lut[lab.astype('int')]
+        lab = pad_volume(lab, shape[:n_dims])
+        lab = crop_volume(lab, cropping_shape=shape[:n_dims])
         indices = np.where(lab > 0)
 
         if len(label_list) > 1:
@@ -2110,8 +2126,9 @@ def build_atlas(labels_dir, label_list, label_order=None, align_centre_of_mass=F
 
     # normalise atlas and save it if necessary
     atlas /= n_label_maps
+    atlas = align_volume_to_ref(atlas, np.eye(4), aff_ref=aff, n_dims=n_dims)
     if path_atlas is not None:
-        utils.save_volume(atlas, None, None, path_atlas)
+        utils.save_volume(atlas, aff, h, path_atlas)
 
     return atlas
 
