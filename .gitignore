@@ -2,9 +2,12 @@ venv
 **/__pycache__/
 .idea
 
+ext/neuron/models_*
+
 scripts/lesions_scripts
-scripts/scripts_for_Eugenio
 scripts/super-res/
+
+scripts/launch_scripts_from_terminal/training_*
 
 scripts/PV_SynthSeg_scripts/draw_boxplots.py
 scripts/PV_SynthSeg_scripts/PV_SynthSeg_process.py
@@ -16,7 +19,6 @@ scripts/SynthSeg_scripts/draw_boxplots.py
 scripts/SynthSeg_scripts/mosaic_figure.py
 
 SynthSeg/boxplots.py
-SynthSeg/check_generation.py
-SynthSeg/check_supervised_training.py
-
-VAE
+SynthSeg/check_*
+SynthSeg/training_*
+SynthSeg/predict_*
