@@ -2,7 +2,6 @@
 import os
 import csv
 import numpy as np
-import keras.layers as KL
 from keras.models import Model
 
 # project imports
@@ -12,7 +11,6 @@ from SynthSeg import evaluate
 from ext.lab2im import utils
 from ext.lab2im import layers
 from ext.lab2im import edit_volumes
-from ext.neuron import layers as nrn_layers
 from ext.neuron import models as nrn_models
 
 
@@ -26,11 +24,10 @@ def predict(path_images,
             padding=None,
             cropping=None,
             resample=None,
-            aff_ref='FS',
-            sort_label_list=False,
             topology_classes=None,
-            sigma_smoothing=0,
-            keep_biggest_component=False,
+            sigma_smoothing=0.5,
+            keep_biggest_component=True,
+            flip=True,
             conv_size=3,
             n_levels=5,
             nb_conv_per_level=2,
@@ -44,8 +41,7 @@ def predict(path_images,
             evaluation_label_list=None,
             compute_distances=False,
             recompute=True,
-            verbose=True,
-            flip=False):
+            verbose=True):
     """
     This function uses trained models to segment images.
     It is crucial that the inputs match the architecture parameters of the trained model.
@@ -73,9 +69,6 @@ def predict(path_images,
     Can be an int, a sequence or a 1d numpy array.
     :param resample: (optional) resample the images to the specified resolution before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
-    :param aff_ref: (optional) type of affine matrix of the images used for training. By default this is set to the
-    FreeSurfer orientation ('FS'), as it was the configuration in which SynthSeg was trained. However, the new models
-    are now trained on data aligned with identity vox2ras matrix, so you need to change aff_ref to 'identity'.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
@@ -100,37 +93,31 @@ def predict(path_images,
     images_to_segment, path_segmentations, path_posteriors, path_volumes, compute = \
         prepare_output_files(path_images, path_segmentations, path_posteriors, path_volumes, recompute)
 
-    # get labels and classes lists
+    # build correspondance table between contralateral structures
     label_list, n_neutral = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
     n_labels = len(label_list)
     n_side_labels = int((n_labels - n_neutral) / 2)
+    lr_corresp = np.stack([label_list[n_neutral:n_neutral + n_side_labels], label_list[n_neutral + n_side_labels:]])
+
+    # get final version of label list
+    label_list, _ = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=False)
+    label_list, indices = np.unique(label_list, return_index=True)
 
     # prepare topology classes
     if topology_classes is not None:
-        topology_classes = utils.load_array_if_path(topology_classes, load_as_numpy=True)
+        topology_classes = utils.load_array_if_path(topology_classes, load_as_numpy=True)[indices]
 
-    # sort label list and propagate it to topological classes
-    if sort_label_list:
-        lr_corresp = np.stack([label_list[n_neutral:n_neutral + n_side_labels], label_list[n_neutral + n_side_labels:]])
-
-        label_list, _ = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=False)
-        label_list, indices = np.unique(label_list, return_index=True)
-
-        if topology_classes is not None:
-            topology_classes = topology_classes[indices]
-
-        lr_indices = np.zeros_like(lr_corresp)
-        for i in range(lr_corresp.shape[0]):
-            for j, lab in enumerate(lr_corresp[i]):
-                lr_indices[i, j] = np.where(label_list == lab)[0]
-
-    else:
-        lr_indices = np.stack([range(n_neutral, n_neutral + n_side_labels), range(n_neutral + n_side_labels, n_labels)])
+    # get correspondance for labels with different right/left values
+    lr_indices = np.zeros_like(lr_corresp)
+    for i in range(lr_corresp.shape[0]):
+        for j, lab in enumerate(lr_corresp[i]):
+            lr_indices[i, j] = np.where(label_list == lab)[0]
 
     # prepare volume file if needed
     if path_volumes is not None:
         if segmentation_names_list is not None:
-            csv_header = [[''] + utils.reformat_to_list(segmentation_names_list, load_as_numpy=True)]
+            segmentation_names_list = utils.load_array_if_path(segmentation_names_list)[indices]
+            csv_header = [[''] + segmentation_names_list[1:].tolist()]
             csv_header += [[''] + [str(lab) for lab in label_list[1:]]]
         else:
             csv_header = [['subjects'] + [str(lab) for lab in label_list[1:]]]
@@ -152,7 +139,7 @@ def predict(path_images,
 
             # preprocess image and get information
             image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, crop_idx, im_flipped = \
-                preprocess_image(path_image, n_levels, cropping, padding, aff_ref=aff_ref, flip=flip)
+                preprocess_image(path_image, n_levels, cropping, padding, flip=flip)
             model_input_shape = list(image.shape[1:])
 
             # prepare net for first image or if input's size has changed
@@ -164,7 +151,7 @@ def predict(path_images,
                 previous_model_input_shape = model_input_shape
 
                 # build network
-                net = build_model(path_model, model_input_shape, resample, im_res, n_levels, len(label_list), conv_size,
+                net = build_model(path_model, model_input_shape, n_levels, len(label_list), conv_size,
                                   nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
 
             if verbose:
@@ -176,7 +163,7 @@ def predict(path_images,
 
             # get posteriors and segmentation
             seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, label_list, lr_indices,
-                                          keep_biggest_component, aff, aff_ref=aff_ref,
+                                          keep_biggest_component, aff,
                                           topology_classes=topology_classes, post_patch_flip=prediction_patch_flip)
 
             # write results to disk
@@ -319,7 +306,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
     return images_to_segment, out_seg, out_posteriors, out_volumes, recompute_list
 
 
-def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='FS', flip=False):
+def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, flip=False):
 
     # read image and corresponding info
     im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
@@ -349,12 +336,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
     # align image to training axes and directions
     if n_dims > 2:
-        if aff_ref == 'FS':
-            aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
-            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False, n_dims=n_dims)
-        elif aff_ref == 'identity':
-            aff_ref = np.eye(4)
-            im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=False, n_dims=n_dims)
+        im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), return_aff=False, n_dims=n_dims)
 
     # normalise image
     if n_channels == 1:
@@ -366,7 +348,7 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
     # flip image along right/left axis
     if flip & (n_dims > 2):
-        im_flipped = edit_volumes.flip_volume(im, direction='rl', aff=aff_ref)
+        im_flipped = edit_volumes.flip_volume(im, direction='rl', aff=np.eye(4))
         im_flipped = utils.add_axis(im_flipped) if n_channels > 1 else utils.add_axis(im_flipped, axis=[0, -1])
     else:
         im_flipped = None
@@ -377,25 +359,10 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
     return im, aff, header, im_res, n_channels, n_dims, shape, pad_shape, crop_idx, im_flipped
 
 
-def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv_size, nb_conv_per_level,
-                unet_feat_count, feat_multiplier, activation, sigma_smoothing):
+def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per_level, unet_feat_count,
+                feat_multiplier, activation, sigma_smoothing):
 
     assert os.path.isfile(model_file), "The provided model path does not exist."
-
-    # initialisation
-    net = None
-    n_dims, n_channels = utils.get_dims(input_shape, max_channels=10)
-    resample = utils.reformat_to_list(resample, length=n_dims)
-
-    # build preprocessing model
-    if resample is not None:
-        im_input = KL.Input(shape=input_shape, name='pre_resample_input')
-        resample_factor = [im_res[i] / float(resample[i]) for i in range(n_dims)]
-        resample_shape = [utils.find_closest_number_divisible_by_m(resample_factor[i] * input_shape[i],
-                          2 ** n_levels, smaller_ans=False) for i in range(n_dims)]
-        resampled = nrn_layers.Resize(size=resample_shape, name='pre_resample')(im_input)
-        net = Model(inputs=im_input, outputs=resampled)
-        input_shape = resample_shape + [n_channels]
 
     # build UNet
     net = nrn_models.unet(nb_features=unet_feat_count,
@@ -406,45 +373,26 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
                           feat_mult=feat_multiplier,
                           activation=activation,
                           nb_conv_per_level=nb_conv_per_level,
-                          batch_norm=-1,
-                          input_model=net)
+                          batch_norm=-1)
     net.load_weights(model_file, by_name=True)
 
-    # build postprocessing model
-    if (resample is not None) | (sigma_smoothing != 0):
-
-        # get UNet output
-        input_tensor = net.inputs
+    # smooth posteriors if specified
+    if sigma_smoothing > 0:
         last_tensor = net.output
-
-        # resample to initial resolution
-        if resample is not None:
-            last_tensor = nrn_layers.Resize(size=input_shape[:-1], name='post_resample')(last_tensor)
-
-        # smooth posteriors
-        if sigma_smoothing != 0:
-            last_tensor._keras_shape = tuple(last_tensor.get_shape().as_list())
-            last_tensor = layers.GaussianBlur(sigma=sigma_smoothing)(last_tensor)
-
-        # build model
-        net = Model(inputs=input_tensor, outputs=last_tensor)
+        last_tensor._keras_shape = tuple(last_tensor.get_shape().as_list())
+        last_tensor = layers.GaussianBlur(sigma=sigma_smoothing)(last_tensor)
+        net = Model(inputs=net.inputs, outputs=last_tensor)
 
     return net
 
 
-def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_right_indices, keep_biggest_component,
-                aff, aff_ref='FS', topology_classes=True, post_patch_flip=None):
-
-    # reformat aff_ref
-    if aff_ref == 'FS':
-        aff_ref = np.array([[-1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 0.], [0., 0., 0., 1.]])
-    elif aff_ref == 'identity':
-        aff_ref = np.eye(4)
+def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_right_indices, keep_biggest_component, aff,
+                topology_classes=True, post_patch_flip=None):
 
     # get posteriors and segmentation
     post_patch = np.squeeze(post_patch)
     if post_patch_flip is not None:
-        post_patch_flip = edit_volumes.flip_volume(np.squeeze(post_patch_flip), direction='rl', aff=aff_ref)
+        post_patch_flip = edit_volumes.flip_volume(np.squeeze(post_patch_flip), direction='rl', aff=np.eye(4))
         post_patch_flip[..., left_right_indices.flatten()] = post_patch_flip[..., left_right_indices[::-1].flatten()]
         post_patch = 0.5 * (post_patch + post_patch_flip)
 
@@ -474,8 +422,8 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_righ
 
     # align prediction back to first orientation
     if n_dims > 2:
-        seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff_ref, aff_ref=aff, return_aff=False)
-        post_patch = edit_volumes.align_volume_to_ref(post_patch, aff_ref, aff_ref=aff, n_dims=n_dims)
+        seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff=np.eye(4), aff_ref=aff, return_aff=False)
+        post_patch = edit_volumes.align_volume_to_ref(post_patch, aff=np.eye(4), aff_ref=aff, n_dims=n_dims)
 
     # paste patches back to matrix of original image size
     if crop is not None:
