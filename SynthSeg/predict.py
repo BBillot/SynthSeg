@@ -282,7 +282,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
             if ('.nii.gz' not in out_seg) & ('.nii' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):
                 utils.mkdir(out_seg)
                 filename = os.path.basename(path_images).replace('.nii', '_synthseg.nii')
-                filename = filename.replace('mgz', '_synthseg.mgz')
+                filename = filename.replace('.mgz', '_synthseg.mgz')
                 filename = filename.replace('.npz', '_synthseg.npz')
                 out_seg = [os.path.join(out_seg, filename)]
             else:
@@ -297,7 +297,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
                     ('.npz' not in out_posteriors):
                 utils.mkdir(out_posteriors)
                 filename = os.path.basename(path_images).replace('.nii', '_posteriors.nii')
-                filename = filename.replace('mgz', '_posteriors.mgz')
+                filename = filename.replace('.mgz', '_posteriors.mgz')
                 filename = filename.replace('.npz', '_posteriors.npz')
                 out_posteriors = [os.path.join(out_posteriors, filename)]
             else:
@@ -358,11 +358,11 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, aff_ref='
 
     # normalise image
     if n_channels == 1:
-        im = edit_volumes.rescale_volume(im, new_min=0., new_max=1., min_percentile=0, max_percentile=100)
+        im = edit_volumes.rescale_volume(im, new_min=0., new_max=1., min_percentile=0.5, max_percentile=99.5)
     else:
         for i in range(im.shape[-1]):
             im[..., i] = edit_volumes.rescale_volume(im[..., i], new_min=0., new_max=1.,
-                                                     min_percentile=0, max_percentile=100)
+                                                     min_percentile=0.5, max_percentile=99.5)
 
     # flip image along right/left axis
     if flip & (n_dims > 2):
@@ -403,21 +403,9 @@ def build_model(model_file, input_shape, resample, im_res, n_levels, n_lab, conv
                           nb_levels=n_levels,
                           conv_size=conv_size,
                           nb_labels=n_lab,
-                          name='unet',
-                          prefix=None,
                           feat_mult=feat_multiplier,
-                          pool_size=2,
-                          use_logp=True,
-                          padding='same',
-                          dilation_rate_mult=1,
                           activation=activation,
-                          use_residuals=False,
-                          final_pred_activation='softmax',
                           nb_conv_per_level=nb_conv_per_level,
-                          add_prior_layer=False,
-                          add_prior_layer_reg=0,
-                          layer_nb_feats=None,
-                          conv_dropout=0,
                           batch_norm=-1,
                           input_model=net)
     net.load_weights(model_file, by_name=True)
@@ -509,5 +497,6 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_righ
         bounds = [int((p-i)/2) for (p, i) in zip(pad_shape, im_shape)]
         bounds += [p + i for (p, i) in zip(bounds, im_shape)]
         seg = edit_volumes.crop_volume_with_idx(seg, bounds)
+        posteriors = edit_volumes.crop_volume_with_idx(posteriors, bounds, n_dims=n_dims)
 
     return seg, posteriors
