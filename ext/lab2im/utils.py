@@ -31,7 +31,6 @@
 6- miscellaneous
     -infer
     -print_loop_info
-    -rearrange_label_list
     -build_training_generator
     -find_closest_number_divisible_by_m
     -build_binary_structure

@@ -128,9 +128,9 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percent
     :param volume: a numpy array
     :param new_min: (optional) minimum value for the rescaled image.
     :param new_max: (optional) maximum value for the rescaled image.
-    :param min_percentile: (optional) percentile for estimating robust minimum of volume (integer in [0,...100]),
+    :param min_percentile: (optional) percentile for estimating robust minimum of volume (float in [0,...100]),
     where 0 = np.min
-    :param max_percentile: (optional) percentile for estimating robust maximum of volume (integer in [0,...100]),
+    :param max_percentile: (optional) percentile for estimating robust maximum of volume (float in [0,...100]),
     where 100 = np.max
     :param use_positive_only: (optional) whether to use only positive values when estimating the min and max percentile
     :return: rescaled volume
@@ -270,7 +270,7 @@ def crop_volume_around_region(volume, mask=None, threshold=0.1, masking_labels=N
         return new_vol, cropping
 
 
-def crop_volume_with_idx(volume, crop_idx, aff=None):
+def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None):
     """Crop a volume with given indices.
     :param volume: a 2d or 3d numpy array
     :param crop_idx: croppping indices, in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...].
@@ -281,7 +281,7 @@ def crop_volume_with_idx(volume, crop_idx, aff=None):
 
     # get info
     new_volume = volume.copy()
-    n_dims = int(np.array(crop_idx).shape[0] / 2)
+    n_dims = int(np.array(crop_idx).shape[0] / 2) if n_dims is None else n_dims
 
     # crop image
     if n_dims == 2:
