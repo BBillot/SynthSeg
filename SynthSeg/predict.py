@@ -20,10 +20,10 @@ def predict(path_images,
             path_segmentations=None,
             path_posteriors=None,
             path_volumes=None,
+            path_resampled=None,
             segmentation_names_list=None,
             padding=None,
             cropping=None,
-            resample=None,
             topology_classes=None,
             sigma_smoothing=0.5,
             keep_biggest_component=True,
@@ -51,14 +51,18 @@ def predict(path_images,
     as the segmentation label list used for training the network.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array.
     :param path_segmentations: (optional) path where segmentations will be writen.
-    Should be a dir, if path_images is a dir, and afile if path_images is a file.
+    Should be a dir, if path_images is a dir, and a file if path_images is a file.
     Should not be None, if path_posteriors is None.
     :param path_posteriors: (optional) path where posteriors will be writen.
-    Should be a dir, if path_images is a dir, and afile if path_images is a file.
+    Should be a dir, if path_images is a dir, and a file if path_images is a file.
     Should not be None, if path_segmentations is None.
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
+    :param path_resampled: (optional) path where images resampled to 1mm isotropic will be writen.
+    We emphasise that images are resampled as soon as the resolution in one of the axes is not in the range [0.9; 1.1].
+    Should be a dir, if path_images is a dir, and a file if path_images is a file. Default is None, where resampled
+    images are not resampled.
     :param segmentation_names_list: (optional) List of names correponding to the names of the segmentation labels.
     Only used when path_volumes is provided. Must be of the same size as segmentation_label_list. Can be given as a
     list, a numpy array of strings, or the path to such a numpy array. Default is None.
@@ -66,8 +70,6 @@ def predict(path_images,
     Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) crop the images to the specified shape before predicting the segmentation maps.
     If padding and cropping are specified, images are padded before being cropped.
-    Can be an int, a sequence or a 1d numpy array.
-    :param resample: (optional) resample the images to the specified resolution before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
@@ -90,8 +92,8 @@ def predict(path_images,
     """
 
     # prepare output filepaths
-    images_to_segment, path_segmentations, path_posteriors, path_volumes, compute = \
-        prepare_output_files(path_images, path_segmentations, path_posteriors, path_volumes, recompute)
+    images_to_segment, path_segmentations, path_posteriors, path_volumes, path_resampled, compute = \
+        prepare_output_files(path_images, path_segmentations, path_posteriors, path_volumes, path_resampled, recompute)
 
     # build correspondance table between contralateral structures
     label_list, n_neutral = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
@@ -130,16 +132,15 @@ def predict(path_images,
     net = None
     previous_model_input_shape = None
     loop_info = utils.LoopInfo(len(images_to_segment), 10, 'predicting', True)
-    for idx, (path_image, path_segmentation, path_posterior, tmp_compute) in enumerate(zip(images_to_segment,
-                                                                                           path_segmentations,
-                                                                                           path_posteriors,
-                                                                                           compute)):
+    for idx, (path_image, path_segmentation, path_posterior, path_resample, tmp_compute) in \
+            enumerate(zip(images_to_segment, path_segmentations, path_posteriors, path_resampled, compute)):
+
         # compute segmentation only if needed
         if tmp_compute:
 
             # preprocess image and get information
             image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, crop_idx, im_flipped = \
-                preprocess_image(path_image, n_levels, cropping, padding, flip=flip)
+                preprocess_image(path_image, n_levels, cropping, padding, flip=flip, path_resample=path_resample)
             model_input_shape = list(image.shape[1:])
 
             # prepare net for first image or if input's size has changed
@@ -224,7 +225,7 @@ def predict(path_images,
                             verbose=verbose)
 
 
-def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, recompute):
+def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, out_resampled, recompute):
 
     assert out_seg or out_posteriors, "output segmentation (or posteriors) is required"
 
@@ -234,6 +235,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
     out_seg = os.path.abspath(out_seg) if (out_seg is not None) else out_seg
     out_posteriors = os.path.abspath(out_posteriors) if (out_posteriors is not None) else out_posteriors
     out_volumes = os.path.abspath(out_volumes) if (out_volumes is not None) else out_volumes
+    out_resampled = os.path.abspath(out_resampled) if (out_resampled is not None) else out_resampled
 
     # prepare input/output volumes
     if ('.nii.gz' not in basename) & ('.nii' not in basename) & ('.mgz' not in basename) & ('.npz' not in basename):
@@ -260,6 +262,16 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
         else:
             out_posteriors = [out_posteriors] * len(images_to_segment)
             recompute_post = [out_volumes is not None] * len(images_to_segment)
+        if out_resampled is not None:
+            utils.mkdir(out_resampled)
+            out_resampled = [os.path.join(out_resampled, os.path.basename(image)).replace('.nii',
+                             '_resampled.nii') for image in images_to_segment]
+            out_resampled = [resampled_path.replace('.mgz', '_resampled.mgz') for resampled_path in out_resampled]
+            out_resampled = [resampled_path.replace('.npz', '_resampled.npz') for resampled_path in out_resampled]
+            recompute_resampled = [not os.path.isfile(path_post) for path_post in out_resampled]
+        else:
+            out_resampled = [out_resampled] * len(images_to_segment)
+            recompute_resampled = [out_volumes is not None] * len(images_to_segment)
 
     else:
         assert os.path.isfile(path_images), "files does not exist: %s " \
@@ -294,8 +306,24 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
         else:
             out_posteriors = [out_posteriors]
             recompute_post = [out_volumes is not None]
+        if out_resampled is not None:
+            if ('.nii.gz' not in out_resampled) & ('.nii' not in out_resampled) & ('.mgz' not in out_resampled) & \
+                    ('.npz' not in out_resampled):
+                utils.mkdir(out_resampled)
+                filename = os.path.basename(path_images).replace('.nii', '_resampled.nii')
+                filename = filename.replace('.mgz', '_resampled.mgz')
+                filename = filename.replace('.npz', '_resampled.npz')
+                out_resampled = [os.path.join(out_resampled, filename)]
+            else:
+                utils.mkdir(os.path.dirname(out_resampled))
+                out_resampled = [out_resampled]
+            recompute_resampled = [not os.path.isfile(out_resampled[0])]
+        else:
+            out_resampled = [out_resampled]
+            recompute_resampled = [out_volumes is not None]
 
-    recompute_list = [recompute | re_seg | re_post for (re_seg, re_post) in zip(recompute_seg, recompute_post)]
+    recompute_list = [recompute | re_seg | re_post | re_res
+                      for (re_seg, re_post, re_res) in zip(recompute_seg, recompute_post, recompute_resampled)]
 
     if out_volumes is not None:
         if out_volumes[-4:] != '.csv':
@@ -303,14 +331,23 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, reco
             out_volumes += '.csv'
             utils.mkdir(os.path.dirname(out_volumes))
 
-    return images_to_segment, out_seg, out_posteriors, out_volumes, recompute_list
+    return images_to_segment, out_seg, out_posteriors, out_volumes, out_resampled, recompute_list
 
 
-def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, flip=False):
+def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, flip=False, path_resample=None):
 
     # read image and corresponding info
     im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
 
+    # resample image if necessary
+    if np.any((np.array(im_res) > 1.05) | (np.array(im_res) < 0.95)):
+        im_res = np.array([1.]*3)
+        im, aff = edit_volumes.resample_volume(im, aff, im_res)
+        shape = list(im.shape)
+        if path_resample is not None:
+            utils.save_volume(im, aff, header, path_resample)
+
+    # pad image if specified
     if padding:
         im = edit_volumes.pad_volume(im, padding_shape=padding)
         pad_shape = im.shape[:n_dims]

@@ -18,6 +18,8 @@ parser.add_argument("--names_list", type=str, dest="segmentation_names_list", de
 parser.add_argument("--out_seg", type=str, dest="path_segmentations", default=None, help="segmentations folder/path")
 parser.add_argument("--out_post", type=str, dest="path_posteriors", default=None, help="posteriors folder/path")
 parser.add_argument("--out_vol", type=str, dest="path_volumes", default=None, help="path volume file")
+parser.add_argument("--out_resampled", type=str, dest="path_resampled", default=None,
+                    help="path/folder of the resampled images (1mm isotropic resolution)")
 
 # Processing parameters
 parser.add_argument("--padding", type=int, dest="padding", default=None,

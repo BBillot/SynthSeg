@@ -29,19 +29,19 @@ class BrainGenerator:
                  use_specific_stats_for_channel=False,
                  mix_prior_and_random=False,
                  flipping=True,
-                 scaling_bounds=0.15,
+                 scaling_bounds=.15,
                  rotation_bounds=15,
                  shearing_bounds=.012,
                  translation_bounds=False,
-                 nonlin_std=4.,
-                 nonlin_shape_factor=0.0625,
-                 randomise_res=False,
+                 nonlin_std=3.,
+                 nonlin_shape_factor=.04,
+                 randomise_res=True,
                  data_res=None,
                  thickness=None,
                  downsample=False,
-                 blur_range=1.15,
-                 bias_field_std=0.5,
-                 bias_shape_factor=0.025):
+                 blur_range=1.03,
+                 bias_field_std=.5,
+                 bias_shape_factor=.025):
         """
         This class is wrapper around the labels_to_image_model model. It contains the GPU model that generates images
         from labels maps, and a python generator that suplies the input data for this model.
@@ -296,6 +296,6 @@ class BrainGenerator:
                                                                 aff_ref=self.aff, n_dims=self.n_dims))
             list_labels.append(edit_volumes.align_volume_to_ref(labels[i], np.eye(4),
                                                                 aff_ref=self.aff, n_dims=self.n_dims))
-        image = np.stack(list_images, axis=0)
-        labels = np.stack(list_labels, axis=0)
+        image = np.squeeze(np.stack(list_images, axis=0))
+        labels = np.squeeze(np.stack(list_labels, axis=0))
         return image, labels

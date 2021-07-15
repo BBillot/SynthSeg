@@ -59,6 +59,7 @@ import keras.layers as KL
 from keras.models import Model
 from scipy.ndimage.filters import convolve
 from scipy.ndimage import label as scipy_label
+from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage.morphology import distance_transform_edt, binary_fill_holes
 from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
 
@@ -363,6 +364,54 @@ def flip_volume(volume, axis=None, direction=None, aff=None):
 
     # flip volume
     return np.flip(new_volume, axis=axis)
+
+
+def resample_volume(volume, aff, new_vox_size):
+    """This function resizes the voxels of a volume to a new provided size, while adjusting the header to keep the RAS
+    :param volume: a numpy array
+    :param aff: affine matrix of the volume
+    :param new_vox_size: new voxel size (3 - element numpy vector) in mm
+    :return: new volume and affine matrix
+    """
+
+    pixdim = np.sqrt(np.sum(aff * aff, axis=0))[:-1]
+    new_vox_size = np.array(new_vox_size)
+    factor = pixdim / new_vox_size
+    sigmas = 0.25 / factor
+    sigmas[factor > 1] = 0  # don't blur if upsampling
+
+    volume_filt = gaussian_filter(volume, sigmas)
+
+    # volume2 = zoom(volume_filt, factor, order=1, mode='reflect', prefilter=False)
+    x = np.arange(0, volume_filt.shape[0])
+    y = np.arange(0, volume_filt.shape[1])
+    z = np.arange(0, volume_filt.shape[2])
+
+    my_interpolating_function = RegularGridInterpolator((x, y, z), volume_filt)
+
+    start = - (factor - 1) / (2 * factor)
+    step = 1.0 / factor
+    stop = start + step * np.ceil(volume_filt.shape * factor)
+
+    xi = np.arange(start=start[0], stop=stop[0], step=step[0])
+    yi = np.arange(start=start[1], stop=stop[1], step=step[1])
+    zi = np.arange(start=start[2], stop=stop[2], step=step[2])
+    xi[xi < 0] = 0
+    yi[yi < 0] = 0
+    zi[zi < 0] = 0
+    xi[xi > (volume_filt.shape[0] - 1)] = volume_filt.shape[0] - 1
+    yi[yi > (volume_filt.shape[1] - 1)] = volume_filt.shape[1] - 1
+    zi[zi > (volume_filt.shape[2] - 1)] = volume_filt.shape[2] - 1
+
+    xig, yig, zig = np.meshgrid(xi, yi, zi, indexing='ij', sparse=True)
+    volume2 = my_interpolating_function((xig, yig, zig))
+
+    aff2 = aff.copy()
+    for c in range(3):
+        aff2[:-1, c] = aff2[:-1, c] / factor[c]
+    aff2[:-1, -1] = aff2[:-1, -1] - np.matmul(aff2[:-1, :-1], 0.5 * (factor - 1))
+
+    return volume2, aff2
 
 
 def get_ras_axes(aff, n_dims=3):
