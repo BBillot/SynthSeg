@@ -12,8 +12,7 @@ out-of-the-box without retraining or fine-tuning, and can run on the GPU (6s per
 \
 \
 ![Generation examples](data/README_figures/segmentations.png)
-\
-\
+
 ----------------
 
 ### Easily segment your data with one command
