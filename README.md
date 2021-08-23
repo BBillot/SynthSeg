@@ -1,10 +1,11 @@
 # SynthSeg
 
 In this repository, we present SynthSeg, the first convolutional neural network to readily segment brain MRI scans of
-any contrast and resolution. Additionally, the proposed model is robust to:
+any contrast and resolution, with an output that is 1 mm isotropic, no matter what the resolution of the input is. 
+Additionally, the proposed model is robust to:
 - a wide array of subject populations: from young and healthy to ageing and diseased subjects with prominent atrophy,
 - white matter lesions,
-- scans with or without preprocessing (bias field corruption, skull stripping, intensity normalisation, registration to
+- and scans with or without preprocessing (bias field corruption, skull stripping, intensity normalisation, registration to
 template).
 
 As a result, SynthSeg only relies on a single model, which we distribute here. We emphasise that this model can be used
@@ -30,22 +31,27 @@ This must be a folder if `<image>` designates a folder.
 This must be a folder if `<image>` designates a folder.
 - `<vol>` (optional) is the path to an output csv file where the volumes of every segmented structures
 will be saved for all scans (i.e., one csv file for all subjects; e.g. /path/to/volumes.csv)
-- `<resample>` (optional) is the path where the images resampled at 1mm isotropic resolution will be saved. \
-This must be a folder if `<image>` designates a folder.
+- `<resample>` (optional) SynthSeg segmentations are always given at 1mm isotropic resolution. Therefore, 
+images are internally resampled to this resolution (except if they aleady are at 1mm resolution). 
+Use this optional flag to save the resampled images: it must be the path to a single image, or a folder
+if `<image>` designates a folder.
 
 \
 Additional optional flags are also available:
 - `--cpu`: to enforce the code to run on the CPU, even if a GPU is available.
 - `--threads`: to indicate the number of cores to be used if running on a CPU (example: `--threads 3` to run on 3 cores).
- This value defaults to 1, but we recommand increasing it for faster analysis.
+ This value defaults to 1, but we recommend increasing it for faster analysis.
 - `--crop`: to crop the input images to a given shape before segmentation (example: `--crop 160` to run on 
 160<sup>3</sup> patches). Images are cropped around their centre, and their segmentations are given in native space 
-(i.e., at the original size). Use this flag for faster analysis or to make your data fit in the GPU.
+(i.e., at the original size). Use this flag for faster analysis or if you have a GPU with insufficient memory
+to process the whole image.
 
 
-**IMPORTANT:** In order to produce segmentations at high resolution, we highlight that SynthSeg upsamples all the input
-images to 1mm istropic resolution. This is performed internally such that it avoids the dependence on any external 
-dependecies. Note that you have the option to save the resampled images with the `--out_resample` flag.
+**IMPORTANT:** Because SynthSeg may produce segmentations at higher resolution than the images (i.e., at 
+1mm<sup>3</sup>), some viewers will not display them correctly when overlaying the segmentations on the
+original images. If that’s the case, you can use the `--resample` flag to obtain a resampled image that
+lives in the same space as the segmentation, such that any viewer can be used to visualize them together.
+We highlight that the resampling is performed internally to avoid the dependence on any external tool.
 
 ----------------
 
@@ -95,7 +101,7 @@ Finally we show additional examples of the synthesised images along with an over
 \
 \
 If you are interested to learn more about SynthSeg, you can read the associated publication (see below), and watch this
-presentation, which was given at MIDL 2020 [] for a related article on a preliminary version of SynthSeg (robustness to
+presentation, which was given at MIDL 2020 for a related article on a preliminary version of SynthSeg (robustness to
 MR contrast but not resolution).
 \
 \
@@ -169,6 +175,10 @@ terminal.
 ### Citation/Contact
 
 If you use this code, please cite the following papers:
+
+**SynthSeg: Domain Randomisation for Segmentation of Brain MRI Scans of any Contrast and Resolution** \
+Benjamin Billot, Douglas N. Greve, Oula Puonti, Axel Thielscher, Koen Van Leemput, Bruce Fischl, Adrian V. Dalca, Juan Eugenio Iglesias \
+[[arxiv](https://arxiv.org/abs/2107.09559)]
 
 **A Learning Strategy for Contrast-agnostic MRI Segmentation** \
 Benjamin Billot, Douglas N. Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca* \
