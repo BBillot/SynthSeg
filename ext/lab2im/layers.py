@@ -124,8 +124,7 @@ class RandomSpatialDeformation(Layer):
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
                                   self.enable_90_rotations
         self.apply_elastic_trans = self.nonlin_std > 0
-        assert (self.apply_affine_trans is not None) | self.apply_elastic_trans, \
-            'affine_trans or elastic_trans should be provided'
+        assert self.apply_affine_trans | self.apply_elastic_trans, 'affine_trans or elastic_trans should be provided'
 
         if self.apply_elastic_trans:
             self.small_shape = utils.get_resample_shape(self.inshape[:self.n_dims],
