@@ -1126,7 +1126,7 @@ class IntensityAugmentation(Layer):
             m = l2i_et.expand_dims(m, axis=[1] * self.expand_minmax_dim)
             M = l2i_et.expand_dims(M, axis=[1] * self.expand_minmax_dim)
             inputs = tf.clip_by_value(inputs, m, M)
-            inputs = (inputs - m) / (M - m)
+            inputs = (inputs - m) / (M - m + K.epsilon())
 
         # apply voxel-wise exponentiation
         if self.gamma_std > 0:
