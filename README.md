@@ -53,6 +53,9 @@ original images. If that’s the case, you can use the `--resample` flag to obta
 lives in the same space as the segmentation, such that any viewer can be used to visualize them together.
 We highlight that the resampling is performed internally to avoid the dependence on any external tool.
 
+The complete list of segmented structures is available in [labels table.txt](data/labels%20table.txt) along with their
+corresponding values. This table also details the order in which the posteriors maps are sorted.
+
 ----------------
 
 ### Requirements
