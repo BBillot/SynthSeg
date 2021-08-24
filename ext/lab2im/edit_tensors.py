@@ -2,7 +2,7 @@
     - blurring_sigma_for_downsampling
     - gaussian_kernel
     - resample_tensor
-    - convert_labels
+    - expand_dims
 """
 
 # python imports
@@ -247,6 +247,7 @@ def resample_tensor(tensor,
 
 
 def expand_dims(tensor, axis=0):
+    """Expand the dimensions of the input tensor along the provided axes (given as an integer or a list)."""
     axis = utils.reformat_to_list(axis)
     for ax in axis:
         tensor = tf.expand_dims(tensor, axis=ax)

@@ -18,6 +18,7 @@
     -strip_extension
     -strip_suffix
     -mkdir
+    -mkcmd
 4- shape-related functions
     -get_dims
     -get_resample_shape
@@ -30,7 +31,8 @@
     -create_shearing_transform
 6- miscellaneous
     -infer
-    -print_loop_info
+    -LoopInfo
+    -get_mapping_lut
     -build_training_generator
     -find_closest_number_divisible_by_m
     -build_binary_structure
@@ -112,6 +114,7 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
     :param n_dims: (optional) number of dimensions, to avoid confusion in multi-channel case. Default is None, where
     n_dims is automatically inferred.
     """
+
     mkdir(os.path.dirname(path))
     if dtype is not None:
         volume = volume.astype(dtype=dtype)
@@ -506,6 +509,8 @@ def mkdir(path_dir):
 
 
 def mkcmd(*args):
+    """Creates terminal command with provided inputs.
+    Example: mkcmd('mv', 'source', 'dest') will give 'mv source dest'."""
     return ' '.join([str(arg) for arg in args])
 
 

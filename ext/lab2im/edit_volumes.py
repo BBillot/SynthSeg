@@ -8,7 +8,8 @@ These functions are sorted in five categories:
         -crop_volume_with_idx
         -pad_volume
         -flip_volume
-        -get_ras_axes_and_signs
+        -resample_volume
+        -get_ras_axes
         -align_volume_to_ref
         -blur_volume
 2- label map editting: can be applied to label maps only. It contains:
@@ -16,6 +17,7 @@ These functions are sorted in five categories:
         -mask_label_map
         -smooth_label_map
         -erode_label_map
+        -get_largest_connected_component
         -compute_hard_volumes
         -compute_distance_map
 3- editting all volumes in a folder: functions are more or less the same as 1, but they now apply to all the volumes
@@ -33,6 +35,8 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -convert_images_in_dir_to_nifty
         -mri_convert_images_in_dir
         -samseg_images_in_dir
+        -niftyreg_images_in_dir
+        -upsample_anisotropic_images
         -simulate_upsampled_anisotropic_images
         -check_images_in_dir
 4- label maps in dir: same as 3 but for label map-specific functions. It contains:
@@ -276,7 +280,10 @@ def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None):
     :param volume: a 2d or 3d numpy array
     :param crop_idx: croppping indices, in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...].
     Can be a list or a 1d numpy array.
-    :param aff: (optional) if specified, this function returns an updated affine matrix of the volume after cropping.
+    :param aff: (optional) if aff is specified, this function returns an updated affine matrix of the volume after
+    cropping.
+    :param n_dims: (optional) number of dimensions (excluding channels) of the volume. If not provided, n_dims will be
+    inferred from the input volume.
     :return: the cropped volume, and the updated affine matrix if aff is not None.
     """
 
@@ -432,7 +439,8 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     :param aff: affine matrix of the floating volume
     :param aff_ref: (optional) affine matrix of the target orientation. Default is identity matrix.
     :param return_aff: (optional) whether to return the affine matrix of the aligned volume
-    :param n_dims: (optional) number of dimensions (excluding channels) of the volume
+    :param n_dims: (optional) number of dimensions (excluding channels) of the volume. If not provided, n_dims will be
+    inferred from the input volume.
     :return: aligned volume, with corresponding affine matrix if return_aff is True.
     """
 
@@ -655,6 +663,7 @@ def smooth_label_map(labels, kernel, labels_list=None, print_progress=0):
     """This function smooth an input label map by replacing each voxel by the value of its most numerous neigbour.
     :param labels: input label map
     :param kernel: kernel when counting neighbours. Must contain only zeros or ones.
+    :param labels_list: list of label values to smooth. Defaults is None, where all labels are smoothed.
     :param print_progress: (optional) If not 0, interval at which to print the number of processed labels.
     :return: smoothed label map
     """
@@ -765,6 +774,10 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
 
 
 def get_largest_connected_component(mask, structure=None):
+    """Function to get the largest connected component for a given input.
+    :param mask: a 2d or 3d label map of boolean type.
+    :param structure: numpy array defining the connectivity.
+    """
     components, n_components = scipy_label(mask, structure)
     return components == np.argmax(np.bincount(components.flat)[1:]) + 1 if n_components > 0 else mask.copy()
 
@@ -806,7 +819,9 @@ def compute_distance_map(labels, masking_labels=None, crop_margin=None):
     """Compute distance map for a given list of label values in a label map.
     :param labels: a label map
     :param masking_labels: (optional) list of label values to mask the label map with. The distances will be computed
-    for these labels only. default is None, where all positive values are considered.
+    for these labels only. Default is None, where all positive values are considered.
+    :param crop_margin: (optional) margin with which to crop the input label maps around the the labels for which we
+    want to compute the distance maps.
     :return: a distance map with positive values inside the considered regions, and negative values outside."""
 
     n_dims, _ = utils.get_dims(labels.shape)
@@ -1399,28 +1414,37 @@ def samseg_images_in_dir(image_dir,
                 shutil.rmtree(path_im_result_dir)
 
 
-def nifty_reg_images_in_dir(image_dir,
-                            reference_dir,
-                            input_transformation_dir=None,
-                            result_dir=None,
-                            result_transformation_dir=None,
-                            nifty_reg_function='reg_resample',
-                            interpolation=None,
-                            same_reference=False,
-                            same_floating=False,
-                            same_transformation=False,
-                            path_nifty_reg='/home/benjamin/Softwares/niftyreg-gpu/build/reg-apps',
-                            recompute=True):
-    """This function launches mri_convert on all images contained in image_dir, and writes the results in result_dir.
-    The interpolation type can be specified (i.e. 'nearest'), as well as a folder containing references for resampling.
-    reference_dir can be the path of a single *image* if same_reference=True.
-    :param image_dir: path of directory with images to convert
-    :param reference_dir: path of directory with reference images. References are matched to images by sorting order.
-    If same_reference is false, references and images are matched by sorting order. This can also be the path to a
-    single image that will be used as reference for all images im image_dir (set same_reference to True in that case).
-    :param result_dir: path of directory where converted images will be writen
-    :param interpolation: (optional) interpolation type, can be 'inter' (default), 'cubic', 'nearest', 'trilinear'
-    :param same_reference: (optional) whether to use a single image as reference for all images to interpolate.
+def niftyreg_images_in_dir(image_dir,
+                           reference_dir,
+                           nifty_reg_function='reg_resample',
+                           input_transformation_dir=None,
+                           result_dir=None,
+                           result_transformation_dir=None,
+                           interpolation=None,
+                           same_floating=False,
+                           same_reference=False,
+                           same_transformation=False,
+                           path_nifty_reg='/home/benjamin/Softwares/niftyreg-gpu/build/reg-apps',
+                           recompute=True):
+    """This function launches one of niftyreg functions (reg_aladin, reg_f3d, reg_resample) on all images contained
+    in image_dir.
+    :param image_dir: path of directory with images to register. Can also be a single image, in that case set
+    same_floating to True.
+    :param reference_dir: path of directory with reference images. If same_reference is false, references and images are
+    matched by sorting order. This can also be the path to a single image that will be used as reference for all images
+    im image_dir (set same_reference to True in that case).
+    :param nifty_reg_function: (optional) name of the niftyreg function to use. Can be 'reg_aladin', 'reg_f3d', or
+    'reg_resample'. Default is 'reg_resample'.
+    :param input_transformation_dir: (optional) path of a directory containing all the input transformation (for
+    reg_resample, or reg_f3d). Can also be the path to a single transformation that will be used for all images
+    in image_dir (set same_transformation to True in that case).
+    :param result_dir: path of directory where output images will be writen.
+    :param result_transformation_dir: path of directory where resulting trnaformations will be writen (for
+    reg_aladin and reg_f3d).
+    :param interpolation: (optional) integer describing the order of the interpolation to apply (0 = nearest neighbours)
+    :param same_floating: (optional) set to true if only one image is used as floating image.
+    :param same_reference: (optional) whether to use a single image as reference for all input images.
+    :param same_transformation: (optional) whether to apply the same transformation to all floating images.
     :param path_nifty_reg: (optional) path of the folder containing nigty-reg funtions
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
@@ -1528,6 +1552,13 @@ def upsample_anisotropic_images(image_dir,
                                 resample_like_dir,
                                 path_freesurfer='/usr/local/freesurfer/',
                                 recompute=True):
+    """This function takes as input a set of LR images and resample them to HR with respect to reference images.
+    :param image_dir: path of directory with input images (only uni-modal images supported)
+    :param resample_image_result_dir: path of directory where resampled images will be writen
+    :param resample_like_dir: path of directory with reference images.
+    :param path_freesurfer: (optional) path freesurfer home, as this function uses mri_convert
+    :param recompute: (optional) whether to recompute result files even if they already exists
+    """
 
     # create result dir
     utils.mkdir(resample_image_result_dir)
@@ -1611,6 +1642,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
     :param gpu: (optional) whether to use a fast gpu model for blurring
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
+
     # create result dir
     utils.mkdir(resample_image_result_dir)
     utils.mkdir(downsample_image_result_dir)
@@ -1765,6 +1797,8 @@ def correct_labels_in_dir(labels_dir, results_dir, incorrect_labels, correct_lab
     each voxel to correct. In that case, the different correct values must be specified inside a list whithin
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
     :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
+    :param remove_zero: (optional) if use_nearest_label is True, set to True not to consider zero among the potential
+    candidates for the nearest neighbour.
     :param smooth: (optional) whether to smooth the corrected label maps
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
