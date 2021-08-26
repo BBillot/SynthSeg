@@ -26,6 +26,10 @@ parser.add_argument("--padding", type=int, dest="padding", default=None,
                     help="margin of the padding")
 parser.add_argument("--cropping", type=int, dest="cropping", default=None,
                     help="crop volume before processing. Segmentations will have the same size as input image.")
+parser.add_argument("--flip", action='store_true', dest="flip",
+                    help="to activate test-time augmentation (right/left flipping)")
+parser.add_argument("--topology_classes", type=str, dest="topology_classes", default=None,
+                    help="path list of classes, for topologically enhanced biggest connected component analysis")
 parser.add_argument("--smoothing", type=float, dest="sigma_smoothing", default=0,
                     help="var for gaussian blurring of the posteriors")
 parser.add_argument("--biggest_component", action='store_true', dest="keep_biggest_component",
@@ -43,9 +47,13 @@ parser.add_argument("--activation", type=str, dest="activation", default='elu', 
 
 # Evaluation parameters
 parser.add_argument("--gt", type=str, default=None, dest="gt_folder",
-                    help="folder containing ground truth segmentations, evaluation is performed only if this is "
-                         "specified. Evaluation results will be preferably stored in out_seg folder, or else in "
-                         "out_posteriors folder")
+                    help="folder containing ground truth segmentations, which triggers the evaluation.")
+parser.add_argument("--mask", type=str, default=None, dest="mask_folder",
+                    help="folder containing masks to mask out areas of the obtained segmentations.")
+parser.add_argument("--incorrect_labels", type=str, default=None, dest="list_incorrect_labels",
+                    help="path list labels to correct.")
+parser.add_argument("--correct_labels", type=str, default=None, dest="list_correct_labels",
+                    help="path list correct labels.")
 parser.add_argument("--eval_label_list", type=str, dest="evaluation_label_list", default=None,
                     help="labels to evaluate Dice scores on if gt is provided. Default is the same as label_list.")
 

@@ -57,7 +57,7 @@ def training(labels_dir,
              lr=1e-4,
              lr_decay=0,
              wl2_epochs=5,
-             dice_epochs=100,
+             dice_epochs=200,
              steps_per_epoch=1000,
              checkpoint=None):
     """
@@ -163,11 +163,11 @@ def training(labels_dir,
     from a uniform distribution with bounds [1/blur_range, blur_range]. If None, no randomisation. Default is 1.15.
 
     # bias field parameters
-    :param bias_field_std: (optional) If strictly positive, this triggers the corruption of synthesised images with a
-    bias field. This will only affect the input channels (i.e. not the synthetic regression target). The bias field is
-    obtained by sampling a first small tensor from a normal distribution, resizing it to full size, and rescaling it to
-    positive values by taking the voxel-wise exponential. bias_field_std designates the std dev of the normal
-    distribution from which we sample the first tensor. Set to 0 to completely deactivate biad field corruption.
+    :param bias_field_std: (optional) If strictly positive, this triggers the corruption of images with a bias field.
+    The bias field is obtained by sampling a first small tensor from a normal distribution, resizing it to
+    full size, and rescaling it to positive values by taking the voxel-wise exponential. bias_field_std designates the
+    std dev of the normal distribution from which we sample the first tensor.
+    Set to 0 to completely deactivate biad field corruption.
     :param bias_shape_factor: (optional) If bias_field_std is not False, this designates the ratio between the size of
     the input label maps and the size of the first sampled tensor for synthesising the bias field.
 
@@ -184,7 +184,7 @@ def training(labels_dir,
     :param lr_decay: (optional) learing rate decay. Default is 0, where no decay is applied.
     :param wl2_epochs: (optional) number of epohs for which the network (except the soft-max layer) is trained with L2
     norm loss function. Default is 5.
-    :param dice_epochs: (optional) number of epochs with the soft Dice loss function. default is 100.
+    :param dice_epochs: (optional) number of epochs with the soft Dice loss function. default is 200.
     :param steps_per_epoch: (optional) number of steps per epoch. Default is 1000. Since no online validation is
     possible, this is equivalent to the frequency at which the models are saved.
     :param checkpoint: (optional) path of an already saved model to load before starting the training.

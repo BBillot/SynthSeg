@@ -43,11 +43,6 @@ def labels_to_image_model(labels_shape,
         -a label map
         -a vector containing the means of the Gaussian Mixture Model for each label,
         -a vector containing the standard deviations of the Gaussian Mixture Model for each label,
-        -if apply_affine_deformation is True: a batch*(n_dims+1)*(n_dims+1) affine matrix
-        -if apply_non_linear_deformation is True: a small non linear field of size batch*(dim_1*...*dim_n)*n_dims that
-        will be resampled to labels size and integrated, to obtain a diffeomorphic elastic deformation.
-        -if apply_bias_field is True: a small bias field of size batch*(dim_1*...*dim_n)*1 that will be resampled to
-        labels size and multiplied to the image, to add a "bias-field" noise.
     The model returns:
         -the generated image normalised between 0 and 1.
         -the corresponding label map, with only the labels present in output_labels (the other are reset to zero).
@@ -80,7 +75,7 @@ def labels_to_image_model(labels_shape,
     :param flipping: (optional) whether to introduce right/left random flipping
     :param aff: (optional) example of an (n_dims+1)x(n_dims+1) affine matrix of one of the input label map.
     Used to find brain's right/left axis. Should be given if flipping is True.
-    :param scaling_bounds: (optional) range of the random saling to apply at each mini-batch. The scaling factor for
+    :param scaling_bounds: (optional) range of the random scaling to apply at each mini-batch. The scaling factor for
     each dimension is sampled from a uniform distribution of predefined bounds. Can either be:
     1) a number, in which case the scaling factor is independently sampled from the uniform distribution of bounds
     [1-scaling_bounds, 1+scaling_bounds] for each dimension.

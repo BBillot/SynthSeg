@@ -94,8 +94,10 @@ class RandomSpatialDeformation(Layer):
         self.nonlin_shape_factor = nonlin_shape_factor
 
         # boolean attributes
-        self.apply_affine_trans = None
-        self.apply_elastic_trans = None
+        self.apply_affine_trans = (self.scaling_bounds is not False) | (self.rotation_bounds is not False) | \
+                                  (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
+                                  self.enable_90_rotations
+        self.apply_elastic_trans = self.nonlin_std > 0
 
         # interpolation methods
         self.inter_method = inter_method
@@ -123,12 +125,6 @@ class RandomSpatialDeformation(Layer):
             inputshape = input_shape
         self.inshape = inputshape[0][1:]
         self.n_dims = len(self.inshape) - 1
-
-        self.apply_affine_trans = (self.scaling_bounds is not False) | (self.rotation_bounds is not False) | \
-                                  (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
-                                  self.enable_90_rotations
-        self.apply_elastic_trans = self.nonlin_std > 0
-        assert self.apply_affine_trans | self.apply_elastic_trans, 'affine_trans or elastic_trans should be provided'
 
         if self.apply_elastic_trans:
             self.small_shape = utils.get_resample_shape(self.inshape[:self.n_dims],

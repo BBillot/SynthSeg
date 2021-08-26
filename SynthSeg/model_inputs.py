@@ -18,8 +18,8 @@ def build_model_inputs(path_label_maps,
                        mix_prior_and_random=False,
                        path_patches=None):
     """
-    This function builds a generator to be fed to the lab2im model. It enables to generate all the required inputs,
-    according to the operations performed in the model.
+    This function builds a generator that will be used to give the necessary inputs to the label_to_image model: the
+    input label maps, as well as the means and stds defining the parameters of the GMM (which change at each minibatch).
     :param path_label_maps: list of the paths of the input label maps.
     :param n_labels: number of labels in the input label maps.
     :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.

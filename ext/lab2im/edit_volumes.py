@@ -931,9 +931,9 @@ def rescale_images_in_dir(image_dir, result_dir,
     :param result_dir: path of directory where rescaled images will be writen
     :param new_min: (optional) minimum value for the rescaled images.
     :param new_max: (optional) maximum value for the rescaled images.
-    :param min_percentile: (optional) percentile for estimating robust minimum of volume (integer in [0,...100]),
+    :param min_percentile: (optional) percentile for estimating robust minimum of volume (float in [0,...100]),
     where 0 = np.min
-    :param max_percentile: (optional) percentile for estimating robust maximum of volume (integer in [0,...100]),
+    :param max_percentile: (optional) percentile for estimating robust maximum of volume (float in [0,...100]),
     where 100 = np.max
     :param use_positive_only: (optional) whether to use only positive values when estimating the min and max percentile
     :param recompute: (optional) whether to recompute result files even if they already exists

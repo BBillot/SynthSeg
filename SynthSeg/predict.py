@@ -24,10 +24,10 @@ def predict(path_images,
             segmentation_names_list=None,
             padding=None,
             cropping=None,
+            flip=True,
             topology_classes=None,
             sigma_smoothing=0.5,
             keep_biggest_component=True,
-            flip=True,
             conv_size=3,
             n_levels=5,
             nb_conv_per_level=2,
@@ -71,21 +71,37 @@ def predict(path_images,
     :param cropping: (optional) crop the images to the specified shape before predicting the segmentation maps.
     If padding and cropping are specified, images are padded before being cropped.
     Can be an int, a sequence or a 1d numpy array.
+    :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
+    a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
+    :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
+    classes, for each of which we will operate a smooth version of biggest connected component.
+    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_label_list.
+    Default is None, where no topological analysis is performed.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
+    This is applied independently of topology_classes, and it is applied to the whole segmentation
     :param conv_size: (optional) size of unet's convolution masks. Default is 3.
     :param n_levels: (optional) number of levels for unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolution layers per level. Default is 2.
     :param unet_feat_count: (optional) number of features for the first layer of the unet. Default is 24.
     :param feat_multiplier: (optional) multiplicative factor for the number of feature for each new level. Default is 2.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
-    :param gt_folder: (optional) folder containing ground truth files for evaluation.
-    A numpy array containing all dice scores (labels in rows, subjects in columns) will be writen either at
-    segmentations_dir (if not None), or posteriors_dir.
+    :param gt_folder: (optional) path of the ground truth label maps corresponding to the input images. Should be a dir,
+    if path_images is a dir, or a file if path_images is a file.
+    Providing a gt_folder will trigger a Dice evaluation, where scores will be writen along with the path_segmentations.
+    Specifically, the scores are contained in a numpy array, where labels are in rows, and subjects in columns.
+    :param mask_folder: (optional) path of masks that will be used to mask out some parts of the obtained segmentations
+    during the evaluation. Default is None, where nothing is masked.
+    :param list_incorrect_labels: (optional) this option enables to replace some label values in the obtained
+    segmentations by other label values. Can be a list, a 1d numpy array, or the path to such an array.
+    :param list_correct_labels: (optional) list of values to correct the labels specified in list_incorrect_labels.
+    Correct values must have the same order as their corresponding value in list_incorrect_labels.
     :param evaluation_label_list: (optional) if gt_folder is True you can evaluate the Dice scores on a subset of the
     segmentation labels, by providing another label list here. Can be a sequence, a 1d numpy array, or the path to a
     numpy 1d array. Default is the same as segmentation_label_list.
+    :param compute_distances: (optional) whether to add Hausdorff and mean surface distance evaluations to the default
+    Dice evaluation. Default is True.
     :param recompute: (optional) whether to recompute segmentations that were already computed. This also applies to
     Dice scores, if gt_folder is not None. Default is True.
     :param verbose: (optional) whether to print out info about the remaining number of cases.
@@ -213,7 +229,6 @@ def predict(path_images,
                             eval_folder,
                             evaluation_label_list,
                             mask_dir=mask_folder,
-                            compute_score_whole_structure=False,
                             path_dice=os.path.join(eval_folder, 'dice.npy'),
                             path_hausdorff=path_hausdorff,
                             path_hausdorff_99=path_hausdorff_99,

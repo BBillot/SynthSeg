@@ -25,7 +25,7 @@ def fast_dice(x, y, labels):
 
         # build bins for histograms
         label_edges = np.sort(np.concatenate([labels_sorted - 0.1, labels_sorted + 0.1]))
-        label_edges = np.insert(label_edges, [0, len(label_edges)], [labels_sorted[0] - 100, labels_sorted[-1] + 100])
+        label_edges = np.insert(label_edges, [0, len(label_edges)], [labels_sorted[0] - 0.1, labels_sorted[-1] + 0.1])
 
         # compute Dice and re-arange scores in initial order
         hst = np.histogram2d(x.flatten(), y.flatten(), bins=label_edges)[0]
@@ -212,10 +212,13 @@ def evaluation(gt_dir,
                verbose=True):
     """This function computes Dice scores, as well as surface distances, between two sets of labels maps in gt_dir
     (ground truth) and seg_dir (typically predictions). Labels maps in both folders are matched by sorting order.
+    The resulting scores are saved at the specified locations.
     :param gt_dir: path of directory with gt label maps
     :param seg_dir: path of directory with label maps to compare to gt_dir. Matched to gt label maps by sorting order.
     :param label_list: list of label values for which to compute evaluation metrics. Can be a sequence, a 1d numpy
     array, or the path to such array.
+    :param mask_dir: (optional) path of directory with masks of areas to ignore for each evaluated segmentation.
+    Matched to gt label maps by sorting order. Default is None, where nothing is masked.
     :param compute_score_whole_structure: (optional) whether to also compute the selected scores for the whole segmented
     structure (i.e. scores are computed for a single structure obtained by regrouping all non-zero values). If True, the
     resulting scores are added as an extra row to the result matrices. Default is False.
@@ -223,15 +226,20 @@ def evaluation(gt_dir,
     Default is None, where the array is not saved.
     :param path_hausdorff: path where the resulting Hausdorff distances will be writen as numpy array (only if
     compute_distances is True). Default is None, where the array is not saved.
+    :param path_hausdorff_99: same as for path_hausdorff but for the 99th percentile of the boundary distance.
+    :param path_hausdorff_95: same as for path_hausdorff but for the 95th percentile of the boundary distance.
     :param path_mean_distance: path where the resulting mean distances will be writen as numpy array (only if
     compute_distances is True). Default is None, where the array is not saved.
     :param crop_margin_around_gt: (optional) margin by which to crop around the gt volumes, in order to copute the
     scores more efficiently. If None, no cropping is performed.
+    :param list_incorrect_labels: (optional) this option enables to replace some label values in the maps in seg_dir by
+    other label values. Can be a list, a 1d numpy array, or the path to such an array.
+    The incorrect labels can then be replaced either by specified values, or by the nearest value (see below).
+    :param list_correct_labels: (optional) list of values to correct the labels specified in list_incorrect_labels.
+    Correct values must have the same order as their corresponding value in list_incorrect_labels.
+    :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
     :param recompute: (optional) whether to recompute the already existing results. Default is True.
     :param verbose: (optional) whether to print out info about the remaining number of cases.
-    :return: numpy array containing all Dice scores (rows=ROIs in the same order as they appear in label_list,
-    columns=subjects sorted by their names in alphabetical order). Also returns numpy arrays for Hausdorff and mean
-    distances if compute_distances is True (same structure as the Dice result matrix).
     """
 
     # check whether to recompute

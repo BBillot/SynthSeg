@@ -18,16 +18,14 @@ def validate_training(image_dir,
                       models_dir,
                       validation_main_dir,
                       segmentation_label_list,
-                      sort_label_list=False,
-                      topology_classes=None,
                       evaluation_label_list=None,
-                      flip=False,
                       step_eval=1,
-                      aff_ref='FS',
-                      sigma_smoothing=0,
-                      keep_biggest_component=False,
                       padding=None,
                       cropping=None,
+                      flip=False,
+                      topology_classes=None,
+                      sigma_smoothing=0,
+                      keep_biggest_component=False,
                       conv_size=3,
                       n_levels=5,
                       nb_conv_per_level=2,
@@ -49,28 +47,37 @@ def validate_training(image_dir,
     :param evaluation_label_list: (optional) label values to validate on. Must be a subset of the segmentation labels.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array. Default is the same as segmentation_label_list
     :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
-    :param aff_ref: (optional) affine matrix with which the models were trained. Can be 'FS' (default), or 'identity.
-    :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
-    standard deviation.
-    :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
     :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) whether to crop the input to smaller size while being run through the network.
     The result is then given in the original image space. Can be an int, a sequence, or a 1d numpy array.
+    :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
+    a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
+    :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
+    classes, for each of which we will operate a smooth version of biggest connected component.
+    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_label_list.
+    Default is None, where no topological analysis is performed.
+    :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
+    standard deviation.
+    :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
+    This is applied independently of topology_classes, and it is applied to the whole segmentation
+    :param conv_size: (optional) size of the convolution kernels. Default is 2.
     :param n_levels: (optional) number of level for the Unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
-    :param conv_size: (optional) size of the convolution kernels. Default is 2.
     :param unet_feat_count: (optional) number of feature maps for the first level. Default is 24.
     :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 1.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
-    :param compute_distances: (optional) whether to compute the Haussdorf and mean surface distance.
+    :param mask_dir: (optional) path of masks that will be used to mask out some parts of the obtained segmentations
+    during the evaluation. Default is None, where nothing is masked.
+    :param compute_distances: (optional) whether to add Hausdorff and mean surface distance evaluations to the default
+    Dice evaluation. Default is True.
     :param recompute: (optional) whether to recompute result files even if they already exists."""
 
     # create result folder
     utils.mkdir(validation_main_dir)
 
     # loop over models
-    list_models = utils.list_files(models_dir, expr=['dice', '0.h5'], cond_type='and')[::step_eval]
+    list_models = utils.list_files(models_dir, expr=['dice', '.h5'], cond_type='and')[::step_eval]
     loop_info = utils.LoopInfo(len(list_models), 1, 'validating', True)
     for model_idx, path_model in enumerate(list_models):
 
@@ -87,8 +94,7 @@ def validate_training(image_dir,
                     path_segmentations=model_val_dir,
                     padding=padding,
                     cropping=cropping,
-                    aff_ref=aff_ref,
-                    sort_label_list=sort_label_list,
+                    flip=flip,
                     topology_classes=topology_classes,
                     sigma_smoothing=sigma_smoothing,
                     keep_biggest_component=keep_biggest_component,
@@ -103,8 +109,7 @@ def validate_training(image_dir,
                     evaluation_label_list=evaluation_label_list,
                     compute_distances=compute_distances,
                     recompute=recompute,
-                    verbose=False,
-                    flip=flip)
+                    verbose=False)
 
 
 def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_indices=None,
