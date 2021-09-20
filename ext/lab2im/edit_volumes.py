@@ -112,7 +112,6 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
     if erode > 0:
         erode_struct = utils.build_binary_structure(erode, n_dims)
         mask_to_apply = binary_erosion(mask_to_apply, erode_struct)
-    mask_to_apply = mask | mask_to_apply
     if fill_holes:
         mask_to_apply = binary_fill_holes(mask_to_apply)
 
@@ -1403,7 +1402,7 @@ def samseg_images_in_dir(image_dir,
         if (not os.path.isfile(path_result)) | recompute:
             cmd = utils.mkcmd(path_samseg, '-i', path_image, '-o', path_im_result_dir, '--threads', threads)
             if atlas_dir is not None:
-                cmd = utils.mkcmd(cmd, '--a', atlas_dir)
+                cmd = utils.mkcmd(cmd, '-a', atlas_dir)
             os.system(cmd)
 
         # move segmentation to result_dir if necessary

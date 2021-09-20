@@ -156,7 +156,7 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
     im_shape = im_shape[:n_dims]
 
     # get labels res
-    if '.nii.gz' in path_volume:
+    if '.nii' in path_volume:
         data_res = np.array(header['pixdim'][1:n_dims + 1]).tolist()
     elif '.mgz' in path_volume:
         data_res = np.array(header['delta']).tolist()  # mgz image
