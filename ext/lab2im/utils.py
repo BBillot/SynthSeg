@@ -425,7 +425,7 @@ def list_files(path_dir, whole_path=True, expr=None, cond_type='or'):
 
 
 def list_subfolders(path_dir, whole_path=True, expr=None, cond_type='or'):
-    """This function returns a list of subfolders contained in a folder, whith possible regexp.
+    """This function returns a list of subfolders contained in a folder, with possible regexp.
     :param path_dir: path of a folder
     :param whole_path: (optional) whether to return whole path or just the subfolder names.
     :param expr: (optional) regexp for files to list. Can be a str or a list of str.

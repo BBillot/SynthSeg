@@ -144,41 +144,31 @@ def predict(path_images,
             writer.writerows(csv_header)
         csvFile.close()
 
+    # build network
+    _, _, n_dims, n_channels, _, _ = utils.get_volume_info(images_to_segment[0])
+    model_input_shape = [None] * n_dims + [n_channels]
+    net = build_model(path_model, model_input_shape, n_levels, len(label_list), conv_size,
+                      nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
+
     # perform segmentation
-    net = None
-    previous_model_input_shape = None
     loop_info = utils.LoopInfo(len(images_to_segment), 10, 'predicting', True)
     for idx, (path_image, path_segmentation, path_posterior, path_resample, tmp_compute) in \
             enumerate(zip(images_to_segment, path_segmentations, path_posteriors, path_resampled, compute)):
 
         # compute segmentation only if needed
         if tmp_compute:
-
-            # preprocess image and get information
-            image, aff, h, im_res, n_channels, n_dims, shape, pad_shape, crop_idx, im_flipped = \
-                preprocess_image(path_image, n_levels, cropping, padding, flip=flip, path_resample=path_resample)
-            model_input_shape = list(image.shape[1:])
-
-            # prepare net for first image or if input's size has changed
-            if (net is None) | (previous_model_input_shape != model_input_shape):
-
-                # check for image size compatibility
-                if (net is not None) & (previous_model_input_shape != model_input_shape) & verbose:
-                    print('image of different shape as previous ones, redefining network')
-                previous_model_input_shape = model_input_shape
-
-                # build network
-                net = build_model(path_model, model_input_shape, n_levels, len(label_list), conv_size,
-                                  nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
-
             if verbose:
                 loop_info.update(idx)
 
-            # predict posteriors
+            # preprocessing
+            image, aff, h, im_res, _, _, shape, pad_shape, crop_idx, im_flipped = \
+                preprocess_image(path_image, n_levels, cropping, padding, flip=flip, path_resample=path_resample)
+
+            # prediction
             prediction_patch = net.predict(image)
             prediction_patch_flip = net.predict(im_flipped) if flip else None
 
-            # get posteriors and segmentation
+            # postprocessing
             seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, label_list, lr_indices,
                                           keep_biggest_component, aff,
                                           topology_classes=topology_classes, post_patch_flip=prediction_patch_flip)
@@ -255,7 +245,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, out_
     # prepare input/output volumes
     if ('.nii.gz' not in basename) & ('.nii' not in basename) & ('.mgz' not in basename) & ('.npz' not in basename):
         if os.path.isfile(path_images):
-            raise Exception('extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_images)
+            raise Exception('Extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_images)
         images_to_segment = utils.list_images_in_folder(path_images)
         if out_seg is not None:
             utils.mkdir(out_seg)
@@ -289,7 +279,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, out_
             recompute_resampled = [out_volumes is not None] * len(images_to_segment)
 
     else:
-        assert os.path.isfile(path_images), "files does not exist: %s " \
+        assert os.path.isfile(path_images), "file does not exist: %s " \
                                             "\nplease make sure the path and the extension are correct" % path_images
         images_to_segment = [path_images]
         if out_seg is not None:
@@ -342,7 +332,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, out_
 
     if out_volumes is not None:
         if out_volumes[-4:] != '.csv':
-            print('out_volumes provided without csv extension. Adding csv extension to output_volumes.')
+            print('Path for volume outputs provided without csv extension. Adding csv extension.')
             out_volumes += '.csv'
             utils.mkdir(os.path.dirname(out_volumes))
 

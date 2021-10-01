@@ -505,7 +505,6 @@ def conv_dec(nb_features,
         up_tensor = last_tensor
 
         # merge layers combining previous layer
-        # TODO: add Cropping3D or Cropping2D if 'valid' padding
         if use_skip_connections:
             conv_name = '%s_conv_downarm_%d_%d' % (prefix, nb_levels - 2 - level, nb_conv_per_level - 1)
             cat_tensor = input_model.get_layer(conv_name).output
