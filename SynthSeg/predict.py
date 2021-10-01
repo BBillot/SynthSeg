@@ -339,10 +339,10 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, out_
     return images_to_segment, out_seg, out_posteriors, out_volumes, out_resampled, recompute_list
 
 
-def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, flip=False, path_resample=None):
+def preprocess_image(im_path, n_levels, crop=None, padding=None, flip=False, path_resample=None):
 
     # read image and corresponding info
-    im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, return_volume=True)
+    im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, True, aff_ref=np.eye(4))
 
     # resample image if necessary
     if np.any((np.array(im_res) > 1.05) | (np.array(im_res) < 0.95)):
@@ -360,25 +360,21 @@ def preprocess_image(im_path, n_levels, crop_shape=None, padding=None, flip=Fals
         pad_shape = shape
 
     # check that patch_shape or im_shape are divisible by 2**n_levels
-    if crop_shape is not None:
-        crop_shape = utils.reformat_to_list(crop_shape, length=n_dims, dtype='int')
-        if not all([pad_shape[i] >= crop_shape[i] for i in range(len(pad_shape))]):
-            crop_shape = [min(pad_shape[i], crop_shape[i]) for i in range(n_dims)]
-        if not all([size % (2**n_levels) == 0 for size in crop_shape]):
-            crop_shape = [utils.find_closest_number_divisible_by_m(size, 2 ** n_levels) for size in crop_shape]
+    if crop is not None:
+        crop = utils.reformat_to_list(crop, length=n_dims, dtype='int')
+        if not all([pad_shape[i] >= crop[i] for i in range(len(pad_shape))]):
+            crop = [min(pad_shape[i], crop[i]) for i in range(n_dims)]
+        if not all([size % (2**n_levels) == 0 for size in crop]):
+            crop = [utils.find_closest_number_divisible_by_m(size, 2 ** n_levels) for size in crop]
     else:
         if not all([size % (2**n_levels) == 0 for size in pad_shape]):
-            crop_shape = [utils.find_closest_number_divisible_by_m(size, 2 ** n_levels) for size in pad_shape]
+            crop = [utils.find_closest_number_divisible_by_m(size, 2 ** n_levels) for size in pad_shape]
 
     # crop image if necessary
-    if crop_shape is not None:
-        im, crop_idx = edit_volumes.crop_volume(im, cropping_shape=crop_shape, return_crop_idx=True)
+    if crop is not None:
+        im, crop_idx = edit_volumes.crop_volume(im, cropping_shape=crop, return_crop_idx=True)
     else:
         crop_idx = None
-
-    # align image to training axes and directions
-    if n_dims > 2:
-        im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), return_aff=False, n_dims=n_dims)
 
     # normalise image
     if n_channels == 1:
@@ -462,11 +458,6 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_righ
         post_patch /= np.sum(post_patch, axis=-1)[..., np.newaxis]
     seg_patch = post_patch.argmax(-1)
 
-    # align prediction back to first orientation
-    if n_dims > 2:
-        seg_patch = edit_volumes.align_volume_to_ref(seg_patch, aff=np.eye(4), aff_ref=aff, return_aff=False)
-        post_patch = edit_volumes.align_volume_to_ref(post_patch, aff=np.eye(4), aff_ref=aff, n_dims=n_dims)
-
     # paste patches back to matrix of original image size
     if crop is not None:
         seg = np.zeros(shape=pad_shape, dtype='int32')
@@ -488,5 +479,10 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_righ
         bounds += [p + i for (p, i) in zip(bounds, im_shape)]
         seg = edit_volumes.crop_volume_with_idx(seg, bounds)
         posteriors = edit_volumes.crop_volume_with_idx(posteriors, bounds, n_dims=n_dims)
+
+    # align prediction back to first orientation
+    if n_dims > 2:
+        seg = edit_volumes.align_volume_to_ref(seg, aff=np.eye(4), aff_ref=aff, n_dims=n_dims, return_aff=False)
+        posteriors = edit_volumes.align_volume_to_ref(posteriors, aff=np.eye(4), aff_ref=aff, n_dims=n_dims)
 
     return seg, posteriors
