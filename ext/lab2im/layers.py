@@ -1164,8 +1164,9 @@ class DiceLoss(Layer):
     2) be probabilistic, i.e. they must have the same shape [batchsize, size_dim1, ..., size_dimN, n_labels] where
     n_labels is the number of labels for which we compute the Dice loss."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, enable_checks=True, **kwargs):
         self.inshape = None
+        self.enable_checks = enable_checks
         super(DiceLoss, self).__init__(**kwargs)
 
     def build(self, input_shape):
@@ -1180,8 +1181,9 @@ class DiceLoss(Layer):
         # make sure tensors are probabilistic
         x = inputs[0]
         y = inputs[1]
-        x = K.clip(x / tf.math.reduce_sum(x, axis=-1, keepdims=True), 0, 1)
-        y = K.clip(y / tf.math.reduce_sum(y, axis=-1, keepdims=True), 0, 1)
+        if self.enable_checks:  # disabling is useful to, e.g., use incomplete label maps
+            x = K.clip(x / tf.math.reduce_sum(x, axis=-1, keepdims=True), 0, 1)
+            y = K.clip(y / tf.math.reduce_sum(y, axis=-1, keepdims=True), 0, 1)
 
         # compute dice loss for each label
         top = tf.math.reduce_sum(2 * x * y, axis=list(range(1, len(self.inshape))))
