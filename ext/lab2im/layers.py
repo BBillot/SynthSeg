@@ -14,8 +14,7 @@
     - ResetValuesToZero,
     - ConvertLabels,
     - PadAroundCentre,
-    - MaskEdges,
-    - NormalisedCumsum.
+    - MaskEdges
 """
 
 # python imports
@@ -1308,21 +1307,27 @@ class ConvertLabels(Layer):
 class PadAroundCentre(Layer):
     """Pad the input tensor to the specified shape with the given value.
     The input tensor is expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
+    :param pad_margin: margin to use for padding. The tensor will be padded by the provided margin on each side.
+    Can either be a number (all axes padded with the same margin), or a  list/numpy array of length n_dims.
+    example: if tensor is of shape [batch, x, y, z, n_channels] and margin=10, then the padded tensor will be of
+    shape [batch, x+2*10, y+2*10, z+2*10, n_channels].
     :param pad_shape: shape to pad the tensor to. Can either be a number (all axes padded to the same shape), or a
     list/numpy array of length n_dims.
     :param value: value to pad the tensors with. Default is 0.
     """
 
-    def __init__(self, pad_shape, value=0, **kwargs):
+    def __init__(self, pad_margin=None, pad_shape=None, value=0, **kwargs):
+        self.pad_margin = pad_margin
         self.pad_shape = pad_shape
-        self.pad_shape_tens = None
         self.value = value
+        self.pad_margin_tens = None
+        self.pad_shape_tens = None
         self.n_dims = None
-        self.pad_margins = None
         super(PadAroundCentre, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
+        config["pad_margin"] = self.pad_margin
         config["pad_shape"] = self.pad_shape
         config["value"] = self.value
         return config
@@ -1332,23 +1337,36 @@ class PadAroundCentre(Layer):
         self.n_dims = len(input_shape) - 2
         input_shape[0] = 0
         input_shape[0 - 1] = 0
-        tensor_shape = tf.cast(tf.convert_to_tensor(input_shape), 'int32')
 
-        # pad shape
-        self.pad_shape_tens = np.array([0] + utils.reformat_to_list(self.pad_shape, length=self.n_dims) + [0])
-        self.pad_shape_tens = tf.cast(tf.convert_to_tensor(self.pad_shape_tens), 'int32')
-        self.pad_shape_tens = tf.math.maximum(tensor_shape, self.pad_shape_tens)
+        if self.pad_margin is not None:
+            assert self.pad_shape is None, 'please do not provide a padding shape and margin at the same time.'
 
-        # padding margin
-        min_margins = (self.pad_shape_tens - tensor_shape) / 2
-        max_margins = self.pad_shape_tens - tensor_shape - min_margins
-        self.pad_margins = tf.stack([min_margins, max_margins], axis=-1)
+            # reformat padding margins
+            pad = np.transpose(np.array([[0] + utils.reformat_to_list(self.pad_margin, self.n_dims) + [0]] * 2))
+            self.pad_margin_tens = tf.convert_to_tensor(pad, dtype='int32')
+
+        elif self.pad_shape is not None:
+            assert self.pad_margin is None, 'please do not provide a padding shape and margin at the same time.'
+
+            # pad shape
+            tensor_shape = tf.cast(tf.convert_to_tensor(input_shape), 'int32')
+            self.pad_shape_tens = np.array([0] + utils.reformat_to_list(self.pad_shape, length=self.n_dims) + [0])
+            self.pad_shape_tens = tf.convert_to_tensor(self.pad_shape_tens, dtype='int32')
+            self.pad_shape_tens = tf.math.maximum(tensor_shape, self.pad_shape_tens)
+
+            # padding margin
+            min_margins = (self.pad_shape_tens - tensor_shape) / 2
+            max_margins = self.pad_shape_tens - tensor_shape - min_margins
+            self.pad_margin_tens = tf.stack([min_margins, max_margins], axis=-1)
+
+        else:
+            raise Exception('please either provide a padding shape or a padding margin.')
 
         self.built = True
         super(PadAroundCentre, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
-        return tf.pad(inputs, self.pad_margins, mode='CONSTANT', constant_values=self.value)
+        return tf.pad(inputs, self.pad_margin_tens, mode='CONSTANT', constant_values=self.value)
 
 
 class MaskEdges(Layer):
