@@ -98,7 +98,7 @@ def lab2im_model(labels_shape,
         image = resample_tensor(image, output_shape, interp_method='linear')
         labels = resample_tensor(labels, output_shape, interp_method='nearest')
 
-    # convert labels back to original values and reset unwanted labels to zero
+    # reset unwanted labels to zero
     labels = layers.ConvertLabels(generation_labels, dest_values=output_labels, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)

@@ -125,11 +125,11 @@ def labels_to_image_model(labels_shape,
     labels_shape = utils.reformat_to_list(labels_shape)
     n_dims, _ = utils.get_dims(labels_shape)
     atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims, n_channels)
-    data_res = atlas_res if (data_res is None) else utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
-    thickness = data_res if (thickness is None) else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
+    data_res = atlas_res if data_res is None else utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
+    thickness = data_res if thickness is None else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
     downsample = utils.reformat_to_list(downsample, n_channels) if downsample else (np.min(thickness - data_res, 1) < 0)
     atlas_res = atlas_res[0]
-    target_res = atlas_res if (target_res is None) else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
+    target_res = atlas_res if target_res is None else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
 
     # get shapes
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
@@ -138,6 +138,7 @@ def labels_to_image_model(labels_shape,
     labels_input = KL.Input(shape=labels_shape + [1], name='labels_input', dtype='int32')
     means_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
     stds_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='std_devs_input')
+    list_inputs = [labels_input, means_input, stds_input]
 
     # deform labels
     labels = layers.RandomSpatialDeformation(scaling_bounds=scaling_bounds,
@@ -206,12 +207,12 @@ def labels_to_image_model(labels_shape,
     if crop_shape != output_shape:
         labels = l2i_et.resample_tensor(labels, output_shape, interp_method='nearest')
 
-    # convert labels back to original values (i.e. in generation_labels) and map them to segmentation values
+    # map generation labels to segmentation values
     labels = layers.ConvertLabels(generation_labels, dest_values=output_labels, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
     image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = Model(inputs=[labels_input, means_input, stds_input], outputs=[image, labels])
+    brain_model = Model(inputs=list_inputs, outputs=[image, labels])
 
     return brain_model
 
