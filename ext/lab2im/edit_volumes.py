@@ -1234,7 +1234,7 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
         # load image
         path_result = os.path.join(result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_result)) | recompute:
-            im, im_shape, aff, n_dims, _, h, image_res = utils.get_volume_info(path_image, return_volume=True)
+            im, im_shape, aff, n_dims, _, h, _ = utils.get_volume_info(path_image, return_volume=True)
             if path_mask is not None:
                 mask = utils.load_volume(path_mask)
                 assert mask.shape == im.shape, 'mask and image should have the same shape'
@@ -1626,7 +1626,6 @@ def upsample_anisotropic_images(image_dir,
 
         # upsample image
         _, _, n_dims, _, _, image_res = utils.get_volume_info(path_image, return_volume=False)
-        image_res = np.array(image_res)
         path_im_upsampled = os.path.join(resample_image_result_dir, os.path.basename(path_image))
         if (not os.path.isfile(path_im_upsampled)) | recompute:
             cmd = utils.mkcmd(mri_convert, path_image, path_im_upsampled, '-rl', path_ref, '-odt float')
@@ -1816,8 +1815,8 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
             list_shape.append(im_shape)
         if (aff not in list_aff) | (not keep_unique):
             list_aff.append(aff)
-        if (data_res not in list_res) | (not keep_unique):
-            list_res.append(data_res)
+        if (data_res.tolist() not in list_res) | (not keep_unique):
+            list_res.append(data_res.tolist())
         if list_unique_values is not None:
             uni = np.unique(im).tolist()
             if (uni not in list_unique_values) | (not keep_unique):

@@ -157,11 +157,11 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
 
     # get labels res
     if '.nii' in path_volume:
-        data_res = np.array(header['pixdim'][1:n_dims + 1]).tolist()
+        data_res = np.array(header['pixdim'][1:n_dims + 1])
     elif '.mgz' in path_volume:
-        data_res = np.array(header['delta']).tolist()  # mgz image
+        data_res = np.array(header['delta'])  # mgz image
     else:
-        data_res = [1.0] * n_dims
+        data_res = np.array([1.0] * n_dims)
 
     # align to given affine matrix
     if aff_ref is not None:
@@ -174,7 +174,6 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
         im_shape[ras_axes_ref] = im_shape[ras_axes]
         data_res[ras_axes_ref] = data_res[ras_axes]
         im_shape = im_shape.tolist()
-        data_res = data_res.tolist()
 
     # return info
     if return_volume:
