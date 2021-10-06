@@ -107,7 +107,7 @@ def predict(path_images,
     :param verbose: (optional) whether to print out info about the remaining number of cases.
     """
 
-    # prepare output filepaths
+    # prepare input/output filepaths
     images_to_segment, path_segmentations, path_posteriors, path_volumes, path_resampled, compute = \
         prepare_output_files(path_images, path_segmentations, path_posteriors, path_volumes, path_resampled, recompute)
 
@@ -342,7 +342,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_volumes, out_
 def preprocess_image(im_path, n_levels, crop=None, padding=None, flip=False, path_resample=None):
 
     # read image and corresponding info
-    im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, True, aff_ref=np.eye(4))
+    im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, True)
 
     # resample image if necessary
     if np.any((np.array(im_res) > 1.05) | (np.array(im_res) < 0.95)):
@@ -351,6 +351,9 @@ def preprocess_image(im_path, n_levels, crop=None, padding=None, flip=False, pat
         shape = list(im.shape)
         if path_resample is not None:
             utils.save_volume(im, aff, header, path_resample)
+
+    # align image
+    im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), n_dims=n_dims)
 
     # pad image if specified
     if padding:
