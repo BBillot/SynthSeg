@@ -6,20 +6,17 @@ parser = ArgumentParser()
 
 # Positional arguments
 parser.add_argument("path_images", type=str, help="path single image or path of the folders with training labels")
-
-# Load materials
-parser.add_argument("--model", type=str, default=None, dest="path_model", help="model file path")
-parser.add_argument("--label_list", type=str, dest="segmentation_label_list", default=None,
-                    help="path label list")
-parser.add_argument("--names_list", type=str, dest="segmentation_names_list", default=None,
-                    help="path list of label names")
+parser.add_argument("path_segmentations", type=str, help="segmentations folder/path")
+parser.add_argument("path_model", type=str, help="model file path")
+parser.add_argument("segmentation_label_list", type=str, help="path label list")
 
 # Saving paths
-parser.add_argument("--out_seg", type=str, dest="path_segmentations", default=None, help="segmentations folder/path")
-parser.add_argument("--out_post", type=str, dest="path_posteriors", default=None, help="posteriors folder/path")
-parser.add_argument("--out_vol", type=str, dest="path_volumes", default=None, help="path volume file")
-parser.add_argument("--out_resampled", type=str, dest="path_resampled", default=None,
+parser.add_argument("--post", type=str, dest="path_posteriors", default=None, help="posteriors folder/path")
+parser.add_argument("--resampled", type=str, dest="path_resampled", default=None,
                     help="path/folder of the resampled images (1mm isotropic resolution)")
+parser.add_argument("--vol", type=str, dest="path_volumes", default=None, help="path volume file")
+parser.add_argument("--names_list", type=str, dest="segmentation_names_list", default=None,
+                    help="path list of label names, only used if --vol is specified")
 
 # Processing parameters
 parser.add_argument("--padding", type=int, dest="padding", default=None,

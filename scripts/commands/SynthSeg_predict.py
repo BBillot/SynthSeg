@@ -18,22 +18,28 @@ from SynthSeg.predict import predict
 
 # parse arguments
 parser = ArgumentParser()
+
+# input/outputs
 parser.add_argument("path_images", type=str, help="images to segment. Can be the path to a single image or to a folder")
 parser.add_argument("path_segmentations", type=str, help="path where to save the segmentations. Must be the same type "
                                                          "as path_images (path to a single image or to a folder)")
 parser.add_argument("--post", type=str, default=None, dest="path_posteriors",
                     help="path where to save the posteriors. "
                          "Must be the same type as path_images (path to a single image or to a folder)")
-parser.add_argument("--vol", type=str, default=None, dest="path_volumes",
-                    help="path to a csv file where to save the volumes of all ROIs for all patients")
 parser.add_argument("--resampled", type=str, default=None, dest="path_resampled",
                     help="path where to save the resampled images (at 1mm isotropic resolution). "
                          "Must be the same type as path_images (path to a single image or to a folder)")
-parser.add_argument("--cpu", action="store_true", help="enforce running with CPU rather than GPU.")
+parser.add_argument("--vol", type=str, default=None, dest="path_volumes",
+                    help="path to a csv file where to save the volumes of all ROIs for all patients")
+
+# parameters
 parser.add_argument("--crop", type=int, default=None, dest="cropping",
                     help="Size of 3D image patches that will be extracted from the input for analysis.")
 parser.add_argument("--threads", type=int, default=1, dest="threads",
                     help="number of threads to be used by tensorflow when running on CPU.")
+parser.add_argument("--cpu", action="store_true", help="enforce running with CPU rather than GPU.")
+
+# parse commandline
 args = vars(parser.parse_args())
 
 # enforce CPU processing if necessary

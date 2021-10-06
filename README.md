@@ -20,31 +20,31 @@ out-of-the-box without retraining or fine-tuning, and can run on the GPU (6s per
 
 Once all the python packages are installed (see below), you can simply test SynthSeg on your own data with:
 ```
-python ./scripts/commands/SynthSeg_predict.py <images> <segmentations> --post <post> --vol <vol> --resample <resample>
+python ./scripts/commands/SynthSeg_predict.py <images> <segmentations> --post <post> --resample <resample> --vol <vol>
 ```
 where:
 - `<image>` is the path to an image to segment. \
 This can also be a folder, in which case all the image inside that folder will be segmented.
-- `<segmentation>` is the path where the output segmentation will be saved. \
+- `<segmentation>` is the path where the output segmentation(s) will be saved. \
 This must be a folder if `<image>` designates a folder.
 - `<post>` (optional) is the path where the posteriors (given as soft probability maps) will be saved. \
 This must be a folder if `<image>` designates a folder.
-- `<vol>` (optional) is the path to an output csv file where the volumes of every segmented structures
-will be saved for all scans (i.e., one csv file for all subjects; e.g. /path/to/volumes.csv)
 - `<resample>` (optional) SynthSeg segmentations are always given at 1mm isotropic resolution. Therefore, 
 images are internally resampled to this resolution (except if they aleady are at 1mm resolution). 
 Use this optional flag to save the resampled images: it must be the path to a single image, or a folder
 if `<image>` designates a folder.
+- `<vol>` (optional) is the path to an output csv file where the volumes of every segmented structures
+will be saved for all scans (i.e., one csv file for all subjects; e.g. /path/to/volumes.csv)
 
 \
 Additional optional flags are also available:
-- `--cpu`: to enforce the code to run on the CPU, even if a GPU is available.
-- `--threads`: to indicate the number of cores to be used if running on a CPU (example: `--threads 3` to run on 3 cores).
- This value defaults to 1, but we recommend increasing it for faster analysis.
 - `--crop`: to crop the input images to a given shape before segmentation (example: `--crop 160` to run on 
 160<sup>3</sup> patches). Images are cropped around their centre, and their segmentations are given in native space 
 (i.e., at the original size). Use this flag for faster analysis or if you have a GPU with insufficient memory
 to process the whole image.
+- `--threads`: to indicate the number of cores to be used if running on a CPU (example: `--threads 3` to run on 3 cores).
+ This value defaults to 1, but we recommend increasing it for faster analysis.
+- `--cpu`: to enforce the code to run on the CPU, even if a GPU is available.
 
 
 **IMPORTANT:** Because SynthSeg may produce segmentations at higher resolution than the images (i.e., at 
