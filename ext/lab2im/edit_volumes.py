@@ -306,7 +306,7 @@ def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None):
         return new_volume
 
 
-def pad_volume(volume, padding_shape, padding_value=0, aff=None):
+def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=False):
     """Pad volume to a given shape
     :param volume: volume to be padded
     :param padding_shape: shape to pad volume to. Can be a number, a sequence or a 1d numpy array.
@@ -321,25 +321,36 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None):
     n_dims, n_channels = utils.get_dims(vol_shape)
     padding_shape = utils.reformat_to_list(padding_shape, length=n_dims, dtype='int')
 
-    # get padding margins
-    min_pad_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
-    max_pad_margins = np.maximum(np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
-    if (min_pad_margins == 0).all():
-        return new_volume
-    pad_margins = tuple([(min_pad_margins[i], max_pad_margins[i]) for i in range(n_dims)])
-    if n_channels > 1:
-        pad_margins = tuple(list(pad_margins) + [[0, 0]])
+    # check if need to pad
+    if not np.array_equal(np.array(padding_shape, dtype='int32'), np.array(vol_shape[:n_dims], dtype='int32')):
 
-    # pad volume
-    new_volume = np.pad(new_volume, pad_margins, mode='constant', constant_values=padding_value)
+        # get padding margins
+        min_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
+        max_margins = np.minimum(np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)),
+                                 np.array(vol_shape)[:n_dims])
+        pad_idx = np.concatenate([min_margins, min_margins + np.array(vol_shape)])
+        pad_margins = tuple([(min_margins[i], max_margins[i]) for i in range(n_dims)])
+        if n_channels > 1:
+            pad_margins = tuple(list(pad_margins) + [[0, 0]])
 
-    if aff is not None:
-        if n_dims == 2:
-            min_pad_margins = np.append(min_pad_margins, 0)
-        aff[:-1, -1] = aff[:-1, -1] - aff[:-1, :-1] @ min_pad_margins
-        return new_volume, aff
+        # pad volume
+        new_volume = np.pad(new_volume, pad_margins, mode='constant', constant_values=padding_value)
+
+        if aff is not None:
+            if n_dims == 2:
+                min_margins = np.append(min_margins, 0)
+            aff[:-1, -1] = aff[:-1, -1] - aff[:-1, :-1] @ min_margins
+
     else:
-        return new_volume
+        pad_idx = np.concatenate([np.array([0] * n_dims), np.array(vol_shape)])
+
+    # sort outputs
+    output = [new_volume]
+    if aff is not None:
+        output.append(aff)
+    if return_pad_idx:
+        output.append(pad_idx)
+    return output[0] if len(output) == 1 else tuple(output)
 
 
 def flip_volume(volume, axis=None, direction=None, aff=None):
