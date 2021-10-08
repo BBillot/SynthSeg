@@ -239,6 +239,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
     '''
 
     # check inputs
+    assert path_images is not None, 'please specify an input file/folder (--i)'
     assert out_seg is not None, 'please specify an output file/folder (--o)'
 
     # convert path to absolute paths

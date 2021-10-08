@@ -20,7 +20,7 @@ out-of-the-box without retraining or fine-tuning, and can run on the GPU (6s per
 
 Once all the python packages are installed (see below), you can simply test SynthSeg on your own data with:
 ```
-python ./scripts/commands/SynthSeg_predict.py <images> <segmentations> --post <post> --resample <resample> --vol <vol>
+python ./scripts/commands/SynthSeg_predict.py --i <image> --o <segmentation> --post <post> --resample <resample> --vol <vol>
 ```
 where:
 - `<image>` is the path to an image to segment. \
