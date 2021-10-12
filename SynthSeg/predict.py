@@ -255,6 +255,8 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
         if os.path.isfile(path_images):
             raise Exception('Extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_images)
         path_images = utils.list_images_in_folder(path_images)
+        if (out_seg[-7:] == '.nii.gz') | (out_seg[-4:] == '.nii') | (out_seg[-4:] == '.mgz') | (out_seg[-4:] == '.npz'):
+            raise Exception('Output folders cannot have extensions: .nii.gz, .nii, .mgz, or .npz, had %s' % out_seg)
         utils.mkdir(out_seg)
         out_seg = [os.path.join(out_seg, os.path.basename(image)).replace('.nii', '_synthseg.nii') for image in
                    path_images]
@@ -262,6 +264,10 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
         out_seg = [seg_path.replace('.npz', '_synthseg.npz') for seg_path in out_seg]
         recompute_seg = [not os.path.isfile(path_seg) for path_seg in out_seg]
         if out_posteriors is not None:
+            if (out_posteriors[-7:] == '.nii.gz') | (out_posteriors[-4:] == '.nii') | \
+                    (out_posteriors[-4:] == '.mgz') | (out_posteriors[-4:] == '.npz'):
+                raise Exception('Output folders cannot have extensions: '
+                                '.nii.gz, .nii, .mgz, or .npz, had %s' % out_posteriors)
             utils.mkdir(out_posteriors)
             out_posteriors = [os.path.join(out_posteriors, os.path.basename(image)).replace('.nii',
                               '_posteriors.nii') for image in path_images]
@@ -272,6 +278,10 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
             out_posteriors = [out_posteriors] * len(path_images)
             recompute_post = [out_volumes is not None] * len(path_images)
         if out_resampled is not None:
+            if (out_resampled[-7:] == '.nii.gz') | (out_resampled[-4:] == '.nii') | \
+                    (out_resampled[-4:] == '.mgz') | (out_resampled[-4:] == '.npz'):
+                raise Exception('Output folders cannot have extensions: '
+                                '.nii.gz, .nii, .mgz, or .npz, had %s' % out_resampled)
             utils.mkdir(out_resampled)
             out_resampled = [os.path.join(out_resampled, os.path.basename(image)).replace('.nii',
                              '_resampled.nii') for image in path_images]

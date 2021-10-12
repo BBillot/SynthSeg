@@ -328,7 +328,7 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
         min_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
         max_margins = np.minimum(np.int32(np.ceil((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)),
                                  np.array(vol_shape)[:n_dims])
-        pad_idx = np.concatenate([min_margins, min_margins + np.array(vol_shape)])
+        pad_idx = np.concatenate([min_margins, min_margins + np.array(vol_shape[:n_dims])])
         pad_margins = tuple([(min_margins[i], max_margins[i]) for i in range(n_dims)])
         if n_channels > 1:
             pad_margins = tuple(list(pad_margins) + [[0, 0]])
@@ -342,7 +342,7 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
             aff[:-1, -1] = aff[:-1, -1] - aff[:-1, :-1] @ min_margins
 
     else:
-        pad_idx = np.concatenate([np.array([0] * n_dims), np.array(vol_shape)])
+        pad_idx = np.concatenate([np.array([0] * n_dims), np.array(vol_shape[:n_dims])])
 
     # sort outputs
     output = [new_volume]
