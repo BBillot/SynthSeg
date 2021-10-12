@@ -351,7 +351,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
 def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, flip=False, path_resample=None):
 
     # read image and corresponding info
-    im, shape, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, True)
+    im, _, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, True)
 
     # resample image if necessary
     if target_res is not None:
@@ -359,17 +359,19 @@ def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, fli
         if np.any((im_res > target_res + 0.05) | (im_res < target_res - 0.05)):
             im_res = target_res
             im, aff = edit_volumes.resample_volume(im, aff, im_res)
-            shape = list(im.shape)
             if path_resample is not None:
                 utils.save_volume(im, aff, header, path_resample)
 
     # align image
     im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), n_dims=n_dims)
+    shape = list(im.shape)
 
     # pad image if specified
     if padding:
         im = edit_volumes.pad_volume(im, padding_shape=padding)
-    pad_shape = im.shape[:n_dims]
+        pad_shape = im.shape[:n_dims]
+    else:
+        pad_shape = shape
 
     # check that patch_shape or im_shape are divisible by 2**n_levels
     if crop is not None:
