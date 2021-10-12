@@ -322,7 +322,7 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
     padding_shape = utils.reformat_to_list(padding_shape, length=n_dims, dtype='int')
 
     # check if need to pad
-    if not np.array_equal(np.array(padding_shape, dtype='int32'), np.array(vol_shape[:n_dims], dtype='int32')):
+    if not np.any(np.array(padding_shape, dtype='int32') < np.array(vol_shape[:n_dims], dtype='int32')):
 
         # get padding margins
         min_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)
@@ -1807,16 +1807,16 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
 
         # get info
         im, im_shape, aff, _, _, h, data_res = utils.get_volume_info(path_image, return_volume=True)
-        aff = np.round(aff[:3, :3], 2).tolist()
-        data_res = np.round(np.array(data_res), 2).tolist()
+        aff = (np.int32(np.round(np.array(aff[:3, :3]), 2) * 100) / 100).tolist()
+        data_res = (np.int32(np.round(np.array(data_res), 2) * 100) / 100).tolist()
 
         # add values to list if not already there
         if (im_shape not in list_shape) | (not keep_unique):
             list_shape.append(im_shape)
         if (aff not in list_aff) | (not keep_unique):
             list_aff.append(aff)
-        if (data_res.tolist() not in list_res) | (not keep_unique):
-            list_res.append(data_res.tolist())
+        if (data_res not in list_res) | (not keep_unique):
+            list_res.append(data_res)
         if list_unique_values is not None:
             uni = np.unique(im).tolist()
             if (uni not in list_unique_values) | (not keep_unique):
