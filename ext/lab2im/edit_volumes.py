@@ -188,21 +188,21 @@ def crop_volume(volume, cropping_margin=None, cropping_shape=None, aff=None, ret
     # find cropping indices
     if cropping_margin is not None:
         cropping_margin = utils.reformat_to_list(cropping_margin, length=n_dims)
-        min_crop_idx = cropping_margin
-        max_crop_idx = [vol_shape[i] - cropping_margin[i] for i in range(n_dims)]
-        assert (np.array(max_crop_idx) >= np.array(min_crop_idx)).all(), 'cropping_margin is larger than volume shape'
+        do_cropping = np.array(vol_shape[:n_dims]) > 2 * np.array(cropping_margin)
+        min_crop_idx = [cropping_margin[i] if do_cropping[i] else 0 for i in range(n_dims)]
+        max_crop_idx = [vol_shape[i] - cropping_margin[i] if do_cropping[i] else vol_shape[i] for i in range(n_dims)]
     else:
         cropping_shape = utils.reformat_to_list(cropping_shape, length=n_dims)
         if mode == 'center':
-            min_crop_idx = [int((vol_shape[i] - cropping_shape[i]) / 2) for i in range(n_dims)]
-            max_crop_idx = [min_crop_idx[i] + cropping_shape[i] for i in range(n_dims)]
+            min_crop_idx = np.maximum([int((vol_shape[i] - cropping_shape[i]) / 2) for i in range(n_dims)], 0)
+            max_crop_idx = np.minimum([min_crop_idx[i] + cropping_shape[i] for i in range(n_dims)],
+                                      np.array(vol_shape)[:n_dims])
         elif mode == 'random':
-            crop_max_val = np.array([vol_shape[i] - cropping_shape[i] for i in range(n_dims)])
+            crop_max_val = np.maximum(np.array([vol_shape[i] - cropping_shape[i] for i in range(n_dims)]), 0)
             min_crop_idx = np.random.randint(0, high=crop_max_val + 1)
-            max_crop_idx = min_crop_idx + np.array(cropping_shape)
+            max_crop_idx = np.minimum(min_crop_idx + np.array(cropping_shape), np.array(vol_shape)[:n_dims])
         else:
             raise ValueError('mode should be either "center" or "random", had %s' % mode)
-        assert (np.array(min_crop_idx) >= 0).all(), 'cropping_shape is larger than volume shape'
     crop_idx = np.concatenate([np.array(min_crop_idx), np.array(max_crop_idx)])
 
     # crop volume
@@ -322,7 +322,7 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
     padding_shape = utils.reformat_to_list(padding_shape, length=n_dims, dtype='int')
 
     # check if need to pad
-    if not np.any(np.array(padding_shape, dtype='int32') < np.array(vol_shape[:n_dims], dtype='int32')):
+    if np.any(np.array(padding_shape, dtype='int32') > np.array(vol_shape[:n_dims], dtype='int32')):
 
         # get padding margins
         min_margins = np.maximum(np.int32(np.floor((np.array(padding_shape) - np.array(vol_shape)[:n_dims]) / 2)), 0)

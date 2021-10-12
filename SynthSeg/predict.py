@@ -369,9 +369,7 @@ def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, fli
     # pad image if specified
     if padding:
         im = edit_volumes.pad_volume(im, padding_shape=padding)
-        pad_shape = im.shape[:n_dims]
-    else:
-        pad_shape = shape
+    pad_shape = im.shape[:n_dims]
 
     # check that patch_shape or im_shape are divisible by 2**n_levels
     if crop is not None:
