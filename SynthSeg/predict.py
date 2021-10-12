@@ -178,11 +178,11 @@ def predict(path_images,
 
             # write results to disk
             if path_segmentation is not None:
-                utils.save_volume(seg.astype('int'), aff, h, path_segmentation)
+                utils.save_volume(seg, aff, h, path_segmentation, dtype='int32')
             if path_posterior is not None:
                 if n_channels > 1:
                     posteriors = utils.add_axis(posteriors, axis=[0, -1])
-                utils.save_volume(posteriors.astype('float'), aff, h, path_posterior)
+                utils.save_volume(posteriors, aff, h, path_posterior, dtype='float32')
 
         else:
             if path_volumes is not None:

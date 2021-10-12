@@ -116,8 +116,6 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
     """
 
     mkdir(os.path.dirname(path))
-    if dtype is not None:
-        volume = volume.astype(dtype=dtype)
     if '.npz' in path:
         np.savez_compressed(path, vol_data=volume)
     else:
@@ -129,6 +127,8 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
         elif aff is None:
             aff = np.eye(4)
         nifty = nib.Nifti1Image(volume, aff, header)
+        if dtype is not None:
+            nifty.set_data_dtype(dtype)
         if res is not None:
             if n_dims is None:
                 n_dims, _ = get_dims(volume.shape)
