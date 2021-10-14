@@ -137,7 +137,7 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
         nib.save(nifty, path)
 
 
-def get_volume_info(path_volume, return_volume=False, aff_ref=None):
+def get_volume_info(path_volume, return_volume=False, aff_ref=None, max_channels=10):
     """
     Gather information about a volume: shape, affine matrix, number of dimensions and channels, header, and resolution.
     :param path_volume: path of the volume to get information form.
@@ -152,7 +152,7 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None):
 
     # understand if image is multichannel
     im_shape = list(im.shape)
-    n_dims, n_channels = get_dims(im_shape, max_channels=10)
+    n_dims, n_channels = get_dims(im_shape, max_channels=max_channels)
     im_shape = im_shape[:n_dims]
 
     # get labels res

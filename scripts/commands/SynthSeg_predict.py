@@ -61,6 +61,7 @@ args['segmentation_label_list'] = path_label_list
 args['segmentation_names_list'] = path_names_list
 args['topology_classes'] = path_topology_classes
 args['path_model'] = path_model
+args['padding'] = args['cropping']
 
 # call predict
 predict(**args)

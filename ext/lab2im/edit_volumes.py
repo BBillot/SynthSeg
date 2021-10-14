@@ -1175,7 +1175,7 @@ def align_images_in_dir(image_dir, result_dir, aff_ref=None, path_ref_image=None
         if (not os.path.isfile(path_result)) | recompute:
             im, aff, h = utils.load_volume(path_image, im_only=False)
             im, aff = align_volume_to_ref(im, aff, aff_ref=aff_ref, return_aff=True)
-            utils.save_volume(im, aff_ref, h, path_result)
+            utils.save_volume(im, aff, h, path_result)
 
 
 def correct_nans_images_in_dir(image_dir, result_dir, recompute=True):
@@ -1784,7 +1784,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
                 utils.save_volume(dist, aff, h, path_dist_map)
 
 
-def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
+def check_images_in_dir(image_dir, check_values=False, keep_unique=True, max_channels=10):
     """Check if all volumes within the same folder share the same characteristics: shape, affine matrix, resolution.
     Also have option to check if all volumes have the same intensity values (useful for label maps).
     :return four lists, each containing the different values detected for a specific parameter among those to check."""
@@ -1793,6 +1793,7 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
     list_shape = list()
     list_aff = list()
     list_res = list()
+    list_axes = list()
     if check_values:
         list_unique_values = list()
     else:
@@ -1805,23 +1806,27 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True):
         loop_info.update(idx)
 
         # get info
-        im, im_shape, aff, _, _, h, data_res = utils.get_volume_info(path_image, return_volume=True)
+        im, shape, aff, n_dims, _, h, res = utils.get_volume_info(path_image, True, np.eye(4), max_channels)
+        axes = get_ras_axes(aff, n_dims=n_dims).tolist()
+        aff[:, np.arange(3)] = aff[:, axes]
         aff = (np.int32(np.round(np.array(aff[:3, :3]), 2) * 100) / 100).tolist()
-        data_res = (np.int32(np.round(np.array(data_res), 2) * 100) / 100).tolist()
+        res = (np.int32(np.round(np.array(res), 2) * 100) / 100).tolist()
 
         # add values to list if not already there
-        if (im_shape not in list_shape) | (not keep_unique):
-            list_shape.append(im_shape)
+        if (shape not in list_shape) | (not keep_unique):
+            list_shape.append(shape)
         if (aff not in list_aff) | (not keep_unique):
             list_aff.append(aff)
-        if (data_res not in list_res) | (not keep_unique):
-            list_res.append(data_res)
+        if (res not in list_res) | (not keep_unique):
+            list_res.append(res)
+        if (axes not in list_axes) | (not keep_unique):
+            list_axes.append(axes)
         if list_unique_values is not None:
             uni = np.unique(im).tolist()
             if (uni not in list_unique_values) | (not keep_unique):
                 list_unique_values.append(uni)
 
-    return list_shape, list_aff, list_res, list_unique_values
+    return list_shape, list_aff, list_res, list_axes, list_unique_values
 
 
 # ----------------------------------------------- edit label maps in dir -----------------------------------------------
@@ -1951,7 +1956,7 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
                     new_labels, mask_new_labels = mask_label_map(labels, labels_to_keep, return_mask=True)
                     labels = smoothing_model.predict(utils.add_axis(labels))
                     labels = np.where(mask_new_labels, new_labels, labels)
-                utils.save_volume(np.squeeze(labels), aff, h, path_result, dtype='int')
+                utils.save_volume(np.squeeze(labels), aff, h, path_result, dtype='int32')
 
     else:
         # build kernel
@@ -2067,7 +2072,7 @@ def upsample_labels_in_dir(labels_dir,
     post_cmd = '-voxsize ' + ' '.join([str(r) for r in target_res]) + ' -odt float'
 
     # load label list and corresponding LUT to make sure that labels go from 0 to N-1
-    label_list, _ = utils.get_list_labels(path_label_list, labels_dir=path_labels, FS_sort=True)
+    label_list, _ = utils.get_list_labels(path_label_list, labels_dir=path_labels, FS_sort=False)
     new_label_list = np.arange(len(label_list), dtype='int32')
     lut = utils.get_mapping_lut(label_list)
 

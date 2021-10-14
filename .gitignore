@@ -5,6 +5,7 @@ venv
 ext/neuron/models_*
 
 scripts/commands/training_*
+scripts/heart
 scripts/lesions_scripts
 scripts/PV_SynthSeg_scripts
 scripts/super-res/
