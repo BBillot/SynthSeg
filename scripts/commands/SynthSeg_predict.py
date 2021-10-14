@@ -32,7 +32,7 @@ parser.add_argument("--vol", type=str, default=None, dest="path_volumes",
                     help="(optional) Output CSV file with volumes for all structures and subjects.")
 
 # parameters
-parser.add_argument("--crop", type=int, default=192, dest="cropping",
+parser.add_argument("--crop", nargs='+', type=int, default=192, dest="cropping",
                     help="(optional) Size of 3D patches to analyse. Default is 192.")
 parser.add_argument("--threads", type=int, default=1, dest="threads",
                     help="(optional) Number of cores to be used. Default is 1.")

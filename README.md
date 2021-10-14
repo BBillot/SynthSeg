@@ -38,13 +38,14 @@ will be saved for all scans (i.e., one csv file for all subjects; e.g. /path/to/
 
 \
 Additional optional flags are also available:
-- `--crop`: to crop the input images to a given shape before segmentation (example: `--crop 160` to run on 
-160<sup>3</sup> patches). Images are cropped around their centre, and their segmentations are given in native space 
-(i.e., at the original size). Use this flag for faster analysis or if you have a GPU with insufficient memory
-to process the whole image.
-- `--threads`: to indicate the number of cores to be used if running on a CPU (example: `--threads 3` to run on 3 cores).
- This value defaults to 1, but we recommend increasing it for faster analysis.
 - `--cpu`: to enforce the code to run on the CPU, even if a GPU is available.
+- `--threads`: to indicate the number of cores to be used if running on a CPU (example: `--threads 3` to run on 3 cores).
+This value defaults to 1, but we recommend increasing it for faster analysis.
+- `--crop`: to crop the input images to a given shape before segmentation. The given size must be divisible by 32.
+Images are cropped around their centre, and their segmentations are given at the original size). It can be given as a 
+single (i.e., `--crop 160` to run on 160<sup>3</sup> patches), or several integers (i.e, `--crop 160 128 192` to crop to
+different sizes in each direction, ordered in RAS coordinates). This value defaults to 192, but it can be decreased
+for faster analysis or to fit in your GPU.
 
 
 **IMPORTANT:** Because SynthSeg may produce segmentations at higher resolution than the images (i.e., at 
