@@ -22,6 +22,7 @@ def validate_training(image_dir,
                       step_eval=1,
                       padding=None,
                       cropping=None,
+                      target_res=1.,
                       flip=False,
                       topology_classes=None,
                       sigma_smoothing=0,
@@ -51,6 +52,10 @@ def validate_training(image_dir,
     Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) whether to crop the input to smaller size while being run through the network.
     The result is then given in the original image space. Can be an int, a sequence, or a 1d numpy array.
+    :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
+    segmentations). This must match the resolution of the training data ! target_res is used to automatically resampled
+    the images with resolutions outside [target_res-0.05, target_res+0.05].
+    Can be a sequence, a 1d numpy array. Set to None to disable the automatic resampling. Default is 1mm.
     :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
     a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
     :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
@@ -94,6 +99,7 @@ def validate_training(image_dir,
                     path_segmentations=model_val_dir,
                     padding=padding,
                     cropping=cropping,
+                    target_res=target_res,
                     flip=flip,
                     topology_classes=topology_classes,
                     sigma_smoothing=sigma_smoothing,
