@@ -330,7 +330,7 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
         pad_idx = np.concatenate([min_margins, min_margins + np.array(vol_shape[:n_dims])])
         pad_margins = tuple([(min_margins[i], max_margins[i]) for i in range(n_dims)])
         if n_channels > 1:
-            pad_margins = tuple(list(pad_margins) + [[0, 0]])
+            pad_margins = tuple(list(pad_margins) + [(0, 0)])
 
         # pad volume
         new_volume = np.pad(new_volume, pad_margins, mode='constant', constant_values=padding_value)
@@ -383,7 +383,7 @@ def flip_volume(volume, axis=None, direction=None, aff=None):
     return np.flip(new_volume, axis=axis)
 
 
-def resample_volume(volume, aff, new_vox_size):
+def resample_volume(volume, aff, new_vox_size, interpolation='linear'):
     """This function resizes the voxels of a volume to a new provided size, while adjusting the header to keep the RAS
     :param volume: a numpy array
     :param aff: affine matrix of the volume
@@ -404,7 +404,7 @@ def resample_volume(volume, aff, new_vox_size):
     y = np.arange(0, volume_filt.shape[1])
     z = np.arange(0, volume_filt.shape[2])
 
-    my_interpolating_function = RegularGridInterpolator((x, y, z), volume_filt)
+    my_interpolating_function = RegularGridInterpolator((x, y, z), volume_filt, method=interpolation)
 
     start = - (factor - 1) / (2 * factor)
     step = 1.0 / factor
@@ -431,7 +431,7 @@ def resample_volume(volume, aff, new_vox_size):
     return volume2, aff2
 
 
-def resample_volume_like(vol_ref, aff_ref, vol_flo, aff_flo):
+def resample_volume_like(vol_ref, aff_ref, vol_flo, aff_flo, interpolation='linear'):
     """This function reslices a floating image to the space of a reference image
     :param vol_ref: a numpy array with the reference volume
     :param aff_ref: affine matrix of the reference volume
@@ -446,7 +446,8 @@ def resample_volume_like(vol_ref, aff_ref, vol_flo, aff_flo):
     yf = np.arange(0, vol_flo.shape[1])
     zf = np.arange(0, vol_flo.shape[2])
 
-    my_interpolating_function = RegularGridInterpolator((xf, yf, zf), vol_flo, bounds_error=False, fill_value=0.0)
+    my_interpolating_function = RegularGridInterpolator((xf, yf, zf), vol_flo, bounds_error=False, fill_value=0.0,
+                                                        method=interpolation)
 
     xr = np.arange(0, vol_ref.shape[0])
     yr = np.arange(0, vol_ref.shape[1])
@@ -1973,7 +1974,7 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
             if (not os.path.isfile(path_result)) | recompute:
                 volume, aff, h = utils.load_volume(path, im_only=False)
                 new_volume = smooth_label_map(volume, kernel, labels_list)
-                utils.save_volume(new_volume, aff, h, path_result, dtype='int')
+                utils.save_volume(new_volume, aff, h, path_result, dtype='int32')
 
 
 def smoothing_gpu_model(label_shape, label_list, connectivity=1):
@@ -2113,7 +2114,7 @@ def upsample_labels_in_dir(labels_dir,
                 idx = prob > probmax
                 labels[idx] = label
                 probmax[idx] = prob[idx]
-            utils.save_volume(label_list[labels], aff, h, path_result)
+            utils.save_volume(label_list[labels], aff, h, path_result, dtype='int32')
 
 
 def compute_hard_volumes_in_dir(labels_dir,
