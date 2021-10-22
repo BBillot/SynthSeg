@@ -831,12 +831,14 @@ class MimicAcquisition(Layer):
     Note that the provided res must have higher values than min_low_res.
     """
 
-    def __init__(self, volume_res, min_subsample_res, resample_shape, build_dist_map=False, **kwargs):
+    def __init__(self, volume_res, min_subsample_res, resample_shape, build_dist_map=False, noise_std=0, **kwargs):
 
         # resolutions and dimensions
         self.volume_res = volume_res
         self.min_subsample_res = min_subsample_res
-        self.ndims = len(self.volume_res)
+        self.noise_std = noise_std
+        self.n_dims = len(self.volume_res)
+        self.n_channels = None
         self.add_batchsize = None
 
         # input and output shapes
@@ -856,6 +858,7 @@ class MimicAcquisition(Layer):
         config = super().get_config()
         config["volume_res"] = self.volume_res
         config["min_subsample_res"] = self.min_subsample_res
+        config["noise_std"] = self.noise_std
         config["resample_shape"] = self.resample_shape
         config["build_dist_map"] = self.build_dist_map
         return config
@@ -864,6 +867,7 @@ class MimicAcquisition(Layer):
 
         # set up input shape and acquisistion shape
         self.inshape = input_shape[0][1:]
+        self.n_channels = input_shape[0][-1]
         self.add_batchsize = False if (input_shape[1][0] is None) else True
         down_tensor_shape = np.int32(np.array(self.inshape[:-1]) * self.volume_res / self.min_subsample_res)
 
@@ -893,16 +897,22 @@ class MimicAcquisition(Layer):
         up_zoom_factor = tf.cast(tf.convert_to_tensor(self.resample_shape, dtype='int32') / down_shape, dtype='float32')
 
         # downsample
-        down_loc = tf.tile(self.down_grid, tf.concat([batchsize, tf.ones([self.ndims + 1], dtype='int32')], 0))
-        down_loc = tf.cast(down_loc, 'float32') / l2i_et.expand_dims(down_zoom_factor, axis=[1] * self.ndims)
+        down_loc = tf.tile(self.down_grid, tf.concat([batchsize, tf.ones([self.n_dims + 1], dtype='int32')], 0))
+        down_loc = tf.cast(down_loc, 'float32') / l2i_et.expand_dims(down_zoom_factor, axis=[1] * self.n_dims)
         inshape_tens = tf.tile(tf.expand_dims(tf.convert_to_tensor(self.inshape[:-1]), 0), tile_shape)
-        inshape_tens = l2i_et.expand_dims(inshape_tens, axis=[1] * self.ndims)
+        inshape_tens = l2i_et.expand_dims(inshape_tens, axis=[1] * self.n_dims)
         down_loc = K.clip(down_loc, 0., tf.cast(inshape_tens, 'float32'))
         vol = tf.map_fn(self._single_down_interpn, [vol, down_loc], tf.float32)
 
+        # add noise
+        if self.noise_std > 0:
+            sample_shape = tf.concat([batchsize, tf.ones([self.n_dims], dtype='int32'),
+                                      self.n_channels * tf.ones([1], dtype='int32')], 0)
+            vol += tf.random.normal(tf.shape(vol), stddev=tf.random.uniform(sample_shape, maxval=self.noise_std))
+
         # upsample
-        up_loc = tf.tile(self.up_grid, tf.concat([batchsize, tf.ones([self.ndims + 1], dtype='int32')], axis=0))
-        up_loc = tf.cast(up_loc, 'float32') / l2i_et.expand_dims(up_zoom_factor, axis=[1] * self.ndims)
+        up_loc = tf.tile(self.up_grid, tf.concat([batchsize, tf.ones([self.n_dims + 1], dtype='int32')], axis=0))
+        up_loc = tf.cast(up_loc, 'float32') / l2i_et.expand_dims(up_zoom_factor, axis=[1] * self.n_dims)
         vol = tf.map_fn(self._single_up_interpn, [vol, up_loc], tf.float32)
 
         # return upsampled volume
@@ -921,7 +931,7 @@ class MimicAcquisition(Layer):
             c_dist = ceil - up_loc
 
             # keep minimum 1d distances, and compute 3d distance to nearest grid point
-            dist = tf.math.minimum(f_dist, c_dist) * l2i_et.expand_dims(subsample_res, axis=[1] * self.ndims)
+            dist = tf.math.minimum(f_dist, c_dist) * l2i_et.expand_dims(subsample_res, axis=[1] * self.n_dims)
             dist = tf.math.sqrt(tf.math.reduce_sum(tf.math.square(dist), axis=-1, keepdims=True))
 
             return [vol, dist]
