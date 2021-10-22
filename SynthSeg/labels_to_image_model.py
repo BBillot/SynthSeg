@@ -253,8 +253,7 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_
 
         # make sure output shape is divisible by output_div_by_n
         if output_div_by_n is not None:
-            tmp_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
-                         for s in output_shape]
+            tmp_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n) for s in output_shape]
             if output_shape != tmp_shape:
                 print('output shape {0} not divisible by {1}, changed to {2}'.format(output_shape, output_div_by_n,
                                                                                      tmp_shape))
@@ -275,13 +274,11 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_
             # if resampling, get the potential output_shape and check if it is divisible by n
             if resample_factor is not None:
                 output_shape = [int(labels_shape[i] * resample_factor[i]) for i in range(n_dims)]
-                output_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
-                                for s in output_shape]
+                output_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n) for s in output_shape]
                 cropping_shape = [int(np.around(output_shape[i] / resample_factor[i], 0)) for i in range(n_dims)]
             # if no resampling, simply check if image_shape is divisible by n
             else:
-                cropping_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
-                                  for s in labels_shape]
+                cropping_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n) for s in labels_shape]
                 output_shape = cropping_shape
 
         # if no need to be divisible by n, simply take cropping_shape as image_shape, and build output_shape

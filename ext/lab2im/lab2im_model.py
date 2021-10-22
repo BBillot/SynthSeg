@@ -130,7 +130,7 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_
 
         # make sure output shape is divisible by output_div_by_n
         if output_div_by_n is not None:
-            tmp_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=True)
+            tmp_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n)
                          for s in output_shape]
             if output_shape != tmp_shape:
                 print('output shape {0} not divisible by {1}, changed to {2}'.format(output_shape, output_div_by_n,
@@ -152,7 +152,7 @@ def get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_
             output_shape = cropping_shape
         # make sure output shape is divisible by output_div_by_n
         if output_div_by_n is not None:
-            output_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, smaller_ans=False)
+            output_shape = [utils.find_closest_number_divisible_by_m(s, output_div_by_n, answer_type='closer')
                             for s in output_shape]
 
     return cropping_shape, output_shape
