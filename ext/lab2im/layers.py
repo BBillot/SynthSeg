@@ -1409,9 +1409,10 @@ class MaskEdges(Layer):
           [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]]])  # shape = [1,10,10,1]
     """
 
-    def __init__(self, axes, boundaries, **kwargs):
+    def __init__(self, axes, boundaries, prob_mask=1, **kwargs):
         self.axes = utils.reformat_to_list(axes, dtype='int')
         self.boundaries = utils.reformat_to_n_channels_array(boundaries, n_dims=4, n_channels=len(self.axes))
+        self.prob_mask = prob_mask
         self.inputshape = None
         super(MaskEdges, self).__init__(**kwargs)
 
@@ -1419,6 +1420,7 @@ class MaskEdges(Layer):
         config = super().get_config()
         config["axes"] = self.axes
         config["boundaries"] = self.boundaries
+        config["prob_mask"] = self.prob_mask
         return config
 
     def build(self, input_shape):
@@ -1439,9 +1441,9 @@ class MaskEdges(Layer):
                                                    maxval=axis_boundaries[1] * self.inputshape[axis]))
             idx2 = tf.math.round(tf.random.uniform([1],
                                                    minval=axis_boundaries[2] * self.inputshape[axis],
-                                                   maxval=axis_boundaries[3] * self.inputshape[axis]) - idx1)
-            idx3 = self.input_shape[axis] - idx1 - idx2
-            split_idx = tf.concat([idx1, idx2, idx3], axis=0)
+                                                   maxval=axis_boundaries[3] * self.inputshape[axis] - 1) - idx1)
+            idx3 = self.inputshape[axis] - idx1 - idx2
+            split_idx = tf.cast(tf.concat([idx1, idx2, idx3], axis=0), dtype='int32')
 
             # update mask
             split_list = tf.split(inputs, split_idx, axis=axis)
@@ -1451,6 +1453,11 @@ class MaskEdges(Layer):
             mask = mask * tmp_mask
 
         # mask second_channel
-        tensor = inputs * mask
+        tensor = K.switch(tf.squeeze(K.greater(tf.random.uniform([1], 0, 1), 1 - self.prob_mask)),
+                          inputs * mask,
+                          inputs)
 
-        return tensor, mask
+        return [tensor, mask]
+
+    def compute_output_shape(self, input_shape):
+        return [input_shape] * 2
