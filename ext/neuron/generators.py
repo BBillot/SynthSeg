@@ -9,7 +9,7 @@ import zipfile
 import numpy as np
 import nibabel as nib
 import scipy
-from keras.utils import np_utils
+from tensorflow.keras.utils import to_categorical
 
 # local packages
 from ext.pynd import ndutils as nd
@@ -25,8 +25,8 @@ from . import dataproc as nrn_proc
 
 
 class Vol(object):
-    
-    def __init__(self, 
+
+    def __init__(self,
                  volpath,
                  ext='.npz',
                  nb_restart_cycle=None,     # number of files to restart after
@@ -116,7 +116,7 @@ def vol(volpath,
     if nb_restart_cycle is None:
         print("setting restart cycle to", nb_files)
         nb_restart_cycle = nb_files
-    
+
     assert nb_restart_cycle <= (nb_files * nb_patches_per_vol), \
         '%s restart cycle (%s) too big (%s) in %s' % \
         (name, nb_restart_cycle, nb_files * nb_patches_per_vol, volpath)
@@ -144,7 +144,7 @@ def vol(volpath,
             print('starting %s cycle' % name)
 
         # read next file (circular)
-      
+
         try:
             if verbose:
                 print('opening %s' % os.path.join(volpath, volfiles[fileidx]))
@@ -169,7 +169,7 @@ def vol(volpath,
         if patch_size is None:
             this_patch_size = vol_data.shape
             patch_stride = [1 for f in this_patch_size]
-        
+
         else:
             this_patch_size = [f for f in patch_size]
             for pi, p in enumerate(this_patch_size):
@@ -199,7 +199,7 @@ def vol(volpath,
             # add to feature
             if np.mod(feat_idx, nb_feats) == 0:
                 vol_data_feats = lpatch
-                
+
             else:
                 vol_data_feats = np.concatenate([vol_data_feats, lpatch], np.ndim(lpatch)-1)
             feat_idx += 1
@@ -229,7 +229,7 @@ def vol(volpath,
                 batch_done = batch_idx == batch_size - 1
                 files_done = np.mod(fileidx + 1, nb_restart_cycle) == 0
                 final_batch = yield_incomplete_final_batch and files_done and patch_idx == (nb_patches_per_vol-1)
-                if final_batch: # verbose and 
+                if final_batch: # verbose and
                     print('last batch in %s cycle %d. nb_batch:%d' % (name, fileidx, len(vol_data_batch)))
 
                 if batch_done or final_batch:
@@ -380,7 +380,7 @@ def vol_cat(volpaths, # expect two folders in here
             ext='.npz',
             nb_labels_reshape=-1,
             vol_rand_seed=None,
-            **kwargs): # named arguments for vol(...), except verbose, data_proc_fn, ext, nb_labels_reshape and name (which this function will control when calling vol()) 
+            **kwargs): # named arguments for vol(...), except verbose, data_proc_fn, ext, nb_labels_reshape and name (which this function will control when calling vol())
     """
     generator with (volume, binary_bit) (random order)
     ONLY works with abtch size of 1 for now
@@ -679,7 +679,7 @@ def vol_prior_hack(*args,
                    vol_rand_seed=None,
                    **kwargs):
     """
-    
+
     """
     # prepare the vol_seg
     gen = vol_seg_hack(*args, **kwargs,
@@ -795,7 +795,7 @@ def vol_seg_hack(volpath,
                   nb_restart_cycle=nb_restart_cycle, collapse_2d=collapse_2d, force_binary=False,
                   relabel=None, data_proc_fn=proc_vol_fn, nb_labels_reshape=1, name=name+' vol',
                   verbose=verbose, nb_feats=nb_input_feats, vol_rand_seed=vol_rand_seed)
-  
+
 
     # on next (while):
     while 1:
@@ -826,18 +826,18 @@ def vol_sr_slices(volpath,
         idx = start_indices[0]
         output_batch = np.expand_dims(vol_data[:,:,idx:idx+nb_slices_in_subvol], 0)
         input_batch = np.expand_dims(vol_data[:,:,idx:(idx+nb_slices_in_subvol):(nb_slice_spacing+1)], 0)
-        
+
         for idx in start_indices[1:]:
             out_sel = np.expand_dims(vol_data[:,:,idx:idx+nb_slices_in_subvol], 0)
             output_batch = np.vstack([output_batch, out_sel])
             input_batch = np.vstack([input_batch, np.expand_dims(vol_data[:,:,idx:(idx+nb_slices_in_subvol):(nb_slice_spacing+1)], 0)])
         output_batch = np.reshape(output_batch, [batch_size, -1, output_batch.shape[-1]])
-        
+
         return (input_batch, output_batch)
 
 
     print('vol_sr_slices: SHOULD PROPERLY RANDOMIZE accross different subjects', file=sys.stderr)
-    
+
     volfiles = _get_file_list(volpath, ext, vol_rand_seed)
     nb_files = len(volfiles)
 
@@ -878,7 +878,7 @@ def vol_sr_slices(volpath,
                 start_indices = [all_start_indices[s] for s in range(batch_start, batch_start + batch_size)]
                 input_batch, output_batch = indices_to_batch(vol_data, start_indices, nb_slices_in_subvol, nb_slice_spacing)
                 yield (input_batch, output_batch)
-        
+
         # if just random slices, get a batch of random starts from this volume and that's it.
         elif rand_slices:
             assert not simulate_whole_sparse_vol
@@ -892,7 +892,7 @@ def vol_sr_slices(volpath,
                 start_indices = list(range(batch_start, batch_start + batch_size))
                 input_batch, output_batch = indices_to_batch(vol_data, start_indices, nb_slices_in_subvol, nb_slice_spacing)
                 yield (input_batch, output_batch)
-   
+
 
 def img_seg(volpath,
             segpath,
@@ -929,7 +929,7 @@ def img_seg(volpath,
         input_vol = np.vstack([next(img_gen).astype('float16')/255 for i in range(batch_size)])
         input_vol = np.expand_dims(input_vol, axis=-1)
 
-        output_vols = [np_utils.to_categorical(next(seg_gen).astype('int8'), num_classes=2) for i in range(batch_size)]
+        output_vols = [to_categorical(next(seg_gen).astype('int8'), num_classes=2) for i in range(batch_size)]
         output_vol = np.vstack([np.expand_dims(f, axis=0) for f in output_vols])
 
         # output input and output
@@ -971,7 +971,7 @@ def _load_medical_volume(filename, ext, verbose=False):
 def _categorical_prep(vol_data, nb_labels_reshape, keep_vol_size, patch_size):
 
     if nb_labels_reshape > 1:
-        
+
         lpatch = _to_categorical(vol_data, nb_labels_reshape, keep_vol_size)
         # if keep_vol_size:
             # lpatch = np.reshape(lpatch, [*patch_size, nb_labels_reshape])
@@ -1009,23 +1009,23 @@ def _to_categorical(y, num_classes=None, reshape=True):
     n = y.shape[0]
     categorical = np.zeros((n, num_classes), bool)
     categorical[np.arange(n), y] = 1
-    
+
     if reshape:
         categorical = np.reshape(categorical, [*oshape, num_classes])
-    
+
     return categorical
 
 def _relabel(vol_data, labels, forcecheck=False):
-    
+
     if forcecheck:
         vd = np.unique(vol_data.flat)
         assert len(vd) == len(labels), "number of given labels does not match number of actual labels"
-    
+
     # by doing zeros, any label not in labels gets left to 0
     new_vol_data = np.zeros(vol_data.shape, vol_data.dtype)
     for idx, val in np.ndenumerate(labels):
         new_vol_data[vol_data == val] = idx
-    
+
     return new_vol_data
 
 
@@ -1036,7 +1036,7 @@ def _npz_headers(npz, namelist=None):
     Takes a path to an .npz file, which is a Zip archive of .npy files.
     Generates a sequence of (name, shape, np.dtype).
 
-    namelist is a list with variable names, ending in '.npy'. 
+    namelist is a list with variable names, ending in '.npy'.
     e.g. if variable 'var' is in the file, namelist could be ['var.npy']
     """
     with zipfile.ZipFile(npz) as archive:

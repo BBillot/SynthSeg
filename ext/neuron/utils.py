@@ -1,9 +1,9 @@
 """
 tensorflow/keras utilities for the neuron project
 
-If you use this code, please cite 
+If you use this code, please cite
 Dalca AV, Guttag J, Sabuncu MR
-Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation, 
+Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation,
 CVPR 2018
 
 or for the transformation/interpolation related functions:
@@ -29,8 +29,8 @@ from ext.pytools import patchlib as pl
 
 # often changed file
 from imp import reload
-import keras
-import keras.backend as K
+from tensorflow import keras
+import tensorflow.keras.backend as K
 import tensorflow as tf
 
 reload(pl)
@@ -40,7 +40,7 @@ def interpn(vol, loc, interp_method='linear'):
     """
     N-D gridded interpolation in tensorflow
 
-    vol can have more dimensions than loc[i], in which case loc[i] acts as a slice 
+    vol can have more dimensions than loc[i], in which case loc[i] acts as a slice
     for the first dimensions
 
     Parameters:
@@ -101,7 +101,7 @@ def interpn(vol, loc, interp_method='linear'):
         diff_loc0 = [1 - d for d in diff_loc1]
         weights_loc = [diff_loc1, diff_loc0]  # note reverse ordering since weights are inverse of diff.
 
-        # go through all the cube corners, indexed by a ND binary vector 
+        # go through all the cube corners, indexed by a ND binary vector
         # e.g. [0, 0] means this "first" corner in a 2-D "cube"
         cube_pts = list(itertools.product([0, 1], repeat=nb_dims))
         interp_vol = 0
@@ -317,8 +317,8 @@ def transform(vol, loc_shift, interp_method='linear', indexing='ij'):
     """
     transform (interpolation N-D volumes (features) given shifts at each location in tensorflow
 
-    Essentially interpolates volume vol at locations determined by loc_shift. 
-    This is a spatial transform in the sense that at location [x] we now have the data from, 
+    Essentially interpolates volume vol at locations determined by loc_shift.
+    This is a spatial transform in the sense that at location [x] we now have the data from,
     [x + shift] so we've moved data.
 
     Parameters:
@@ -327,10 +327,10 @@ def transform(vol, loc_shift, interp_method='linear', indexing='ij'):
         interp_method (default:'linear'): 'linear', 'nearest'
         indexing (default: 'ij'): 'ij' (matrix) or 'xy' (cartesian).
             In general, prefer to leave this 'ij'
-    
+
     Return:
         new interpolated volumes in the same size as loc_shift[0]
-    
+
     Keyworks:
         interpolation, sampler, resampler, linear, bilinear
     """
@@ -353,20 +353,20 @@ def transform(vol, loc_shift, interp_method='linear', indexing='ij'):
 def integrate_vec(vec, time_dep=False, method='ss', **kwargs):
     """
     Integrate (stationary of time-dependent) vector field (N-D Tensor) in tensorflow
-    
-    Aside from directly using tensorflow's numerical integration odeint(), also implements 
+
+    Aside from directly using tensorflow's numerical integration odeint(), also implements
     "scaling and squaring", and quadrature. Note that the diff. equation given to odeint
-    is the one used in quadrature.   
+    is the one used in quadrature.
 
     Parameters:
-        vec: the Tensor field to integrate. 
+        vec: the Tensor field to integrate.
             If vol_size is the size of the intrinsic volume, and vol_ndim = len(vol_size),
-            then vector shape (vec_shape) should be 
+            then vector shape (vec_shape) should be
             [vol_size, vol_ndim] (if stationary)
             [vol_size, vol_ndim, nb_time_steps] (if time dependent)
         time_dep: bool whether vector is time dependent
         method: 'scaling_and_squaring' or 'ss' or 'ode' or 'quadrature'
-        
+
         if using 'scaling_and_squaring': currently only supports integrating to time point 1.
             nb_steps: int number of steps. Note that this means the vec field gets broken
             down to 2**nb_steps. so nb_steps of 0 means integral = vec.
@@ -376,12 +376,12 @@ def integrate_vec(vec, time_dep=False, method='ss', **kwargs):
                 Default: 1
             init (optional): if using 'ode', the initialization method.
                 Currently only supporting 'zero'. Default: 'zero'
-            ode_args (optional): dictionary of all other parameters for 
+            ode_args (optional): dictionary of all other parameters for
                 tf.contrib.integrate.odeint()
 
     Returns:
         int_vec: integral of vector field.
-        Same shape as the input if method is 'scaling_and_squaring', 'ss', 'quadrature', 
+        Same shape as the input if method is 'scaling_and_squaring', 'ss', 'quadrature',
         or 'ode' with out_time_pt not a list. Will have shape [*vec_shape, len(out_time_pt)]
         if method is 'ode' with out_time_pt being a list.
 
@@ -520,18 +520,18 @@ def ndgrid(*args, **kwargs):
 
     Returns:
         A list of Tensors
-    
+
     """
     return meshgrid(*args, indexing='ij', **kwargs)
 
 
 def meshgrid(*args, **kwargs):
     """
-    
+
     meshgrid code that builds on (copies) tensorflow's meshgrid but dramatically
     improves runtime by changing the last step to tiling instead of multiplication.
     https://github.com/tensorflow/tensorflow/blob/c19e29306ce1777456b2dbb3a14f511edf7883a8/tensorflow/python/ops/array_ops.py#L1921
-    
+
     Broadcasts parameters for evaluation on an N-D grid.
     Given N one-dimensional coordinate arrays `*args`, returns a list `outputs`
     of N-D coordinate arrays for evaluating expressions on an N-D grid.
@@ -593,9 +593,9 @@ def meshgrid(*args, **kwargs):
         shapes[0], shapes[1] = shapes[1], shapes[0]
         sz[0], sz[1] = sz[1], sz[0]
 
-    # This is the part of the implementation from tf that is slow. 
+    # This is the part of the implementation from tf that is slow.
     # We replace it below to get a ~6x speedup (essentially using tile instead of * tf.ones())
-    # TODO(nolivia): improve performance with a broadcast  
+    # TODO(nolivia): improve performance with a broadcast
     # mult_fact = tf.ones(shapes, output_dtype)
     # return [x * mult_fact for x in output]
     for i in range(len(output)):
@@ -609,10 +609,10 @@ def meshgrid(*args, **kwargs):
 def flatten(v):
     """
     flatten Tensor v
-    
+
     Parameters:
         v: Tensor to be flattened
-    
+
     Returns:
         flat Tensor
     """
@@ -647,13 +647,13 @@ def gaussian_kernel(sigma, windowsize=None, indexing='ij'):
     """
     sigma will be a number of a list of numbers.
 
-    # some guidance from my MATLAB file 
+    # some guidance from my MATLAB file
     https://github.com/adalca/mivt/blob/master/src/gaussFilt.m
 
     Parameters:
         sigma: scalar or list of scalars
         windowsize (optional): scalar or list of scalars indicating the shape of the kernel
-    
+
     Returns:
         ND kernel the same dimensiosn as the number of sigmas.
 
@@ -717,7 +717,7 @@ def stack_models(models, connecting_node_ids=None):
     # go through models 1 onwards and stack with current graph
     for mi in range(1, len(models)):
 
-        # prepare input nodes - a combination of 
+        # prepare input nodes - a combination of
         new_input_nodes = list(models[mi].inputs)
         stacked_inputs_contrib = list(models[mi].inputs)
 
@@ -751,14 +751,14 @@ def mod_submodel(orig_model,
     """
     modify (cut and/or stitch) keras submodel
 
-    layer objects themselved will be untouched - the new model, even if it includes, 
+    layer objects themselved will be untouched - the new model, even if it includes,
     say, a subset of the previous layers, those layer objects will be shared with
     the original model
 
     given an original model:
-        model stitching: given new input node(s), get output tensors of having pushed these 
+        model stitching: given new input node(s), get output tensors of having pushed these
         nodes through the model
-        
+
         model cutting: given input layer (pointers) inside the model, the new input nodes
         will match the new input layers, hence allowing cutting the model
 
@@ -766,7 +766,7 @@ def mod_submodel(orig_model,
         orig_model: original keras model pointer
         new_input_nodes: a pointer to a new input node replacement
         input_layers: the name of the layer in the original model to replace input nodes
-    
+
     Returns:
         pointer to modified model
     """
@@ -946,10 +946,10 @@ def robust_multi_gpu_model(model, gpus, verbose=True):
     Parameters:
         model: keras Model
         gpus: list of gpus to split to (e.g. [1, 4, 6]), or count of gpus available (e.g. 3)
-            Note: if given int, assume that is the count of gpus, 
+            Note: if given int, assume that is the count of gpus,
             so if you want a single specific gpu, this function will not do that.
         verbose: whether to display what happened (default: True)
-    
+
     Returns:
         keras model
     """
@@ -1269,7 +1269,7 @@ def next_vol_pred(model, data_generator, verbose=False):
 def batch_gather(reference, indices):
     """
     C+P From Keras pull request https://github.com/keras-team/keras/pull/6377/files
-    
+
     Batchwise gathering of row indices.
 
     The numpy equivalent is `reference[np.arange(batch_size), indices]`, where

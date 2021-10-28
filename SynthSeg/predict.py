@@ -2,7 +2,7 @@
 import os
 import csv
 import numpy as np
-from keras.models import Model
+from tensorflow.keras.models import Model
 
 # project imports
 from SynthSeg import evaluate

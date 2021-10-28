@@ -6,13 +6,13 @@ from tempfile import NamedTemporaryFile
 # third party imports
 import tensorflow as tf
 import numpy as np
-import keras
+from tensorflow import keras
 import matplotlib.pyplot as plt
-from keras import backend as K
+from tensorflow.keras import backend as K
 from tqdm import tqdm as tqdm
-from keras import layers as KL
+from tensorflow.keras import layers as KL
 from sklearn.decomposition import PCA
-from keras.utils import plot_model
+from tensorflow.keras.utils import plot_model
 from IPython.display import Image
 
 
@@ -328,7 +328,7 @@ def model_output_pca(pre_mu_model, generator, nb_samples, nb_components,
     if vis:
         nrn_plt.pca(pca, x, y)
 
-    """ 
+    """
     Test pca model assaignment:
     # make input, then dense, then dense, then output, and see if input is output for y samples.
     inp = KL.Input(pca.mean_.shape)

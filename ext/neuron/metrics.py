@@ -1,9 +1,9 @@
 """
 tensorflow/keras utilities for the neuron project
 
-If you use this code, please cite 
+If you use this code, please cite
 Dalca AV, Guttag J, Sabuncu MR
-Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation, 
+Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation,
 CVPR 2018
 
 Contact: adalca [at] csail [dot] mit [dot] edu
@@ -12,8 +12,8 @@ License: GPLv3
 
 # third party
 import numpy as np
-import keras.backend as K
-from keras import losses
+import tensorflow.keras.backend as K
+from tensorflow.keras import losses
 import tensorflow as tf
 
 # local
@@ -316,7 +316,7 @@ class MeanSquaredError():
 
         if self.crop_indices is not None and vox_weights is not None:
             self.vox_weights = utils.batch_gather(self.vox_weights, self.crop_indices)
-        
+
     def loss(self, y_true, y_pred):
 
         if self.crop_indices is not None:
