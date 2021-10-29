@@ -1388,12 +1388,15 @@ def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, ref_aff_dir=
         # convert images to nifty format
         path_result = os.path.join(result_dir, os.path.basename(utils.strip_extension(path_image))) + '.nii.gz'
         if (not os.path.isfile(path_result)) | recompute:
-            im, tmp_aff, h = utils.load_volume(path_image, im_only=False)
-            if aff is not None:
-                tmp_aff = aff
-            elif path_ref is not None:
-                _, tmp_aff, h = utils.load_volume(path_ref, im_only=False)
-            utils.save_volume(im, tmp_aff, h, path_result)
+            if utils.get_image_extension(path_image) == 'nii.gz':
+                shutil.copy2(path_image, path_result)
+            else:
+                im, tmp_aff, h = utils.load_volume(path_image, im_only=False)
+                if aff is not None:
+                    tmp_aff = aff
+                elif path_ref is not None:
+                    _, tmp_aff, h = utils.load_volume(path_ref, im_only=False)
+                utils.save_volume(im, tmp_aff, h, path_result)
 
 
 def mri_convert_images_in_dir(image_dir,
