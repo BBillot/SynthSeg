@@ -1,5 +1,13 @@
 # SynthSeg
 
+\
+\
+:tada: Update 29/10/2021: SynthSeg is now available on the dev version of 
+[FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)   !! :tada: \
+See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it
+\
+\
+\
 In this repository, we present SynthSeg, the first convolutional neural network to readily segment brain MRI scans of
 any contrast and resolution, with an predictions at 1mm isotropic resolution, regardless of the input resolution. 
 Additionally, the proposed model is robust to:
