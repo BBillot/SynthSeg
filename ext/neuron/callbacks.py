@@ -16,7 +16,7 @@ We'd like the following callback actions for neuron:
 import sys
 import collections
 
-import keras
+from tensorflow import keras
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
@@ -32,7 +32,7 @@ class ModelWeightCheck(keras.callbacks.Callback):
 
     def __init__(self,
                  weight_diff=False,
-                 at_batch_end=False,                 
+                 at_batch_end=False,
                  at_epoch_end=True):
         """
         Params:
@@ -72,7 +72,7 @@ class ModelWeightCheck(keras.callbacks.Callback):
                     if len(w) > 0:
                         for si, sw in enumerate(w):
                             diff = np.maximum(diff, np.max(np.abs(sw - self.wts[wi][si])))
-                            
+
             self.wts = wts
             logs['max_diff'] = diff
             # print("max diff", diff)
@@ -124,7 +124,7 @@ class CheckLossTrend(keras.callbacks.Callback):
                 err = "Found loss %f, which is much higher than %f + %f " % (this_loss, losses_mean, losses_std)
                 # raise ValueError(err)
                 print(err, file=sys.stderr)
-            
+
             if (this_loss - losses_mean) > (losses_mean * 100):
                 err = "Found loss %f, which is much higher than %f * 100 " % (this_loss, losses_mean)
                 raise ValueError(err)
@@ -468,9 +468,9 @@ class ModelCheckpoint(keras.callbacks.Callback):
 
 class ModelCheckpointParallel(keras.callbacks.Callback):
     """
-    
+
     borrow from: https://github.com/rmkemker/main/blob/master/machine_learning/model_checkpoint_parallel.py
-    
+
     Save the model after every epoch.
     `filepath` can contain named formatting options,
     which will be filled the value of `epoch` and

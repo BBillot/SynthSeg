@@ -1,7 +1,7 @@
 # python imports
 import numpy as np
-import keras.layers as KL
-from keras.models import Model
+import tensorflow.keras.layers as KL
+from tensorflow.keras.models import Model
 
 # project imports
 from . import utils

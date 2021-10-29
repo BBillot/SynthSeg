@@ -1,9 +1,9 @@
 """
 tensorflow/keras utilities for the neuron project
 
-If you use this code, please cite 
+If you use this code, please cite
 Dalca AV, Guttag J, Sabuncu MR
-Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation, 
+Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation,
 CVPR 2018
 
 or for the transformation/integration functions:
@@ -19,24 +19,25 @@ License: GPLv3
 # third party
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
-from keras.legacy import interfaces
-from keras.layers import Layer
-from keras.engine.topology import Node
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Layer
+from tensorflow.python.keras.engine import node
 from copy import deepcopy
 
 # local
-from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
+from .utils import (transform, resize, integrate_vec, affine_to_shift,
+                    combine_non_linear_and_aff_to_shift)
+from .interfaces import legacy_conv3d_support
 
 
 class SpatialTransformer(Layer):
     """
     N-D Spatial Transformer Tensorflow / Keras Layer
 
-    The Layer can handle both affine and dense transforms. 
+    The Layer can handle both affine and dense transforms.
     Both transforms are meant to give a 'shift' from the current position.
     Therefore, a dense transform gives displacements (not absolute locations) at each voxel,
-    and an affine transform gives the *difference* of the affine matrix from 
+    and an affine transform gives the *difference* of the affine matrix from
     the identity matrix.
 
     If you find this function useful, please cite:
@@ -44,11 +45,11 @@ class SpatialTransformer(Layer):
       Adrian V. Dalca, Guha Balakrishnan, John Guttag, Mert R. Sabuncu
       MICCAI 2018.
 
-    Originally, this code was based on voxelmorph code, which 
-    was in turn transformed to be dense with the help of (affine) STN code 
+    Originally, this code was based on voxelmorph code, which
+    was in turn transformed to be dense with the help of (affine) STN code
     via https://github.com/kevinzakka/spatial-transformer-network
 
-    Since then, we've re-written the code to be generalized to any 
+    Since then, we've re-written the code to be generalized to any
     dimensions, and along the way wrote grid and interpolation functions
     """
 
@@ -58,11 +59,11 @@ class SpatialTransformer(Layer):
                  single_transform=False,
                  **kwargs):
         """
-        Parameters: 
+        Parameters:
             interp_method: 'linear' or 'nearest'
             single_transform: whether a single transform supplied for the whole batch
             indexing (default: 'ij'): 'ij' (matrix) or 'xy' (cartesian)
-                'xy' indexing will have the first two entries of the flow 
+                'xy' indexing will have the first two entries of the flow
                 (along last axis) flipped compared to 'ij' indexing
         """
         self.interp_method = interp_method
@@ -186,8 +187,8 @@ class VecInt(Layer):
     """
     Vector Integration Layer
 
-    Enables vector integration via several methods 
-    (ode or quadrature for time-dependent vector fields, 
+    Enables vector integration via several methods
+    (ode or quadrature for time-dependent vector fields,
     scaling and squaring for stationary fields)
 
     If you find this function useful, please cite:
@@ -199,7 +200,7 @@ class VecInt(Layer):
     def __init__(self, indexing='ij', method='ss', int_steps=7, out_time_pt=1,
                  ode_args=None,
                  odeint_fn=None, **kwargs):
-        """        
+        """
         Parameters:
             method can be any of the methods in neuron.utils.integrate_vec
             indexing can be 'xy' (switches first two dimensions) or 'ij'
@@ -285,9 +286,9 @@ class Resize(Layer):
 
     If you find this function useful, please cite:
         Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation,Dalca AV, Guttag J, Sabuncu MR
-        CVPR 2018  
+        CVPR 2018
 
-    Since then, we've re-written the code to be generalized to any 
+    Since then, we've re-written the code to be generalized to any
     dimensions, and along the way wrote grid and interpolation functions
     """
 
@@ -297,9 +298,9 @@ class Resize(Layer):
                  interp_method='linear',
                  **kwargs):
         """
-        Parameters: 
+        Parameters:
             interp_method: 'linear' or 'nearest'
-                'xy' indexing will have the first two entries of the flow 
+                'xy' indexing will have the first two entries of the flow
                 (along last axis) flipped compared to 'ij' indexing
         """
         self.zoom_factor = zoom_factor
@@ -409,7 +410,7 @@ Zoom = Resize
 
 
 class SpatiallySparse_Dense(Layer):
-    """ 
+    """
     Spatially-Sparse Dense Layer (great name, huh?)
     This is a Densely connected (Fully connected) layer with sparse observations.
 
@@ -528,7 +529,7 @@ class SpatiallySparse_Dense(Layer):
 #########################################################
 
 class LocalBias(Layer):
-    """ 
+    """
     Local bias layer: each pixel/voxel has its own bias operation (one parameter)
     out[v] = in[v] + b
     """
@@ -604,11 +605,11 @@ class LocalParam_new(Layer):
 
 
 class LocalParam(Layer):
-    """ 
+    """
     Local Parameter layer: each pixel/voxel has its own parameter (one parameter)
     out[v] = b
 
-    using code from 
+    using code from
     https://github.com/YerevaNN/R-NET-in-Keras/blob/master/layers/SharedWeight.py
     and
     https://github.com/keras-team/keras/blob/ee02d256611b17d11e37b86bd4f618d7f2a37d84/keras/engine/input_layer.py
@@ -648,16 +649,16 @@ class LocalParam(Layer):
         self.is_placeholder = False
 
         # create new node
-        Node(self,
-             inbound_layers=[],
-             node_indices=[],
-             tensor_indices=[],
-             input_tensors=[],
-             output_tensors=[output_tensor],
-             input_masks=[],
-             output_masks=[None],
-             input_shapes=[],
-             output_shapes=[self.shape])
+        node.Node(self,
+                  inbound_layers=[],
+                  node_indices=[],
+                  tensor_indices=[],
+                  input_tensors=[],
+                  output_tensors=[output_tensor],
+                  input_masks=[],
+                  output_masks=[None],
+                  input_shapes=[],
+                  output_shapes=[self.shape])
 
     def get_config(self):
         config = super().get_config()
@@ -685,7 +686,7 @@ class LocalParam(Layer):
 
 
 class LocalLinear(Layer):
-    """ 
+    """
     Local linear layer: each pixel/voxel has its own linear operation (two parameters)
     out[v] = a * in[v] + b
     """
@@ -797,7 +798,7 @@ class LocallyConnected3D(Layer):
         `rows` and `cols` values might have changed due to padding.
     """
 
-    @interfaces.legacy_conv3d_support
+    @legacy_conv3d_support
     def __init__(self, filters,
                  kernel_size,
                  strides=(1, 1, 1),
@@ -1010,10 +1011,10 @@ class LocallyConnected3D(Layer):
 # class LocalParam(InputLayer):
 
 #     def __init__(self, shape, mult=1, my_initializer='RandomNormal', **kwargs):
-#         super(LocalParam, self).__init__(input_shape=shape, **kwargs)       
+#         super(LocalParam, self).__init__(input_shape=shape, **kwargs)
 
 #         # Create a trainable weight variable for this layer.
-#         self.kernel = self.add_weight(name='kernel', 
+#         self.kernel = self.add_weight(name='kernel',
 #                                       shape=tuple(shape),
 #                                       initializer=my_initializer,
 #                                       trainable=True)
@@ -1039,8 +1040,8 @@ class LocallyConnected3D(Layer):
 
 
 class MeanStream(Layer):
-    """ 
-    Maintain stream of data mean. 
+    """
+    Maintain stream of data mean.
 
     cap refers to mainting an approximation of up to that number of subjects -- that is,
     any incoming datapoint will have at least 1/cap weight.
@@ -1089,8 +1090,8 @@ class MeanStream(Layer):
 
 
 class CovStream(Layer):
-    """ 
-    Maintain stream of data mean. 
+    """
+    Maintain stream of data mean.
 
     cap refers to mainting an approximation of up to that number of subjects -- that is,
     any incoming datapoint will have at least 1/cap weight.

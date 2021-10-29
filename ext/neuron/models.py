@@ -1,9 +1,9 @@
 """
 tensorflow/keras utilities for the neuron project
 
-If you use this code, please cite 
+If you use this code, please cite
 Dalca AV, Guttag J, Sabuncu MR
-Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation, 
+Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation,
 CVPR 2018
 
 Contact: adalca [at] csail [dot] mit [dot] edu
@@ -17,11 +17,11 @@ from . import layers
 # third party
 import numpy as np
 import tensorflow as tf
-import keras
-import keras.layers as KL
-from keras.models import Model
-import keras.backend as K
-from keras.constraints import maxnorm
+from tensorflow import keras
+import tensorflow.keras.layers as KL
+from tensorflow.keras.models import Model
+import tensorflow.keras.backend as K
+from tensorflow.keras.constraints import MaxNorm
 
 
 def dilation_net(nb_features,
@@ -91,7 +91,7 @@ def unet(nb_features,
     """
     unet-style keras model with an overdose of parametrization.
 
-    downsampling: 
+    downsampling:
 
     for U-net like architecture, we need to use Deconvolution3D.
     However, this is not yet available (maybe soon, it's on a dev branch in github I believe)
@@ -103,13 +103,13 @@ def unet(nb_features,
             see below for `feat_mult` and `layer_nb_feats` for modifiers to this number
         input_shape: input layer shape, vector of size ndims + 1 (nb_channels)
         conv_size: the convolution kernel size
-        nb_levels: the number of Unet levels (number of downsamples) in the "encoder" 
+        nb_levels: the number of Unet levels (number of downsamples) in the "encoder"
             (e.g. 4 would give you 4 levels in encoder, 4 in decoder)
         nb_labels: number of output channels
         name (default: 'unet'): the name of the network
         prefix (default: `name` value): prefix to be added to layer names
         feat_mult (default: 1) multiple for `nb_features` as we go down the encoder levels.
-            e.g. feat_mult of 2 and nb_features of 16 would yield 32 features in the 
+            e.g. feat_mult of 2 and nb_features of 16 would yield 32 features in the
             second layer, 64 features in the third layer, etc
         pool_size (default: 2): max pooling size (integer or list if specifying per dimension)
         use_logp:
@@ -877,7 +877,7 @@ def design_dnn(nb_features, input_shape, nb_levels, conv_size, nb_labels,
     # kwargs for the convolution layer
     conv_kwargs = {'padding': padding, 'activation': activation}
     if conv_maxnorm > 0:
-        conv_kwargs['kernel_constraint'] = maxnorm(conv_maxnorm)
+        conv_kwargs['kernel_constraint'] = MaxNorm(conv_maxnorm)
 
     # initialize a dictionary
     enc_tensors = {}

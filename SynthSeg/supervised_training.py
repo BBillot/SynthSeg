@@ -2,8 +2,8 @@
 import os
 import numpy as np
 import tensorflow as tf
-from keras import models
-import keras.layers as KL
+from tensorflow.keras import models
+import tensorflow.keras.layers as KL
 import numpy.random as npr
 
 # project imports

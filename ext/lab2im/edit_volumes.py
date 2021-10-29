@@ -60,8 +60,8 @@ import csv
 import shutil
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-from keras.models import Model
+import tensorflow.keras.layers as KL
+from tensorflow.keras.models import Model
 from scipy.ndimage.filters import convolve
 from scipy.ndimage import label as scipy_label
 from scipy.interpolate import RegularGridInterpolator
@@ -76,7 +76,8 @@ from .edit_tensors import blurring_sigma_for_downsampling
 
 # ---------------------------------------------------- edit volume -----------------------------------------------------
 
-def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=False, masking_value=0,
+def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0,
+                fill_holes=False, masking_value=0,
                 return_mask=False):
     """Mask a volume, either with a given mask, or by keeping only the values above a threshold.
     :param volume: a numpy array, possibly with several channels
