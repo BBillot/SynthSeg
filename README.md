@@ -1,6 +1,14 @@
 
 # SynthSeg
 
+\
+\
+:tada: Update 29/10/2021: SynthSeg is now available on the dev version of 
+[FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)   !! :tada: \
+See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it
+\
+\
+\
 In this repository, we present SynthSeg, the first convolutional neural network to readily segment brain MRI scans of
 any contrast and resolution, with an output that is 1 mm isotropic, no matter what the resolution of the input is.
 Additionally, the proposed model is robust to:
@@ -134,14 +142,14 @@ Regarding the code, we include functions to [train](SynthSeg/training.py) new mo
 [validate](SynthSeg/validate.py), and [test](SynthSeg/predict.py) them. While these functions are thoroughly documented,
 you can familiarise yourself with the different aspects of the code by following the provided tutorials:
 
-- [1-generation_visualisation](scripts/tutorials/1-generation_visualisation.py): We recommend you to start here, as this
-very simple script shows examples of the synthetic images used to train SynthSeg.
+- [1-generation_visualisation](scripts/tutorials/1-generation_visualisation.py): This very simple script shows examples
+of the synthetic images used to train SynthSeg.
 
 - [2-generation_explained](scripts/tutorials/2-generation_explained.py): This second script describes all the parameters
 used to control the generative model that we sample from during training. We advise you to thoroughly read this
 tutorial, as it is essential to undesrtand how the synthetic data is formed before starting training.
 
-- [3-training](scripts/tutorials/3-training.py): This scripts reuses teh parameters explained in the previous tutorial
+- [3-training](scripts/tutorials/3-training.py): This scripts re-uses the parameters explained in the previous tutorial
 and focuses on the learning/architecture parameters. The script here is the very one we used to train SynthSeg !
 
 - [4-generation_advanced](scripts/tutorials/4-generation_advanced.py): Here we detail more advanced generation options,
@@ -152,9 +160,8 @@ tutorial).
 - [5-intensity_estimation](scripts/tutorials/5-intensity_estimation.py): Finally, this script shows how to estimate the
 Gaussian priors of the GMM when training a contrast-specific version of SynthSeg.
 
-These tutorials cover a lot of materials and will enable you to train your own SynthSeg model. Moreover, if you wish,
-you can have access to more detialed information by reading the docstrings of all functions, which contain very detailed
-information.
+These tutorials cover a lot of materials and will enable you to train your own SynthSeg model. Moreover, even more 
+detailed information is provided in the docstrings of all functions, so don't hesitate to have a look at these !
 
 ----------------
 
@@ -184,7 +191,7 @@ information.
 - [script](scripts): additionally to the tutorials, we also provide functions to launch trainings and testings from the
 terminal.
 
-- [ext](ext): contains external packages, especially the *lab2im* package, and a modified version of *neuron*.
+- [ext](ext): includes external packages, especially the *lab2im* package, and a modified version of *neuron*.
 
 
 ----------------
@@ -194,21 +201,21 @@ terminal.
 If you use this code, please cite the following papers:
 
 **SynthSeg: Domain Randomisation for Segmentation of Brain MRI Scans of any Contrast and Resolution** \
-Benjamin Billot, Douglas N. Greve, Oula Puonti, Axel Thielscher, Koen Van Leemput, Bruce Fischl, Adrian V. Dalca, Juan Eugenio Iglesias \
+B. Billot, D.N. Greve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V. Dalca, J.E. Iglesias \
 [[arxiv](https://arxiv.org/abs/2107.09559)]
 
 **A Learning Strategy for Contrast-agnostic MRI Segmentation** \
-Benjamin Billot, Douglas N. Greve, Koen Van Leemput, Bruce Fischl, Juan Eugenio Iglesias*, Adrian V. Dalca* \
+B. Billot, D.N. Greve, K. Van Leemput, B. Fischl, J.E. Iglesias*, A.V. Dalca* \
 *contributed equally \
 MIDL 2020 \
 [[link](http://proceedings.mlr.press/v121/billot20a.html) | [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.txt)]
 
 **Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast** \
-Benjamin Billot, Eleanor D. Robinson, Adrian V. Dalca, Juan Eugenio Iglesias \
+B. Billot, E.D. Robinson, A.V. Dalca, J.E. Iglesias \
 MICCAI 2020 \
 [[link](https://link.springer.com/chapter/10.1007/978-3-030-59728-3_18) | [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.txt)]
 
-If you have any question regarding the usage of this code, or any suggestions to improve it you can contact us at: \
+If you have any question regarding the usage of this code, or any suggestions to improve it, you can contact us at: \
 benjamin.billot.18@ucl.ac.uk
 
 

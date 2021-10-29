@@ -221,8 +221,9 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
     # sort labels in neutral/left/right according to FS labels
     n_neutral_labels = 0
     if FS_sort:
-        neutral_FS_labels = [0, 14, 15, 16, 21, 22, 23, 24, 72, 77, 80, 85, 101, 102, 103, 104, 105, 165, 251, 252, 253,
-                             254, 255, 258, 259, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340,
+        neutral_FS_labels = [0, 14, 15, 16, 21, 22, 23, 24, 72, 77, 80, 85, 100, 101, 102, 103, 104, 105, 106, 107, 108,
+                             109, 165, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210,
+                             251, 252, 253, 254, 255, 258, 259, 260, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340,
                              502, 506, 507, 508, 509, 511, 512, 514, 515, 516, 517, 530,
                              531, 532, 533, 534, 535, 536, 537]
         neutral = list()
@@ -310,7 +311,10 @@ def reformat_to_list(var, length=None, load_as_numpy=False, dtype=None):
     elif isinstance(var, tuple):
         var = list(var)
     elif isinstance(var, np.ndarray):
-        var = np.squeeze(var).tolist()
+        if var.shape == (1,):
+            var = [var[0]]
+        else:
+            var = np.squeeze(var).tolist()
     elif isinstance(var, str):
         var = [var]
     elif isinstance(var, bool):
@@ -455,6 +459,18 @@ def list_subfolders(path_dir, whole_path=True, expr=None, cond_type='or'):
                 matched_list_subdirs = tmp_matched_list_subdirs
         subdirs_list = sorted(matched_list_subdirs)
     return subdirs_list
+
+
+def get_image_extension(path):
+    name = os.path.basename(path)
+    if name[-7:] == '.nii.gz':
+        return 'nii.gz'
+    elif name[-4:] == '.mgz':
+        return 'mgz'
+    elif name[-4:] == '.nii':
+        return 'nii'
+    elif name[-4:] == '.npz':
+        return 'npz'
 
 
 def strip_extension(path):
@@ -885,23 +901,23 @@ def build_training_generator(gen, batchsize):
         yield inputs, target
 
 
-def find_closest_number_divisible_by_m(n, m, smaller_ans=True):
-    """Return the closest integer to n that is divisible by m.
-    If smaller_ans is True, only values lower than n are considered."""
-    # quotient
-    q = int(n / m)
-    # 1st possible closest number
-    n1 = m * q
-    # 2nd possible closest number
-    if (n * m) > 0:
-        n2 = (m * (q + 1))
+def find_closest_number_divisible_by_m(n, m, answer_type='lower'):
+    """Return the closest integer to n that is divisible by m. answer_type can either be 'closer', 'lower' (only returns
+    values lower than n), or 'higher (only returns values higher than m)."""
+    if n % m == 0:
+        return n
     else:
-        n2 = (m * (q - 1))
-    # find closest solution
-    if (abs(n - n1) < abs(n - n2)) | smaller_ans:
-        return n1
-    else:
-        return n2
+        q = int(n / m)
+        lower = q * m
+        higher = (q + 1) * m
+        if answer_type == 'lower':
+            return lower
+        elif answer_type == 'higher':
+            return higher
+        elif answer_type == 'closer':
+            return lower if (n - lower) < (higher - n) else higher
+        else:
+            raise Exception('answer_type should be lower, higher, or closer, had : %s' % answer_type)
 
 
 def build_binary_structure(connectivity, n_dims, shape=None):

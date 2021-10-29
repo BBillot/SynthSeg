@@ -23,6 +23,8 @@ parser.add_argument("--padding", type=int, dest="padding", default=None,
                     help="margin of the padding")
 parser.add_argument("--cropping", type=int, dest="cropping", default=None,
                     help="crop volume before processing. Segmentations will have the same size as input image.")
+parser.add_argument("--target_res", type=float, dest="target_res", default=1.,
+                    help="Target resolution at which segmentations will be given.")
 parser.add_argument("--flip", action='store_true', dest="flip",
                     help="to activate test-time augmentation (right/left flipping)")
 parser.add_argument("--topology_classes", type=str, dest="topology_classes", default=None,

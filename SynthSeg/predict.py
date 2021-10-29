@@ -24,9 +24,9 @@ def predict(path_images,
             segmentation_names_list=None,
             padding=None,
             cropping=None,
+            target_res=1.,
             flip=True,
             topology_classes=None,
-            target_res=1.,
             sigma_smoothing=0.5,
             keep_biggest_component=True,
             conv_size=3,
@@ -70,16 +70,16 @@ def predict(path_images,
     :param cropping: (optional) crop the images to the specified shape before predicting the segmentation maps.
     If padding and cropping are specified, images are padded before being cropped.
     Can be an int, a sequence or a 1d numpy array.
+    :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
+    segmentations). This must match the resolution of the training data ! target_res is used to automatically resampled
+    the images with resolutions outside [target_res-0.05, target_res+0.05].
+    Can be a sequence, a 1d numpy array. Set to None to disable the automatic resampling. Default is 1mm.
     :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
     a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
     :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
     classes, for each of which we will operate a smooth version of biggest connected component.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_label_list.
     Default is None, where no topological analysis is performed.
-    :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
-    segmentations). This must match the resolution of the training data ! target_res is used to automatically resampled
-    the images with resolutions outside [target_res-0.05, target_res+0.05].
-    Can be a sequence, a 1d numpy array. Set to None to disable the automatic resampling. Default is 1mm.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
