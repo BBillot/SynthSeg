@@ -1,3 +1,4 @@
+
 # SynthSeg
 
 In this repository, we present SynthSeg, the first convolutional neural network to readily segment brain MRI scans of
