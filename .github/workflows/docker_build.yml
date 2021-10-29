@@ -29,12 +29,12 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v1
 
-    - name: Build and push pyAFQ docker image
-      run: sh ./pyafq_docker/docker-build.sh \
+    - name: Build and push docker image
+      run: sh ./docker-build.sh \
         "${{github.sha}}" \
         "nrdg"
 
     - name: Build and push a tagged image
       if: startsWith(github.event.ref, 'refs/tags')
       run: |
-        sh ./pyafq_docker/docker-build.sh "${{ github.event.release.tag_name }}" "nrdg"
+        sh ./docker/docker-build.sh "${{ github.event.release.tag_name }}" "nrdg"
