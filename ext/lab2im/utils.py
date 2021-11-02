@@ -1,4 +1,5 @@
-"""This file contains all the utilities used in that project. They are classified in 5 categories:
+"""
+This file contains all the utilities used in that project. They are classified in 5 categories:
 1- loading/saving functions:
     -load_volume
     -save_volume
@@ -40,9 +41,8 @@
     -build_exp
 
 
-
-If you use this code, please cite one of the SynthSeg papers:
-https://github.com/BBillot/SynthSeg/blob/master/bibtex.bib
+If you use this code, please cite the first SynthSeg paper:
+https://github.com/BBillot/lab2im/blob/master/bibtex.bib
 
 Copyright 2020 Benjamin Billot
 

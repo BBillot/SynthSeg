@@ -55,9 +55,8 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -subdivide_dataset_to_patches
 
 
-
-If you use this code, please cite one of the SynthSeg papers:
-https://github.com/BBillot/SynthSeg/blob/master/bibtex.bib
+If you use this code, please cite the first SynthSeg paper:
+https://github.com/BBillot/lab2im/blob/master/bibtex.bib
 
 Copyright 2020 Benjamin Billot
 

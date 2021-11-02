@@ -18,9 +18,8 @@ This file regroups several custom keras layers used in the generation model:
     - MaskEdges
 
 
-
-If you use this code, please cite one of the SynthSeg papers:
-https://github.com/BBillot/SynthSeg/blob/master/bibtex.bib
+If you use this code, please cite the first SynthSeg paper:
+https://github.com/BBillot/lab2im/blob/master/bibtex.bib
 
 Copyright 2020 Benjamin Billot
 
