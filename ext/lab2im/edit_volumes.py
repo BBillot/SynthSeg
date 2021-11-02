@@ -1,4 +1,5 @@
-"""This file contains functions to edit/preprocess volumes (i.e. not tensors!).
+"""
+This file contains functions to edit/preprocess volumes (i.e. not tensors!).
 These functions are sorted in five categories:
 1- volume editting: this can be applied to any volume (i.e. images or label maps). It contains:
         -mask_volume
@@ -51,7 +52,23 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
 5- dataset editting: functions for editting datasets (i.e. images with corresponding label maps). It contains:
         -check_images_and_labels
         -crop_dataset_to_minimum_size
-        -subdivide_dataset_to_patches"""
+        -subdivide_dataset_to_patches
+
+
+
+If you use this code, please cite one of the SynthSeg papers:
+https://github.com/BBillot/SynthSeg/blob/master/bibtex.bib
+
+Copyright 2020 Benjamin Billot
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
+compliance with the License. You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software distributed under the License is
+distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied. See the License for the specific language governing permissions and limitations under the
+License.
+"""
 
 
 # python imports

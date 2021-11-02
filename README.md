@@ -180,22 +180,23 @@ detailed information is provided in the docstrings of all functions, so don't he
 
 ### Citation/Contact
 
-If you use this code, please cite the following papers:
+This code is under [Apache 2.0](LICENSE.txt) licensing. \
+If you use it, please cite one of the following papers:
 
 **SynthSeg: Domain Randomisation for Segmentation of Brain MRI Scans of any Contrast and Resolution** \
 B. Billot, D.N. Greve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V. Dalca, J.E. Iglesias \
-[[arxiv](https://arxiv.org/abs/2107.09559)]
+[[arxiv](https://arxiv.org/abs/2107.09559) | [bibtex](bibtex.bib)]
 
 **A Learning Strategy for Contrast-agnostic MRI Segmentation** \
 B. Billot, D.N. Greve, K. Van Leemput, B. Fischl, J.E. Iglesias*, A.V. Dalca* \
 *contributed equally \
 MIDL 2020 \
-[[link](http://proceedings.mlr.press/v121/billot20a.html) | [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.txt)]
+[[link](http://proceedings.mlr.press/v121/billot20a.html) | [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.bib)]
 
 **Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast** \
 B. Billot, E.D. Robinson, A.V. Dalca, J.E. Iglesias \
 MICCAI 2020 \
-[[link](https://link.springer.com/chapter/10.1007/978-3-030-59728-3_18) | [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.txt)]
+[[link](https://link.springer.com/chapter/10.1007/978-3-030-59728-3_18) | [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.bib)]
 
 If you have any question regarding the usage of this code, or any suggestions to improve it, you can contact us at: \
 benjamin.billot.18@ucl.ac.uk

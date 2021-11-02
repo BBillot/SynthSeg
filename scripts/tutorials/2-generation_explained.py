@@ -1,10 +1,27 @@
 """
+
 This script explains how the different parameters controlling the generation of the synthetic data.
 These parameters will be reused in the training function, but we describe them here, as the synthetic images are saved,
 and thus can be visualised.
 Note that most of the parameters here are set to their default value, but we show them nonetheless, just to explain
 their effect. Moreover, we encourage the user to play with them to get a sense of their impact on the generation.
+
+
+
+If you use this code, please cite one of the SynthSeg papers:
+https://github.com/BBillot/SynthSeg/blob/master/bibtex.bib
+
+Copyright 2020 Benjamin Billot
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
+compliance with the License. You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software distributed under the License is
+distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied. See the License for the specific language governing permissions and limitations under the
+License.
 """
+
 
 import os
 from ext.lab2im import utils
