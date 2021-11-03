@@ -39,8 +39,12 @@ path_label_map = '../../data/training_label_maps'
 
 # Here we specify the structures in the label maps for which we want to generate intensities.
 # This is given as a list of label values, which do not necesseraly need to be present in every label map.
-# However, these labels must follow a specific order: first the non-sided labels, then all the left labels, and finally
-# the corresponding right labels in the same order as the left ones.
+# However, these labels must follow a specific order: first the background, and then all the other labels. Moreover, if
+# 1) the label maps contain some right/left-specific label values, and 2) we activate flipping augmentation (which is
+# true by default), then the rest of the labels must follow a strict order:
+# first the non-sided labels (i.e. those which are not right/left specific), then all the left labels, and finally the
+# corresponding right labels (in the same order as the left ones). Please make sure each that each sided label has a
+# right and a left value (this is essential!!!).
 #
 # Example: generation_labels = [0,    # background
 #                               24,   # CSF

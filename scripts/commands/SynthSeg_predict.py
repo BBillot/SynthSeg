@@ -69,14 +69,11 @@ tf.config.threading.set_intra_op_parallelism_threads(args['threads'])
 del args['threads']
 
 # default parameters
-path_label_list = os.path.join(synthseg_home, 'data/labels_classes_priors/segmentation_labels.npy')
-path_names_list = os.path.join(synthseg_home, 'data/labels_classes_priors/segmentation_names.npy')
-path_topology_classes = os.path.join(synthseg_home, 'data/labels_classes_priors/topological_classes.npy')
-path_model = os.path.join(synthseg_home, 'models/SynthSeg.h5')
-args['segmentation_label_list'] = path_label_list
-args['segmentation_names_list'] = path_names_list
-args['topology_classes'] = path_topology_classes
-args['path_model'] = path_model
+args['segmentation_labels'] = os.path.join(synthseg_home, 'data/labels_classes_priors/segmentation_labels.npy')
+args['n_neutral_labels'] = 18
+args['segmentation_label_names'] = os.path.join(synthseg_home, 'data/labels_classes_priors/segmentation_names.npy')
+args['topology_classes'] = os.path.join(synthseg_home, 'data/labels_classes_priors/topological_classes.npy')
+args['path_model'] = os.path.join(synthseg_home, 'models/SynthSeg.h5')
 args['padding'] = args['cropping']
 
 # call predict

@@ -33,8 +33,9 @@ def validate_training(image_dir,
                       gt_dir,
                       models_dir,
                       validation_main_dir,
-                      segmentation_label_list,
-                      evaluation_label_list=None,
+                      segmentation_labels,
+                      n_neutral_labels=None,
+                      evaluation_labels=None,
                       step_eval=1,
                       padding=None,
                       cropping=None,
@@ -60,8 +61,9 @@ def validate_training(image_dir,
     These are matched to the validation images by sorting order.
     :param models_dir: path of the folder with the models to validate.
     :param validation_main_dir: path of the folder where all the models validation subfolders will be saved.
-    :param segmentation_label_list: path of the numpy array containing all the segmentation labels used during training.
-    :param evaluation_label_list: (optional) label values to validate on. Must be a subset of the segmentation labels.
+    :param segmentation_labels: path of the numpy array containing all the segmentation labels used during training.
+    :param n_neutral_labels: (optional) value of n_neutral_labels used during training. Used only if flip is True.
+    :param evaluation_labels: (optional) label values to validate on. Must be a subset of the segmentation labels.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array. Default is the same as segmentation_label_list
     :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
     :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
@@ -112,7 +114,8 @@ def validate_training(image_dir,
             loop_info.update(model_idx)
             predict(path_images=image_dir,
                     path_model=path_model,
-                    segmentation_label_list=segmentation_label_list,
+                    segmentation_labels=segmentation_labels,
+                    n_neutral_labels=n_neutral_labels,
                     path_segmentations=model_val_dir,
                     padding=padding,
                     cropping=cropping,
@@ -129,7 +132,7 @@ def validate_training(image_dir,
                     activation=activation,
                     gt_folder=gt_dir,
                     mask_folder=mask_dir,
-                    evaluation_label_list=evaluation_label_list,
+                    evaluation_labels=evaluation_labels,
                     compute_distances=compute_distances,
                     recompute=recompute,
                     verbose=False)

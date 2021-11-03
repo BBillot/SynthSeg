@@ -38,6 +38,7 @@ from ext.neuron import models as nrn_models
 def training(labels_dir,
              model_dir,
              generation_labels=None,
+             n_neutral_labels=None,
              segmentation_labels=None,
              patch_dir=None,
              batchsize=1,
@@ -92,10 +93,17 @@ def training(labels_dir,
     #---------------------------------------------- Generation parameters ----------------------------------------------
     # label maps parameters
     :param generation_labels: (optional) list of all possible label values in the input label maps.
-    Default is None, where the label values are directly gotten from the provided label maps. If not None, must be a
-    list, or a 1d numpy array, or the path to such an array, which should be organised as follows: background label
-    first, then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same hemisphere (can be
-    left or right), and finally all the corresponding contralateral structures (in the same order).
+    It can be None (default, where the label values are directly gotten from the provided label maps), a list,
+    a 1d numpy array, or the path to such an array. If not None, the background label should always be the first. Then,
+    if the label maps contain some right/left specific labels and if flipping is applied during training (see 'flipping'
+    paramater), generation_labels should be organised as follows:
+    first the background label, then the non-sided labels (i.e. those which are not right/left specific), then all the
+    left labels, and finally the corresponding right labels (in the same order as the left ones). Please make sure each
+    that each sided label has a right and a left value (this is essential!!!).
+    :param n_neutral_labels: (optional) if the label maps contain some right/left specific labels and if flipping is
+    applied during training, please provide the number of non-sided labels (including the background).
+    This is used to know where the sided labels start in generation_labels. Leave to default (None) if either one of the
+    two conditions is not fulfilled.
     :param segmentation_labels: (optional) list of the same length as generation_labels to indicate which values to use
     in the training label maps, i.e. all occurences of generation_labels[i] in the input label maps will be converted to
     output_labels[i] in the returned label maps. Examples:
@@ -222,9 +230,7 @@ def training(labels_dir,
         'either wl2_epochs or dice_epochs must be positive, had {0} and {1}'.format(wl2_epochs, dice_epochs)
 
     # get label lists
-    generation_labels, n_neutral_labels = utils.get_list_labels(label_list=generation_labels,
-                                                                labels_dir=labels_dir,
-                                                                FS_sort=True)
+    generation_labels, _ = utils.get_list_labels(label_list=generation_labels, labels_dir=labels_dir)
     if segmentation_labels is not None:
         segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
     else:

@@ -24,17 +24,18 @@ parser = ArgumentParser()
 parser.add_argument("path_images", type=str, help="path single image or path of the folders with training labels")
 parser.add_argument("path_segmentations", type=str, help="segmentations folder/path")
 parser.add_argument("path_model", type=str, help="model file path")
-parser.add_argument("segmentation_label_list", type=str, help="path label list")
+parser.add_argument("segmentation_labels", type=str, help="path label list")
 
 # Saving paths
 parser.add_argument("--post", type=str, dest="path_posteriors", default=None, help="posteriors folder/path")
 parser.add_argument("--resampled", type=str, dest="path_resampled", default=None,
                     help="path/folder of the resampled images (1mm isotropic resolution)")
 parser.add_argument("--vol", type=str, dest="path_volumes", default=None, help="path volume file")
-parser.add_argument("--names_list", type=str, dest="segmentation_names_list", default=None,
+parser.add_argument("--names_list", type=str, dest="segmentation_label_names", default=None,
                     help="path list of label names, only used if --vol is specified")
 
 # Processing parameters
+parser.add_argument("--neutral_labels", type=int, dest="n_neutral_labels", default=None)
 parser.add_argument("--padding", type=int, dest="padding", default=None,
                     help="margin of the padding")
 parser.add_argument("--cropping", type=int, dest="cropping", default=None,
@@ -69,7 +70,7 @@ parser.add_argument("--incorrect_labels", type=str, default=None, dest="list_inc
                     help="path list labels to correct.")
 parser.add_argument("--correct_labels", type=str, default=None, dest="list_correct_labels",
                     help="path list correct labels.")
-parser.add_argument("--eval_label_list", type=str, dest="evaluation_label_list", default=None,
+parser.add_argument("--eval_label_list", type=str, dest="evaluation_labels", default=None,
                     help="labels to evaluate Dice scores on if gt is provided. Default is the same as label_list.")
 
 args = parser.parse_args()

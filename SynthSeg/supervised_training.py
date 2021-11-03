@@ -40,6 +40,7 @@ def supervised_training(image_dir,
                         labels_dir,
                         model_dir,
                         segmentation_labels=None,
+                        n_neutral_labels=None,
                         batchsize=1,
                         target_res=None,
                         output_shape=None,
@@ -79,9 +80,7 @@ def supervised_training(image_dir,
     assert len(path_images) == len(path_labels), "There should be as many images as label maps."
 
     # get label lists
-    label_list, n_neutral_labels = utils.get_list_labels(label_list=segmentation_labels,
-                                                         labels_dir=labels_dir,
-                                                         FS_sort=True)
+    label_list, _ = utils.get_list_labels(label_list=segmentation_labels, labels_dir=labels_dir)
     n_labels = np.size(label_list)
 
     # create augmentation model

@@ -51,10 +51,9 @@ steps_per_epoch = 5000  # number of iteration per epoch
 # ---------- Generation parameters ----------
 # these parameters are from the previous tutorial, and thus we do not explain them again here
 
-# labels and classes lists
-# Please note that here we do not provide the number of non-sided labels.
-# This is because the training function will do it, based on the FreeSurfer classification of labels.
+# generation and segmentation labels
 path_generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
+n_neutral_labels = 18
 path_segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # shape and resolution of the outputs
@@ -82,32 +81,33 @@ blur_range = 1.03
 # ------------------------------------------------------ Training ------------------------------------------------------
 
 training(path_training_label_maps,
-             path_model_dir,
-             generation_labels=path_generation_labels,
-             segmentation_labels=path_segmentation_labels,
-             batchsize=batchsize,
-             n_channels=n_channels,
-             target_res=target_res,
-             output_shape=output_shape,
-             prior_distributions=prior_distributions,
-             generation_classes=path_generation_classes,
-             flipping=flipping,
-             scaling_bounds=scaling_bounds,
-             rotation_bounds=rotation_bounds,
-             shearing_bounds=shearing_bounds,
-             translation_bounds=translation_bounds,
-             nonlin_std=nonlin_std,
-             randomise_res=randomise_res,
-             blur_range=blur_range,
-             bias_field_std=bias_field_std,
-             n_levels=n_levels,
-             nb_conv_per_level=nb_conv_per_level,
-             conv_size=conv_size,
-             unet_feat_count=unet_feat_count,
-             feat_multiplier=feat_multiplier,
-             activation=activation,
-             lr=lr,
-             lr_decay=lr_decay,
-             wl2_epochs=wl2_epochs,
-             dice_epochs=dice_epochs,
-             steps_per_epoch=steps_per_epoch)
+         path_model_dir,
+         generation_labels=path_generation_labels,
+         segmentation_labels=path_segmentation_labels,
+         n_neutral_labels=n_neutral_labels,
+         batchsize=batchsize,
+         n_channels=n_channels,
+         target_res=target_res,
+         output_shape=output_shape,
+         prior_distributions=prior_distributions,
+         generation_classes=path_generation_classes,
+         flipping=flipping,
+         scaling_bounds=scaling_bounds,
+         rotation_bounds=rotation_bounds,
+         shearing_bounds=shearing_bounds,
+         translation_bounds=translation_bounds,
+         nonlin_std=nonlin_std,
+         randomise_res=randomise_res,
+         blur_range=blur_range,
+         bias_field_std=bias_field_std,
+         n_levels=n_levels,
+         nb_conv_per_level=nb_conv_per_level,
+         conv_size=conv_size,
+         unet_feat_count=unet_feat_count,
+         feat_multiplier=feat_multiplier,
+         activation=activation,
+         lr=lr,
+         lr_decay=lr_decay,
+         wl2_epochs=wl2_epochs,
+         dice_epochs=dice_epochs,
+         steps_per_epoch=steps_per_epoch)

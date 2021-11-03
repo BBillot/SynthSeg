@@ -33,11 +33,12 @@ from ext.neuron import models as nrn_models
 def predict(path_images,
             path_segmentations,
             path_model,
-            segmentation_label_list,
+            segmentation_labels,
+            n_neutral_labels=None,
             path_posteriors=None,
             path_resampled=None,
             path_volumes=None,
-            segmentation_names_list=None,
+            segmentation_label_names=None,
             padding=None,
             cropping=None,
             target_res=1.,
@@ -52,10 +53,10 @@ def predict(path_images,
             feat_multiplier=2,
             activation='elu',
             gt_folder=None,
+            evaluation_labels=None,
             mask_folder=None,
             list_incorrect_labels=None,
             list_correct_labels=None,
-            evaluation_label_list=None,
             compute_distances=False,
             recompute=True,
             verbose=True):
@@ -66,9 +67,11 @@ def predict(path_images,
     :param path_segmentations: path where segmentations will be writen.
     Should be a dir, if path_images is a dir, and a file if path_images is a file.
     :param path_model: path ot the trained model.
-    :param segmentation_label_list: List of labels for which to compute Dice scores. It should contain the same values
-    as the segmentation label list used for training the network.
-    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array.
+    :param segmentation_labels: List of labels for which to compute Dice scores. It should be the same list as the
+    segmentation_labels used in training.
+    :param n_neutral_labels: (optional) if the label maps contain some right/left specific labels and if test-time
+    flipping is applied (see parameter 'flip'), please provide the number of non-sided labels (including background).
+    It should be the same value as for training. Default is None.
     :param path_posteriors: (optional) path where posteriors will be writen.
     Should be a dir, if path_images is a dir, and a file if path_images is a file.
     :param path_resampled: (optional) path where images resampled to 1mm isotropic will be writen.
@@ -78,8 +81,8 @@ def predict(path_images,
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
-    :param segmentation_names_list: (optional) List of names correponding to the names of the segmentation labels.
-    Only used when path_volumes is provided. Must be of the same size as segmentation_label_list. Can be given as a
+    :param segmentation_label_names: (optional) List of names correponding to the names of the segmentation labels.
+    Only used when path_volumes is provided. Must be of the same size as segmentation_labels. Can be given as a
     list, a numpy array of strings, or the path to such a numpy array. Default is None.
     :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
     Can be an int, a sequence or a 1d numpy array.
@@ -94,7 +97,7 @@ def predict(path_images,
     a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
     :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
     classes, for each of which we will operate a smooth version of biggest connected component.
-    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_label_list.
+    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_labels.
     Default is None, where no topological analysis is performed.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
@@ -110,15 +113,15 @@ def predict(path_images,
     if path_images is a dir, or a file if path_images is a file.
     Providing a gt_folder will trigger a Dice evaluation, where scores will be writen along with the path_segmentations.
     Specifically, the scores are contained in a numpy array, where labels are in rows, and subjects in columns.
+    :param evaluation_labels: (optional) if gt_folder is True you can evaluate the Dice scores on a subset of the
+    segmentation labels, by providing another label list here. Can be a sequence, a 1d numpy array, or the path to a
+    numpy 1d array. Default is np.unique(segmentation_labels).
     :param mask_folder: (optional) path of masks that will be used to mask out some parts of the obtained segmentations
     during the evaluation. Default is None, where nothing is masked.
     :param list_incorrect_labels: (optional) this option enables to replace some label values in the obtained
     segmentations by other label values. Can be a list, a 1d numpy array, or the path to such an array.
     :param list_correct_labels: (optional) list of values to correct the labels specified in list_incorrect_labels.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
-    :param evaluation_label_list: (optional) if gt_folder is True you can evaluate the Dice scores on a subset of the
-    segmentation labels, by providing another label list here. Can be a sequence, a 1d numpy array, or the path to a
-    numpy 1d array. Default is the same as segmentation_label_list.
     :param compute_distances: (optional) whether to add Hausdorff and mean surface distance evaluations to the default
     Dice evaluation. Default is True.
     :param recompute: (optional) whether to recompute segmentations that were already computed. This also applies to
@@ -130,34 +133,39 @@ def predict(path_images,
     path_images, path_segmentations, path_posteriors, path_resampled, path_volumes, compute = \
         prepare_output_files(path_images, path_segmentations, path_posteriors, path_resampled, path_volumes, recompute)
 
-    # build correspondance table between contralateral structures
-    label_list, n_neutral = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=True)
-    n_labels = len(label_list)
-    n_side_labels = int((n_labels - n_neutral) / 2)
-    lr_corresp = np.stack([label_list[n_neutral:n_neutral + n_side_labels], label_list[n_neutral + n_side_labels:]])
+    # get label list
+    segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
+    n_labels = len(segmentation_labels)
 
-    # get final version of label list
-    label_list, _ = utils.get_list_labels(label_list=segmentation_label_list, FS_sort=False)
-    label_list, indices = np.unique(label_list, return_index=True)
+    # get unique label values, and build correspondance table between contralateral structures if necessary
+    if (n_neutral_labels is not None) & flip:
+        n_sided_labels = int((n_labels - n_neutral_labels) / 2)
+        lr_corresp = np.stack([segmentation_labels[n_neutral_labels:n_neutral_labels + n_sided_labels],
+                               segmentation_labels[n_neutral_labels + n_sided_labels:]])
+        segmentation_labels, indices = np.unique(segmentation_labels, return_index=True)
+        lr_corresp_unique, lr_corresp_indices = np.unique(lr_corresp[0, :], return_index=True)
+        lr_corresp_unique = np.stack([lr_corresp_unique, lr_corresp[1, lr_corresp_indices]])
+        lr_corresp_unique = lr_corresp_unique[:, 1:] if not np.all(lr_corresp_unique[:, 0]) else lr_corresp_unique
+        lr_indices = np.zeros_like(lr_corresp_unique)
+        for i in range(lr_corresp_unique.shape[0]):
+            for j, lab in enumerate(lr_corresp_unique[i]):
+                lr_indices[i, j] = np.where(segmentation_labels == lab)[0]
+    else:
+        segmentation_labels, indices = np.unique(segmentation_labels, return_index=True)
+        lr_indices = None
 
     # prepare topology classes
     if topology_classes is not None:
         topology_classes = utils.load_array_if_path(topology_classes, load_as_numpy=True)[indices]
 
-    # get correspondance for labels with different right/left values
-    lr_indices = np.zeros_like(lr_corresp)
-    for i in range(lr_corresp.shape[0]):
-        for j, lab in enumerate(lr_corresp[i]):
-            lr_indices[i, j] = np.where(label_list == lab)[0]
-
     # prepare volume file if needed
     if path_volumes is not None:
-        if segmentation_names_list is not None:
-            segmentation_names_list = utils.load_array_if_path(segmentation_names_list)[indices]
-            csv_header = [[''] + segmentation_names_list[1:].tolist()]
-            csv_header += [[''] + [str(lab) for lab in label_list[1:]]]
+        if segmentation_label_names is not None:
+            segmentation_label_names = utils.load_array_if_path(segmentation_label_names)[indices]
+            csv_header = [[''] + segmentation_label_names[1:].tolist()]
+            csv_header += [[''] + [str(lab) for lab in segmentation_labels[1:]]]
         else:
-            csv_header = [['subjects'] + [str(lab) for lab in label_list[1:]]]
+            csv_header = [['subjects'] + [str(lab) for lab in segmentation_labels[1:]]]
         with open(path_volumes, 'w') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(csv_header)
@@ -166,7 +174,7 @@ def predict(path_images,
     # build network
     _, _, n_dims, n_channels, _, _ = utils.get_volume_info(path_images[0])
     model_input_shape = [None] * n_dims + [n_channels]
-    net = build_model(path_model, model_input_shape, n_levels, len(label_list), conv_size,
+    net = build_model(path_model, model_input_shape, n_levels, len(segmentation_labels), conv_size,
                       nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
 
     # perform segmentation
@@ -188,8 +196,8 @@ def predict(path_images,
             prediction_patch_flip = net.predict(im_flipped) if flip else None
 
             # postprocessing
-            seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, label_list, lr_indices,
-                                          keep_biggest_component, aff,
+            seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, segmentation_labels,
+                                          lr_indices, keep_biggest_component, aff,
                                           topology_classes=topology_classes, post_patch_flip=prediction_patch_flip)
 
             # write results to disk
@@ -221,8 +229,8 @@ def predict(path_images,
 
         # find path where segmentations are saved evaluation folder, and get labels on which to evaluate
         eval_folder = os.path.dirname(path_segmentations[0])
-        if evaluation_label_list is None:
-            evaluation_label_list = segmentation_label_list
+        if evaluation_labels is None:
+            evaluation_labels = segmentation_labels
 
         # set path of result arrays for surface distance if necessary
         if compute_distances:
@@ -236,7 +244,7 @@ def predict(path_images,
         # compute evaluation metrics
         evaluate.evaluation(gt_folder,
                             eval_folder,
-                            evaluation_label_list,
+                            evaluation_labels,
                             mask_dir=mask_folder,
                             path_dice=os.path.join(eval_folder, 'dice.npy'),
                             path_hausdorff=path_hausdorff,
@@ -454,14 +462,15 @@ def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per
     return net
 
 
-def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_right_indices, keep_biggest_component, aff,
-                topology_classes=True, post_patch_flip=None):
+def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, segmentation_labels, lr_indices,
+                keep_biggest_component, aff, topology_classes=True, post_patch_flip=None):
 
     # get posteriors and segmentation
     post_patch = np.squeeze(post_patch)
     if post_patch_flip is not None:
         post_patch_flip = edit_volumes.flip_volume(np.squeeze(post_patch_flip), direction='rl', aff=np.eye(4))
-        post_patch_flip[..., left_right_indices.flatten()] = post_patch_flip[..., left_right_indices[::-1].flatten()]
+        if lr_indices is not None:
+            post_patch_flip[..., lr_indices.flatten()] = post_patch_flip[..., lr_indices[::-1].flatten()]
         post_patch = 0.5 * (post_patch + post_patch_flip)
 
     # keep biggest connected component (use it with smoothing!)
@@ -491,7 +500,7 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_righ
     # paste patches back to matrix of original image size
     if crop is not None:
         seg = np.zeros(shape=pad_shape, dtype='int32')
-        posteriors = np.zeros(shape=[*pad_shape, labels.shape[0]])
+        posteriors = np.zeros(shape=[*pad_shape, segmentation_labels.shape[0]])
         posteriors[..., 0] = np.ones(pad_shape)  # place background around patch
         if n_dims == 2:
             seg[crop[0]:crop[2], crop[1]:crop[3]] = seg_patch
@@ -502,7 +511,7 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, labels, left_righ
     else:
         seg = seg_patch
         posteriors = post_patch
-    seg = labels[seg.astype('int')].astype('int')
+    seg = segmentation_labels[seg.astype('int')].astype('int')
 
     if im_shape != pad_shape:
         bounds = [int((p-i)/2) for (p, i) in zip(pad_shape, im_shape)]
