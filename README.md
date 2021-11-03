@@ -31,7 +31,7 @@ Once all the python packages are installed (see below), you can simply test Synt
 python ./scripts/commands/SynthSeg_predict.py --i <image> --o <segmentation> --post <post> --resample <resample> --vol <vol>
 ```
 where:
-- `<image>` is the path to an image to segment. \
+- `<image>` is the path to an image to segment (supported formats are .nii, .nii.gz, and .mgz). \
 This can also be a folder, in which case all the image inside that folder will be segmented.
 - `<segmentation>` is the path where the output segmentation(s) will be saved. \
 This must be a folder if `<image>` designates a folder.
@@ -138,11 +138,14 @@ how the synthetic data is formed before you start training your own models.
 - [3-training](scripts/tutorials/3-training.py): This scripts re-uses the parameters explained in the previous tutorial
 and focuses on the learning/architecture parameters. The script here is the very one we used to train SynthSeg !
 
-- [4-generation_advanced](scripts/tutorials/4-generation_advanced.py): Here we detail more advanced generation options, 
+- [4-training](scripts/tutorials/4-training.py): This scripts shows how to make predictions, once the network has been 
+trained.
+
+- [5-generation_advanced](scripts/tutorials/5-generation_advanced.py): Here we detail more advanced generation options, 
 in the case of training a version of SynthSeg that is specific to a given contrast and/or resolution (although these
 types of variants were shown to be outperformed by the SynthSeg model trained in the 3rd tutorial).
 
-- [5-intensity_estimation](scripts/tutorials/5-intensity_estimation.py): Finally, this script shows how to estimate the 
+- [6-intensity_estimation](scripts/tutorials/6-intensity_estimation.py): Finally, this script shows how to estimate the 
 Gaussian priors of the GMM when training a contrast-specific version of SynthSeg.
 
 These tutorials cover a lot of materials and will enable you to train your own SynthSeg model. Moreover, even more 

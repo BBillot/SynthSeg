@@ -80,7 +80,7 @@ parser.add_argument("--activation", type=str, dest="activation", default='elu')
 parser.add_argument("--lr", type=float, dest="lr", default=1e-4)
 parser.add_argument("--lr_decay", type=float, dest="lr_decay", default=0)
 parser.add_argument("--wl2_epochs", type=int, dest="wl2_epochs", default=5)
-parser.add_argument("--dice_epochs", type=int, dest="dice_epochs", default=100)
+parser.add_argument("--dice_epochs", type=int, dest="dice_epochs", default=300)
 parser.add_argument("--steps_per_epoch", type=int, dest="steps_per_epoch", default=1000)
 parser.add_argument("--checkpoint", type=str, dest="checkpoint", default=None)
 

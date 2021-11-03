@@ -76,7 +76,7 @@ def training(labels_dir,
              lr=1e-4,
              lr_decay=0,
              wl2_epochs=5,
-             dice_epochs=200,
+             dice_epochs=300,
              steps_per_epoch=1000,
              checkpoint=None):
     """
