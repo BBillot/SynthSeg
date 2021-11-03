@@ -224,7 +224,7 @@ def training(labels_dir,
     # get label lists
     generation_labels, n_neutral_labels = utils.get_list_labels(label_list=generation_labels,
                                                                 labels_dir=labels_dir,
-                                                                FS_sort=False)
+                                                                FS_sort=True)
     if segmentation_labels is not None:
         segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
     else:

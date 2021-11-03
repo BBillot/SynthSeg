@@ -2143,7 +2143,7 @@ def upsample_labels_in_dir(labels_dir,
 
     # list label maps
     path_labels = utils.list_images_in_folder(labels_dir)
-    labels_shape, aff, n_dims, _, h, _ = utils.get_volume_info(path_labels[0])
+    labels_shape, aff, n_dims, _, h, _ = utils.get_volume_info(path_labels[0], max_channels=3)
 
     # build command
     target_res = utils.reformat_to_list(target_res, length=n_dims)
@@ -2472,8 +2472,8 @@ def crop_dataset_around_region_of_same_size(labels_dir,
                                 for path in path_images])
 
     # get minimum patch shape so that no labels are left out when doing the cropping later on
+    max_crop_shape = np.zeros(n_dims)
     if recompute_labels:
-        max_crop_shape = np.zeros(n_dims)
         for path_label in path_labels:
             label, aff, _ = utils.load_volume(path_label, im_only=False)
             label = align_volume_to_ref(label, aff, aff_ref=np.eye(4))
@@ -2605,7 +2605,6 @@ def crop_dataset_around_region(image_dir, labels_dir, image_result_dir, labels_r
 
             # pad volume if necessary
             if pad_margins is not None:
-                print('padding', idx + 1)
                 label = np.pad(label, pad_margins, mode='constant', constant_values=0)
                 pad_margins = tuple(list(pad_margins) + [(0, 0)]) if n_channels > 1 else pad_margins
                 image = np.pad(image, pad_margins, mode='constant', constant_values=0)
