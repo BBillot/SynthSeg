@@ -71,7 +71,8 @@ corresponding values. This table also details the order in which the posteriors 
 
 All the python requirements are listed in requirements.txt. We list here the important dependencies:
 
-- tensorflow-gpu 2.0.2
+- Python 3.6 (this is important to have access to the right keras and tensorflow versions!)
+- tensorflow-gpu 2.0.1
 - keras 2.3.1
 - nibabel
 - numpy, scipy, sklearn, tqdm, pillow, matplotlib, ipython, ...
@@ -138,7 +139,7 @@ how the synthetic data is formed before you start training your own models.
 - [3-training](scripts/tutorials/3-training.py): This scripts re-uses the parameters explained in the previous tutorial
 and focuses on the learning/architecture parameters. The script here is the very one we used to train SynthSeg !
 
-- [4-training](scripts/tutorials/4-training.py): This scripts shows how to make predictions, once the network has been 
+- [4-training](scripts/tutorials/4-prediction.py): This scripts shows how to make predictions, once the network has been 
 trained.
 
 - [5-generation_advanced](scripts/tutorials/5-generation_advanced.py): Here we detail more advanced generation options, 
