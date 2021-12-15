@@ -40,6 +40,7 @@ def training(labels_dir,
              generation_labels=None,
              n_neutral_labels=None,
              segmentation_labels=None,
+             subjects_prob=None,
              patch_dir=None,
              batchsize=1,
              n_channels=1,
@@ -111,6 +112,9 @@ def training(labels_dir,
     Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
     Set output_labels[i]=generation_labels[i] if you wish to keep the value generation_labels[i] in the returned maps.
     Can be a list or a 1d numpy array, or the path to such an array. Default is output_labels = generation_labels.
+    :param subjects_prob: (optional) relative order of importance (doesn't have to be probabilistic), with which to pick
+    the provided label maps at each minibatch. Can be a sequence, a 1D numpy array, or the path to such an array, and it
+    must be as long as path_label_maps. By default, all label maps are chosen with the same importance.
 
     # output-related parameters
     :param batchsize: (optional) number of images to generate per mini-batch. Default is 1.
@@ -244,9 +248,10 @@ def training(labels_dir,
     # instantiate BrainGenerator object
     brain_generator = BrainGenerator(labels_dir=labels_dir,
                                      generation_labels=generation_labels,
-                                     output_labels=segmentation_labels,
-                                     patch_dir=patch_dir,
                                      n_neutral_labels=n_neutral_labels,
+                                     output_labels=segmentation_labels,
+                                     subjects_prob=subjects_prob,
+                                     patch_dir=patch_dir,
                                      batchsize=batchsize,
                                      n_channels=n_channels,
                                      target_res=target_res,

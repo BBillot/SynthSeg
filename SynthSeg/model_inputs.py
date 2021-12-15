@@ -26,6 +26,7 @@ def build_model_inputs(path_label_maps,
                        n_labels,
                        batchsize=1,
                        n_channels=1,
+                       subjects_prob=None,
                        generation_classes=None,
                        prior_distributions='uniform',
                        prior_means=None,
@@ -40,6 +41,8 @@ def build_model_inputs(path_label_maps,
     :param n_labels: number of labels in the input label maps.
     :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
     :param n_channels: (optional) number of channels to be synthetised. Default is 1.
+    :param subjects_prob: (optional) relative order of importance (doesn't have to be probabilistic), with which to pick
+    the provided label maps at each minibatch. Must be a 1D numpy array, as long as path_label_maps.
     :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
     distribution. Regouped labels will thus share the same Gaussian when samling a new image. Can be a sequence or a
     1d numpy array. It should have the same length as generation_labels, and contain values between 0 and K-1, where K
@@ -78,11 +81,15 @@ def build_model_inputs(path_label_maps,
         generation_classes = np.arange(n_labels)
     n_classes = len(np.unique(generation_classes))
 
+    # make sure subjects_prob sums to 1
+    if subjects_prob is not None:
+        subjects_prob /= np.sum(subjects_prob)
+
     # Generate!
     while True:
 
         # randomly pick as many images as batchsize
-        indices = npr.randint(len(path_label_maps), size=batchsize)
+        indices = npr.choice(np.arange(len(path_label_maps)), size=batchsize, p=subjects_prob)
 
         # initialise input lists
         list_label_maps = []

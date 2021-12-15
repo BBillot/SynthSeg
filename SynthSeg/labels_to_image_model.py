@@ -229,7 +229,7 @@ def labels_to_image_model(labels_shape,
     # compute image gradient
     if return_gradients:
         image = layers.ImageGradients('sobel', True, name='image_gradients')(image)
-        image = layers.IntensityAugmentation(clip=10, normalise=True, gamma_std=.2, separate_channels=True)(image)
+        image = layers.IntensityAugmentation(clip=10, normalise=True)(image)
 
     # resample labels at target resolution
     if crop_shape != output_shape:

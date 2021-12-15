@@ -30,6 +30,7 @@ parser.add_argument("model_dir", type=str)
 parser.add_argument("--generation_labels", type=str, dest="generation_labels", default=None)
 parser.add_argument("--neutral_labels", type=int, dest="n_neutral_labels", default=None)
 parser.add_argument("--segmentation_labels", type=str, dest="segmentation_labels", default=None)
+parser.add_argument("--subjects_prob", type=str, dest="subjects_prob", default=None)
 parser.add_argument("--noisy_patches", type=str, dest="patch_dir", default=None)
 
 # output-related parameters

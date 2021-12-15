@@ -30,9 +30,10 @@ class BrainGenerator:
     def __init__(self,
                  labels_dir,
                  generation_labels=None,
-                 output_labels=None,
-                 patch_dir=None,
                  n_neutral_labels=None,
+                 output_labels=None,
+                 subjects_prob=None,
+                 patch_dir=None,
                  batchsize=1,
                  n_channels=1,
                  target_res=None,
@@ -79,14 +80,17 @@ class BrainGenerator:
         If flipping is true (i.e. right/left flipping is enabled), generation_labels should be organised as follows:
         background label first, then non-sided labels (e.g. CSF, brainstem, etc.), then all the structures of the same
         hemisphere (can be left or right), and finally all the corresponding contralateral structures in the same order.
+        :param n_neutral_labels: (optional) number of non-sided generation labels. This is important only if you use
+        flipping augmentation. Default is total number of label values.
         :param output_labels: (optional) list of the same length as generation_labels to indicate which values to use in
         the label maps returned by this function, i.e. all occurences of generation_labels[i] in the input label maps
         will be converted to output_labels[i] in the returned label maps. Examples:
         Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
         Set output_labels[i]=generation_labels[i] to keep the value generation_labels[i] in the returned maps.
         Can be a list or a 1d numpy array. By default output_labels is equal to generation_labels.
-        :param n_neutral_labels: (optional) number of non-sided generation labels.
-        Default is total number of label values.
+        :param subjects_prob: (optional) relative order of importance (doesn't have to be probabilistic), with which to
+        pick the provided label maps at each minibatch. Can be a sequence, a 1D numpy array, or the path to such an
+        array, and it must be as long as path_label_maps. By default, all label maps are chosen with the same importance
 
         # output-related parameters
         :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
@@ -200,6 +204,11 @@ class BrainGenerator:
         # prepare data files
         self.labels_paths = utils.list_images_in_folder(labels_dir)
         self.path_patches = utils.list_images_in_folder(patch_dir) if (patch_dir is not None) else None
+        if subjects_prob is not None:
+            self.subjects_prob = np.array(utils.reformat_to_list(subjects_prob, load_as_numpy=True), dtype='float32')
+            assert len(self.subjects_prob) == len(self.labels_paths), \
+                'subjects_prob should have the same length as labels_path, ' \
+                'had {} and {}'.format(len(self.subjects_prob), len(self.labels_paths))
 
         # generation parameters
         self.labels_shape, self.aff, self.n_dims, _, self.header, self.atlas_res = \
@@ -307,6 +316,7 @@ class BrainGenerator:
                                                     n_labels=len(self.generation_labels),
                                                     batchsize=self.batchsize,
                                                     n_channels=self.n_channels,
+                                                    subjects_prob=self.subjects_prob,
                                                     generation_classes=self.generation_classes,
                                                     prior_means=self.prior_means,
                                                     prior_stds=self.prior_stds,
