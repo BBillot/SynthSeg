@@ -181,34 +181,27 @@ def labels_to_image_model(labels_shape,
 
     # cropping
     if crop_shape != labels_shape:
-        labels._keras_shape = tuple(labels.get_shape().as_list())
         labels = layers.RandomCrop(crop_shape)(labels)
 
     # flipping
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
-        labels._keras_shape = tuple(labels.get_shape().as_list())
         labels = layers.RandomFlip(get_ras_axes(aff, n_dims)[0], True, generation_labels, n_neutral_labels)(labels)
 
     # build synthetic image
-    labels._keras_shape = tuple(labels.get_shape().as_list())
     image = layers.SampleConditionalGMM(generation_labels)([labels, means_input, stds_input])
 
     # apply bias field
     if bias_field_std > 0:
-        image._keras_shape = tuple(image.get_shape().as_list())
         image = layers.BiasFieldCorruption(bias_field_std, bias_shape_factor, False)(image)
 
     # intensity augmentation
-    image._keras_shape = tuple(image.get_shape().as_list())
     image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
 
     # loop over channels
     channels = list()
     split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
     for i, channel in enumerate(split):
-
-        channel._keras_shape = tuple(channel.get_shape().as_list())
 
         if randomise_res:
             max_res_iso = np.array(utils.reformat_to_list(max_res_iso, length=n_dims, dtype='float'))

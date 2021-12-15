@@ -230,6 +230,8 @@ def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_i
         if list_net_dice_scores:  # check that archi has been validated for at least 1 epoch
             list_net_dice_scores = np.array(list_net_dice_scores)
             list_epochs = np.array(list_epochs)
+            list_epochs, idx = np.unique(list_epochs, return_index=True)
+            list_net_dice_scores = list_net_dice_scores[idx]
             max_score = np.max(list_net_dice_scores)
             epoch_max_score = list_epochs[np.argmax(list_net_dice_scores)]
             print('\n'+net_name)

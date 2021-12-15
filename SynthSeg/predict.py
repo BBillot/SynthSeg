@@ -341,7 +341,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
                 out_posteriors = os.path.join(out_posteriors, filename)
             else:
                 utils.mkdir(os.path.dirname(out_posteriors))
-            recompute_post = [not os.path.isfile(out_posteriors[0])]
+            recompute_post = [not os.path.isfile(out_posteriors)]
         else:
             recompute_post = [out_volumes is not None]
         out_posteriors = [out_posteriors]
@@ -355,7 +355,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
                 out_resampled = os.path.join(out_resampled, filename)
             else:
                 utils.mkdir(os.path.dirname(out_resampled))
-            recompute_resampled = [not os.path.isfile(out_resampled[0])]
+            recompute_resampled = [not os.path.isfile(out_resampled)]
         else:
             recompute_resampled = [out_volumes is not None]
         out_resampled = [out_resampled]

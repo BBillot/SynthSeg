@@ -144,7 +144,7 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
         return new_volume
 
 
-def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percentile=98, use_positive_only=True):
+def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percentile=98, use_positive_only=False):
     """This function linearly rescales a volume between new_min and new_max.
     :param volume: a numpy array
     :param new_min: (optional) minimum value for the rescaled image.
@@ -170,7 +170,7 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percent
 
     # rescale image
     if robust_min != robust_max:
-        return new_min + (new_volume - robust_min) / (robust_max - robust_min) * new_max
+        return new_min + (new_volume - robust_min) / (robust_max - robust_min) * (new_max - new_min)
     else:  # avoid dividing by zero
         return np.zeros_like(new_volume)
 

@@ -348,8 +348,7 @@ def train_model(model,
     # compile
     if compile_model:
         model.compile(optimizer=Adam(lr=learning_rate, decay=lr_decay),
-                      loss=metrics.IdentityLoss().loss,
-                      loss_weights=[1.0])
+                      loss=metrics.IdentityLoss().loss)
 
     # fit
     model.fit_generator(generator,
