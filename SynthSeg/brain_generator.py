@@ -59,7 +59,8 @@ class BrainGenerator:
                  downsample=False,
                  blur_range=1.03,
                  bias_field_std=.5,
-                 bias_shape_factor=.025):
+                 bias_shape_factor=.025,
+                 return_gradients=False):
         """
         This class is wrapper around the labels_to_image_model model. It contains the GPU model that generates images
         from labels maps, and a python generator that suplies the input data for this model.
@@ -191,6 +192,9 @@ class BrainGenerator:
         std dev of the normal distribution from which we sample the first tensor. Set to 0 to deactivate bias field.
         :param bias_shape_factor: (optional) If bias_field_std is strictly positive, this designates the ratio between
         the size of the input label maps and the size of the first sampled tensor for synthesising the bias field.
+
+        :param return_gradients: (optional) whether to return the synthetic image or the magnitude of its spatial
+        gradient (computed with Sobel kernels).
         """
 
         # prepare data files
@@ -254,6 +258,7 @@ class BrainGenerator:
         # bias field parameters
         self.bias_field_std = bias_field_std
         self.bias_shape_factor = bias_shape_factor
+        self.return_gradients = return_gradients
 
         # build transformation model
         self.labels_to_image_model, self.model_output_shape = self._build_labels_to_image_model()
@@ -291,7 +296,8 @@ class BrainGenerator:
                                                 downsample=self.downsample,
                                                 blur_range=self.blur_range,
                                                 bias_field_std=self.bias_field_std,
-                                                bias_shape_factor=self.bias_shape_factor)
+                                                bias_shape_factor=self.bias_shape_factor,
+                                                return_gradients=self.return_gradients)
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
 

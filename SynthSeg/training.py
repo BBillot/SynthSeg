@@ -67,6 +67,7 @@ def training(labels_dir,
              blur_range=1.03,
              bias_field_std=.5,
              bias_shape_factor=.025,
+             return_gradients=False,
              n_levels=5,
              nb_conv_per_level=2,
              conv_size=3,
@@ -206,6 +207,9 @@ def training(labels_dir,
     :param bias_shape_factor: (optional) If bias_field_std is not False, this designates the ratio between the size of
     the input label maps and the size of the first sampled tensor for synthesising the bias field.
 
+    :param return_gradients: (optional) whether to return the synthetic image or the magnitude of its spatial gradient
+    (computed with Sobel kernels).
+
     # ------------------------------------------ UNet architecture parameters ------------------------------------------
     :param n_levels: (optional) number of level for the Unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
@@ -269,7 +273,8 @@ def training(labels_dir,
                                      downsample=downsample,
                                      blur_range=blur_range,
                                      bias_field_std=bias_field_std,
-                                     bias_shape_factor=bias_shape_factor)
+                                     bias_shape_factor=bias_shape_factor,
+                                     return_gradients=return_gradients)
 
     # generation model
     labels_to_image_model = brain_generator.labels_to_image_model

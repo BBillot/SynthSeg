@@ -743,6 +743,107 @@ class GaussianBlur(Layer):
         return image
 
 
+class ImageGradients(Layer):
+
+    def __init__(self, gradient_type='sobel', return_magnitude=False, **kwargs):
+
+        self.gradient_type = gradient_type
+        assert (self.gradient_type == 'sobel') | (self.gradient_type == '1-step_diff'), \
+            'gradient_type should be either sobel or 1-step_diff, had %s' % self.gradient_type
+
+        # shape
+        self.n_dims = 0
+        self.shape = None
+        self.n_channels = 0
+
+        # convolution params if sobel diff
+        self.stride = None
+        self.kernels = None
+        self.convnd = None
+
+        self.return_magnitude = return_magnitude
+
+        super(ImageGradients, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["gradient_type"] = self.gradient_type
+        config["return_magnitude"] = self.return_magnitude
+        return config
+
+    def build(self, input_shape):
+
+        # get shapes
+        self.n_dims = len(input_shape) - 2
+        self.shape = input_shape[1:]
+        self.n_channels = input_shape[-1]
+
+        # prepare kernel if sobel gradients
+        if self.gradient_type == 'sobel':
+            self.kernels = l2i_et.sobel_kernels(self.n_dims)
+            self.stride = [1] * (self.n_dims + 2)
+            self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
+        else:
+            self.kernels = self.convnd = self.stride = None
+
+        self.built = True
+        super(ImageGradients, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+
+        image = inputs
+        batchsize = tf.split(tf.shape(inputs), [1, -1])[0]
+        gradients = list()
+
+        # sobel method
+        if self.gradient_type == 'sobel':
+            # get sobel gradients in each direction
+            for n in range(self.n_dims):
+                gradient = image
+                # apply 1D kernel in each direction (sobel kernels are separable), instead of applying a nD kernel
+                for k in self.kernels[n]:
+                    gradient = tf.concat([self.convnd(tf.expand_dims(gradient[..., n], -1), k, self.stride, 'SAME')
+                                          for n in range(self.n_channels)], -1)
+                gradients.append(gradient)
+
+        # 1-step method, only supports 2 and 3D
+        else:
+
+            # get 1-step diff
+            if self.n_dims == 2:
+                gradients.append(image[:, 1:, :, :] - image[:, :-1, :, :])  # dx
+                gradients.append(image[:, :, 1:, :] - image[:, :, :-1, :])  # dy
+
+            elif self.n_dims == 3:
+                gradients.append(image[:, 1:, :, :, :] - image[:, :-1, :, :, :])  # dx
+                gradients.append(image[:, :, 1:, :, :] - image[:, :, :-1, :, :])  # dy
+                gradients.append(image[:, :, :, 1:, :] - image[:, :, :, :-1, :])  # dz
+
+            else:
+                raise Exception('ImageGradients only support 2D or 3D tensors for 1-step diff, had: %dD' % self.n_dims)
+
+            # pad with zeros to return tensors of the same shape as input
+            for i in range(self.n_dims):
+                tmp_shape = list(self.shape)
+                tmp_shape[i] = 1
+                zeros = tf.zeros(tf.concat([batchsize, tf.convert_to_tensor(tmp_shape, dtype='int32')], 0), image.dtype)
+                gradients[i] = tf.concat([gradients[i], zeros], axis=i + 1)
+
+        # compute total gradient magnitude if necessary, or concatenate different gradients along the channel axis
+        if self.return_magnitude:
+            gradients = tf.sqrt(tf.reduce_sum(tf.square(tf.stack(gradients, axis=-1)), axis=-1))
+        else:
+            gradients = tf.concat(gradients, axis=-1)
+
+        return gradients
+
+    def compute_output_shape(self, input_shape):
+        if not self.return_magnitude:
+            input_shape = list(input_shape)
+            input_shape[-1] = self.n_dims
+        return tuple(input_shape)
+
+
 class DynamicGaussianBlur(Layer):
     """Applies gaussian blur to an input image, where the standard deviation of the blurring kernel is provided as a
     layer input, which enables to perform dynamic blurring (i.e. the blurring kernel can vary at each minibatch).

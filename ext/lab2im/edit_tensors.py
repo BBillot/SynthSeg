@@ -180,6 +180,29 @@ def gaussian_kernel(sigma, max_sigma=None, blur_range=None, separable=True):
     return kernels
 
 
+def sobel_kernels(n_dims):
+    """Returns sobel kernels to compute spatial derivative on image of n dimensions."""
+
+    in_dir = tf.convert_to_tensor([1, 0, -1], dtype='float32')
+    orthogonal_dir = tf.convert_to_tensor([1, 2, 1], dtype='float32')
+    comb = np.array(list(combinations(list(range(n_dims)), n_dims - 1))[::-1])
+
+    list_kernels = list()
+    for dim in range(n_dims):
+
+        sublist_kernels = list()
+        for axis in range(n_dims):
+
+            kernel = in_dir if axis == dim else orthogonal_dir
+            for i in comb[axis]:
+                kernel = tf.expand_dims(kernel, axis=i)
+            sublist_kernels.append(tf.expand_dims(tf.expand_dims(kernel, -1), -1))
+
+        list_kernels.append(sublist_kernels)
+
+    return list_kernels
+
+
 def resample_tensor(tensor,
                     resample_shape,
                     interp_method='linear',

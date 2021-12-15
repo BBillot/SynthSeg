@@ -68,6 +68,8 @@ parser.add_argument("--blur_range", type=float, dest="blur_range", default=1.03)
 parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.5)
 parser.add_argument("--bias_shape_factor", type=float, dest="bias_shape_factor", default=.025)
 
+parser.add_argument("--gradients", action='store_true', dest="return_gradients")
+
 # -------------------------------------------- UNet architecture parameters --------------------------------------------
 parser.add_argument("--n_levels", type=int, dest="n_levels", default=5)
 parser.add_argument("--conv_per_level", type=int, dest="nb_conv_per_level", default=2)
