@@ -18,6 +18,7 @@ License.
 import os
 import csv
 import numpy as np
+import keras
 from keras.models import Model
 
 # project imports
@@ -42,6 +43,7 @@ def predict(path_images,
             padding=None,
             cropping=None,
             target_res=1.,
+            gradients=False,
             flip=True,
             topology_classes=None,
             sigma_smoothing=0.5,
@@ -175,7 +177,7 @@ def predict(path_images,
     _, _, n_dims, n_channels, _, _ = utils.get_volume_info(path_images[0])
     model_input_shape = [None] * n_dims + [n_channels]
     net = build_model(path_model, model_input_shape, n_levels, len(segmentation_labels), conv_size,
-                      nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing)
+                      nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing, gradients)
 
     # perform segmentation
     loop_info = utils.LoopInfo(len(path_images), 10, 'predicting', True)
@@ -436,9 +438,17 @@ def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, fli
 
 
 def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per_level, unet_feat_count,
-                feat_multiplier, activation, sigma_smoothing):
+                feat_multiplier, activation, sigma_smoothing, gradients):
 
     assert os.path.isfile(model_file), "The provided model path does not exist."
+
+    if gradients:
+        input_image = keras.layers.Input(input_shape)
+        image = layers.ImageGradients('sobel', True)(input_image)
+        image = layers.IntensityAugmentation(clip=10, normalise=True)(image)
+        net = Model(inputs=input, outputs=image)
+    else:
+        net = None
 
     # build UNet
     net = nrn_models.unet(nb_features=unet_feat_count,
@@ -449,7 +459,8 @@ def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per
                           feat_mult=feat_multiplier,
                           activation=activation,
                           nb_conv_per_level=nb_conv_per_level,
-                          batch_norm=-1)
+                          batch_norm=-1,
+                          input_model=net)
     net.load_weights(model_file, by_name=True)
 
     # smooth posteriors if specified
