@@ -19,6 +19,8 @@ import os
 import csv
 import numpy as np
 import keras
+import keras.layers as KL
+import keras.backend as K
 from keras.models import Model
 
 # project imports
@@ -443,10 +445,10 @@ def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per
     assert os.path.isfile(model_file), "The provided model path does not exist."
 
     if gradients:
-        input_image = keras.layers.Input(input_shape)
-        image = layers.ImageGradients('sobel', True)(input_image)
-        image = layers.IntensityAugmentation(clip=10, normalise=True)(image)
-        net = Model(inputs=input, outputs=image)
+        input_image = KL.Input(input_shape)
+        last_tensor = layers.ImageGradients('sobel', True)(input_image)
+        last_tensor = KL.Lambda(lambda x: (x - K.min(x)) / (K.max(x) - K.min(x) + K.epsilon()))(last_tensor)
+        net = Model(inputs=input_image, outputs=last_tensor)
     else:
         net = None
 

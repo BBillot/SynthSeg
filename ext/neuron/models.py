@@ -353,8 +353,6 @@ def conv_enc(nb_features,
         last_tensor = input_model.outputs
         if isinstance(last_tensor, list):
             last_tensor = last_tensor[0]
-        last_tensor = KL.Reshape(input_shape)(last_tensor)
-        input_shape = last_tensor.shape.as_list()[1:]
 
     # volume size data
     ndims = len(input_shape) - 1
