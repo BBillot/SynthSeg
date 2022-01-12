@@ -4,20 +4,21 @@
 \
 :tada: Update 29/10/2021: SynthSeg is now available on the dev version of 
 [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)   !! :tada: \
-See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it
+See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
 \
 \
 \
-In this repository, we present SynthSeg, the first convolutional neural network to readily segment brain MRI scans of
-any contrast and resolution, with an predictions at 1mm isotropic resolution, regardless of the input resolution. 
-Additionally, the proposed model is robust to:
-- a wide array of subject populations: from young and healthy to ageing and diseased subjects with prominent atrophy,
+In this repository, we present SynthSeg, the first convolutional neural network to segment brain scans of
+any contrast and resolution, without retraining or fine-tuning. In addition, SynthSeg is also robust to:
+- a wide array of subject populations: from young and healthy to ageing and diseased subjects,
 - white matter lesions,
-- and scans with or without preprocessing (bias field corruption, skull stripping, intensity normalisation, registration to
-template).
+- scans with or without preprocessing, including bias field corruption, skull stripping, intensity normalisation, 
+template registration, etc.
 
-As a result, SynthSeg only relies on a single model, which we distribute here. We emphasise that this model can be used
-out-of-the-box without retraining or fine-tuning, and can run on the GPU (6s per scan) as well as the CPU (1min).
+As a result, SynthSeg relies on a single model that can be used out-of-the-box without retraining or fine-tuning. 
+Here, we distribute the open-source model along with the corresponding code to enable researchers to run SynthSeg on 
+their own data. We emphasise that predictions are given at 1mm isotropic resolution (regardless of the resolution of the
+input images), and can be obtained either by running on the GPU (6s per scan) or on the CPU (1min). 
 \
 \
 ![Generation examples](data/README_figures/segmentations.png)
@@ -69,7 +70,7 @@ corresponding values. This table also details the order in which the posteriors 
 
 ### Requirements
 
-All the python requirements are listed in requirements.txt. We list here the important dependencies:
+All the python requirements are listed in requirements.txt. We give here the important dependencies:
 
 - Python 3.6 (this is important to have access to the right keras and tensorflow versions!)
 - tensorflow-gpu 2.0.1
@@ -97,11 +98,11 @@ If you wish to run SynthSeg on the GPU, or to train your own model, you will als
 In short, we train a network with synthetic images sampled on the fly from a generative model based on the forward
 model of Bayesian segmentation. Crucially, we adopt a domain randomisation strategy where we fully randomise the 
 generation parameters which are drawn from uninformative uniform distributions. Therefore, by maximising the variability
-of the training data, we force to learn domain-agnostic features. As a result SynthSeg is able to readily segment
-real scans of any target domain, without retraining or fine-tuning. 
+of the training data, we force the network to learn domain-agnostic features. As a result, SynthSeg is able to readily 
+segment real scans of any target domain, without retraining or fine-tuning. 
 
-The following figure illustrates the the workflow of a training iteration, and provides an overview of the generative 
-model:
+The following figure first illustrates the workflow of a training iteration, and then provides an overview of the 
+different steps of the generative model:
 \
 \
 ![Generation examples](data/README_figures/overview.png)
