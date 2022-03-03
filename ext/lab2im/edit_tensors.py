@@ -203,6 +203,56 @@ def sobel_kernels(n_dims):
     return list_kernels
 
 
+def unit_kernel(dist_threshold, n_dims, max_dist_threshold=None):
+    """Build kernel with values of 1 for voxel at a distance < dist_threshold from the center, and 0 otherwise.
+    The outputs are given as tensorflow tensors.
+    :param dist_threshold: maximum distance from the center until voxel will have a value of 1. Can be a tensor of size
+    (batch_size, 1), or a float.
+    :param n_dims: dimension of the kernel to return (excluding batch and channel dimensions).
+    :param max_dist_threshold: if distance_threshold is a tensor, max_dist_threshold must be given. It represents the
+    maximum value that will passed in dist_threshold. Must be a float.
+    """
+
+    # convert dist_threshold into a tensor
+    if not tf.is_tensor(dist_threshold):
+        dist_threshold_tens = tf.convert_to_tensor(utils.reformat_to_list(dist_threshold), dtype='float32')
+    else:
+        assert max_dist_threshold is not None, 'max_sigma must be provided when dist_threshold is given as a tensor'
+        dist_threshold_tens = tf.cast(dist_threshold, 'float32')
+    shape = dist_threshold_tens.get_shape().as_list()
+
+    # get batchsize
+    batchsize = None if shape[0] is not None else tf.split(tf.shape(dist_threshold_tens), [1, -1])[0]
+
+    # set max_dist_threshold into an array
+    if max_dist_threshold is None:  # dist_threshold is fixed (i.e. dist_threshold will not change at each mini-batch)
+        max_dist_threshold = dist_threshold
+
+    # get size of blurring kernels
+    windowsize = np.array([max_dist_threshold * 2 + 1]*n_dims, dtype='int32')
+
+    # build tensor representing the distance from the centre
+    mesh = [tf.cast(f, 'float32') for f in volshape_to_meshgrid(windowsize, indexing='ij')]
+    dist = tf.stack([mesh[f] - (windowsize[f] - 1) / 2 for f in range(len(windowsize))], axis=-1)
+    dist = tf.sqrt(tf.reduce_sum(tf.square(dist), axis=-1))
+
+    # replicate distance to batch size and reshape sigma_tens
+    if batchsize is not None:
+        dist = tf.tile(tf.expand_dims(dist, axis=0),
+                       tf.concat([batchsize, tf.ones(tf.shape(tf.shape(dist)), dtype='int32')], axis=0))
+        for i in range(n_dims - 1):
+            dist_threshold_tens = tf.expand_dims(dist_threshold_tens, axis=1)
+    else:
+        for i in range(n_dims - 1):
+            dist_threshold_tens = tf.expand_dims(dist_threshold_tens, axis=0)
+
+    # build final kernel by thresholding distance tensor
+    kernel = tf.where(tf.less_equal(dist, dist_threshold_tens), tf.ones_like(dist), tf.zeros_like(dist))
+    kernel = tf.expand_dims(tf.expand_dims(kernel, -1), -1)
+
+    return kernel
+
+
 def resample_tensor(tensor,
                     resample_shape,
                     interp_method='linear',

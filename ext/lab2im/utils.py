@@ -103,6 +103,8 @@ def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=Non
         aff = np.eye(4)
         header = nib.Nifti1Header()
     if dtype is not None:
+        if 'int' in dtype:
+            volume = np.round(volume)
         volume = volume.astype(dtype=dtype)
 
     # align image to reference affine matrix
@@ -144,6 +146,9 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
             aff = np.eye(4)
         nifty = nib.Nifti1Image(volume, aff, header)
         if dtype is not None:
+            if 'int' in dtype:
+                volume = np.round(volume)
+            volume = volume.astype(dtype=dtype)
             nifty.set_data_dtype(dtype)
         if res is not None:
             if n_dims is None:
@@ -390,7 +395,7 @@ def reformat_to_n_channels_array(var, n_dims=3, n_channels=1):
 # ----------------------------------------------- path-related functions -----------------------------------------------
 
 
-def list_images_in_folder(path_dir, include_single_image=True):
+def list_images_in_folder(path_dir, include_single_image=True, check_if_empty=True):
     """List all files with extension nii, nii.gz, mgz, or npz whithin a folder."""
     basename = os.path.basename(path_dir)
     if include_single_image & \
@@ -404,8 +409,9 @@ def list_images_in_folder(path_dir, include_single_image=True):
                                  glob.glob(os.path.join(path_dir, '*.mgz')) +
                                  glob.glob(os.path.join(path_dir, '*.npz')))
         else:
-            raise Exception('extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_dir)
-        assert len(list_images) > 0, 'no .nii, .nii.gz, .mgz or .npz image could be found in %s' % path_dir
+            raise Exception('Folder does not exist: %s' % path_dir)
+        if check_if_empty:
+            assert len(list_images) > 0, 'no .nii, .nii.gz, .mgz or .npz image could be found in %s' % path_dir
     return list_images
 
 
@@ -491,11 +497,7 @@ def get_image_extension(path):
 
 def strip_extension(path):
     """Strip classical image extensions (.nii.gz, .nii, .mgz, .npz) from a filename."""
-    path = path.replace('.nii.gz', '')
-    path = path.replace('.nii', '')
-    path = path.replace('.mgz', '')
-    path = path.replace('.npz', '')
-    return path
+    return path.replace('.nii.gz', '').replace('.nii', '').replace('.mgz', '').replace('.npz', '')
 
 
 def strip_suffix(path):

@@ -16,6 +16,8 @@ This file regroups several custom keras layers used in the generation model:
     - ConvertLabels,
     - PadAroundCentre,
     - MaskEdges
+    - ImageGradients
+    -RandomDilationErosion
 
 
 If you use this code, please cite the first SynthSeg paper:
@@ -91,6 +93,7 @@ class RandomSpatialDeformation(Layer):
                  nonlin_std=4.,
                  nonlin_shape_factor=.0625,
                  inter_method='linear',
+                 prob_deform=1,
                  **kwargs):
 
         # shape attributes
@@ -113,6 +116,7 @@ class RandomSpatialDeformation(Layer):
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
                                   self.enable_90_rotations
         self.apply_elastic_trans = self.nonlin_std > 0
+        self.prob_deform = prob_deform
 
         # interpolation methods
         self.inter_method = inter_method
@@ -129,6 +133,7 @@ class RandomSpatialDeformation(Layer):
         config["nonlin_std"] = self.nonlin_std
         config["nonlin_shape_factor"] = self.nonlin_shape_factor
         config["inter_method"] = self.inter_method
+        config["prob_deform"] = self.prob_deform
         return config
 
     def build(self, input_shape):
@@ -192,7 +197,13 @@ class RandomSpatialDeformation(Layer):
 
         # apply deformations and return tensors with correct dtype
         if self.apply_affine_trans | self.apply_elastic_trans:
-            inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in zip(self.inter_method, inputs)]
+            if self.prob_deform == 1:
+                inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in
+                          zip(self.inter_method, inputs)]
+            else:
+                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_deform))
+                inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
+                          for (m, v) in zip(self.inter_method, inputs)]
         return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
 
 
@@ -743,107 +754,6 @@ class GaussianBlur(Layer):
         return image
 
 
-class ImageGradients(Layer):
-
-    def __init__(self, gradient_type='sobel', return_magnitude=False, **kwargs):
-
-        self.gradient_type = gradient_type
-        assert (self.gradient_type == 'sobel') | (self.gradient_type == '1-step_diff'), \
-            'gradient_type should be either sobel or 1-step_diff, had %s' % self.gradient_type
-
-        # shape
-        self.n_dims = 0
-        self.shape = None
-        self.n_channels = 0
-
-        # convolution params if sobel diff
-        self.stride = None
-        self.kernels = None
-        self.convnd = None
-
-        self.return_magnitude = return_magnitude
-
-        super(ImageGradients, self).__init__(**kwargs)
-
-    def get_config(self):
-        config = super().get_config()
-        config["gradient_type"] = self.gradient_type
-        config["return_magnitude"] = self.return_magnitude
-        return config
-
-    def build(self, input_shape):
-
-        # get shapes
-        self.n_dims = len(input_shape) - 2
-        self.shape = input_shape[1:]
-        self.n_channels = input_shape[-1]
-
-        # prepare kernel if sobel gradients
-        if self.gradient_type == 'sobel':
-            self.kernels = l2i_et.sobel_kernels(self.n_dims)
-            self.stride = [1] * (self.n_dims + 2)
-            self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
-        else:
-            self.kernels = self.convnd = self.stride = None
-
-        self.built = True
-        super(ImageGradients, self).build(input_shape)
-
-    def call(self, inputs, **kwargs):
-
-        image = inputs
-        batchsize = tf.split(tf.shape(inputs), [1, -1])[0]
-        gradients = list()
-
-        # sobel method
-        if self.gradient_type == 'sobel':
-            # get sobel gradients in each direction
-            for n in range(self.n_dims):
-                gradient = image
-                # apply 1D kernel in each direction (sobel kernels are separable), instead of applying a nD kernel
-                for k in self.kernels[n]:
-                    gradient = tf.concat([self.convnd(tf.expand_dims(gradient[..., n], -1), k, self.stride, 'SAME')
-                                          for n in range(self.n_channels)], -1)
-                gradients.append(gradient)
-
-        # 1-step method, only supports 2 and 3D
-        else:
-
-            # get 1-step diff
-            if self.n_dims == 2:
-                gradients.append(image[:, 1:, :, :] - image[:, :-1, :, :])  # dx
-                gradients.append(image[:, :, 1:, :] - image[:, :, :-1, :])  # dy
-
-            elif self.n_dims == 3:
-                gradients.append(image[:, 1:, :, :, :] - image[:, :-1, :, :, :])  # dx
-                gradients.append(image[:, :, 1:, :, :] - image[:, :, :-1, :, :])  # dy
-                gradients.append(image[:, :, :, 1:, :] - image[:, :, :, :-1, :])  # dz
-
-            else:
-                raise Exception('ImageGradients only support 2D or 3D tensors for 1-step diff, had: %dD' % self.n_dims)
-
-            # pad with zeros to return tensors of the same shape as input
-            for i in range(self.n_dims):
-                tmp_shape = list(self.shape)
-                tmp_shape[i] = 1
-                zeros = tf.zeros(tf.concat([batchsize, tf.convert_to_tensor(tmp_shape, dtype='int32')], 0), image.dtype)
-                gradients[i] = tf.concat([gradients[i], zeros], axis=i + 1)
-
-        # compute total gradient magnitude if necessary, or concatenate different gradients along the channel axis
-        if self.return_magnitude:
-            gradients = tf.sqrt(tf.reduce_sum(tf.square(tf.stack(gradients, axis=-1)), axis=-1))
-        else:
-            gradients = tf.concat(gradients, axis=-1)
-
-        return gradients
-
-    def compute_output_shape(self, input_shape):
-        if not self.return_magnitude:
-            input_shape = list(input_shape)
-            input_shape[-1] = self.n_dims
-        return tuple(input_shape)
-
-
 class DynamicGaussianBlur(Layer):
     """Applies gaussian blur to an input image, where the standard deviation of the blurring kernel is provided as a
     layer input, which enables to perform dynamic blurring (i.e. the blurring kernel can vary at each minibatch).
@@ -1174,11 +1084,13 @@ class IntensityAugmentation(Layer):
     Default is 0, where we simply take the minimum and maximum values.
     :param gamma_std: standard deviation of the normal distribution from which we sample gamma (in log domain).
     Default is 0, where no gamma augmentation occurs.
+    :param contrast_inversion: whether to perform contrast inversion (i.e. 1 - x). If True, this is performed randomly
+    for each element of the batch, as well as for each channel.
     :param separate_channels: whether to augment all channels separately. Default is True.
     """
 
-    def __init__(self, noise_std=0, clip=0, normalise=True, norm_perc=0, gamma_std=0, separate_channels=True,
-                 **kwargs):
+    def __init__(self, noise_std=0, clip=0, normalise=True, norm_perc=0, gamma_std=0, contrast_inversion=False,
+                 separate_channels=True, **kwargs):
 
         # shape attributes
         self.n_dims = None
@@ -1196,6 +1108,7 @@ class IntensityAugmentation(Layer):
         self.perc = None
         self.gamma_std = gamma_std
         self.separate_channels = separate_channels
+        self.contrast_inversion = contrast_inversion
 
         super(IntensityAugmentation, self).__init__(**kwargs)
 
@@ -1234,7 +1147,7 @@ class IntensityAugmentation(Layer):
 
         # prepare shape for sampling the noise and gamma std dev (depending on whether we augment channels separately)
         batchsize = tf.split(tf.shape(inputs), [1, -1])[0]
-        if (self.noise_std > 0) | (self.gamma_std > 0):
+        if (self.noise_std > 0) | (self.gamma_std > 0) | self.contrast_inversion:
             sample_shape = tf.concat([batchsize, tf.ones([self.n_dims], dtype='int32')], 0)
             if self.separate_channels:
                 sample_shape = tf.concat([sample_shape, self.n_channels * self.one], 0)
@@ -1282,7 +1195,20 @@ class IntensityAugmentation(Layer):
         if self.gamma_std > 0:
             inputs = tf.math.pow(inputs, tf.math.exp(tf.random.normal(sample_shape, stddev=self.gamma_std)))
 
+        # apply random contrast inversion
+        if self.contrast_inversion:
+            rand_invert = tf.less(tf.random.uniform(sample_shape, maxval=1), 0.5)
+            split_channels = tf.split(inputs, [1] * self.n_channels, axis=-1)
+            split_rand_invert = tf.split(rand_invert, [1] * self.n_channels, axis=-1)
+            inverted_channel = list()
+            for (channel, invert) in zip(split_channels, split_rand_invert):
+                inverted_channel.append(tf.map_fn(self._single_invert, [channel, invert], dtype=channel.dtype))
+            inputs = tf.concat(inverted_channel, -1)
+
         return inputs
+
+    def _single_invert(self, inputs):
+        return K.switch(tf.squeeze(inputs[1]), 1 - inputs[0], inputs[0])
 
 
 class DiceLoss(Layer):
@@ -1462,8 +1388,9 @@ class PadAroundCentre(Layer):
     def build(self, input_shape):
         # input shape
         self.n_dims = len(input_shape) - 2
-        input_shape[0] = 0
-        input_shape[0 - 1] = 0
+        shape = list(input_shape)
+        shape[0] = 0
+        shape[-1] = 0
 
         if self.pad_margin is not None:
             assert self.pad_shape is None, 'please do not provide a padding shape and margin at the same time.'
@@ -1476,7 +1403,7 @@ class PadAroundCentre(Layer):
             assert self.pad_margin is None, 'please do not provide a padding shape and margin at the same time.'
 
             # pad shape
-            tensor_shape = tf.cast(tf.convert_to_tensor(input_shape), 'int32')
+            tensor_shape = tf.cast(tf.convert_to_tensor(shape), 'int32')
             self.pad_shape_tens = np.array([0] + utils.reformat_to_list(self.pad_shape, length=self.n_dims) + [0])
             self.pad_shape_tens = tf.convert_to_tensor(self.pad_shape_tens, dtype='int32')
             self.pad_shape_tens = tf.math.maximum(tensor_shape, self.pad_shape_tens)
@@ -1588,3 +1515,222 @@ class MaskEdges(Layer):
 
     def compute_output_shape(self, input_shape):
         return [input_shape] * 2
+
+
+class ImageGradients(Layer):
+
+    def __init__(self, gradient_type='sobel', return_magnitude=False, **kwargs):
+
+        self.gradient_type = gradient_type
+        assert (self.gradient_type == 'sobel') | (self.gradient_type == '1-step_diff'), \
+            'gradient_type should be either sobel or 1-step_diff, had %s' % self.gradient_type
+
+        # shape
+        self.n_dims = 0
+        self.shape = None
+        self.n_channels = 0
+
+        # convolution params if sobel diff
+        self.stride = None
+        self.kernels = None
+        self.convnd = None
+
+        self.return_magnitude = return_magnitude
+
+        super(ImageGradients, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["gradient_type"] = self.gradient_type
+        config["return_magnitude"] = self.return_magnitude
+        return config
+
+    def build(self, input_shape):
+
+        # get shapes
+        self.n_dims = len(input_shape) - 2
+        self.shape = input_shape[1:]
+        self.n_channels = input_shape[-1]
+
+        # prepare kernel if sobel gradients
+        if self.gradient_type == 'sobel':
+            self.kernels = l2i_et.sobel_kernels(self.n_dims)
+            self.stride = [1] * (self.n_dims + 2)
+            self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
+        else:
+            self.kernels = self.convnd = self.stride = None
+
+        self.built = True
+        super(ImageGradients, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+
+        image = inputs
+        batchsize = tf.split(tf.shape(inputs), [1, -1])[0]
+        gradients = list()
+
+        # sobel method
+        if self.gradient_type == 'sobel':
+            # get sobel gradients in each direction
+            for n in range(self.n_dims):
+                gradient = image
+                # apply 1D kernel in each direction (sobel kernels are separable), instead of applying a nD kernel
+                for k in self.kernels[n]:
+                    gradient = tf.concat([self.convnd(tf.expand_dims(gradient[..., n], -1), k, self.stride, 'SAME')
+                                          for n in range(self.n_channels)], -1)
+                gradients.append(gradient)
+
+        # 1-step method, only supports 2 and 3D
+        else:
+
+            # get 1-step diff
+            if self.n_dims == 2:
+                gradients.append(image[:, 1:, :, :] - image[:, :-1, :, :])  # dx
+                gradients.append(image[:, :, 1:, :] - image[:, :, :-1, :])  # dy
+
+            elif self.n_dims == 3:
+                gradients.append(image[:, 1:, :, :, :] - image[:, :-1, :, :, :])  # dx
+                gradients.append(image[:, :, 1:, :, :] - image[:, :, :-1, :, :])  # dy
+                gradients.append(image[:, :, :, 1:, :] - image[:, :, :, :-1, :])  # dz
+
+            else:
+                raise Exception('ImageGradients only support 2D or 3D tensors for 1-step diff, had: %dD' % self.n_dims)
+
+            # pad with zeros to return tensors of the same shape as input
+            for i in range(self.n_dims):
+                tmp_shape = list(self.shape)
+                tmp_shape[i] = 1
+                zeros = tf.zeros(tf.concat([batchsize, tf.convert_to_tensor(tmp_shape, dtype='int32')], 0), image.dtype)
+                gradients[i] = tf.concat([gradients[i], zeros], axis=i + 1)
+
+        # compute total gradient magnitude if necessary, or concatenate different gradients along the channel axis
+        if self.return_magnitude:
+            gradients = tf.sqrt(tf.reduce_sum(tf.square(tf.stack(gradients, axis=-1)), axis=-1))
+        else:
+            gradients = tf.concat(gradients, axis=-1)
+
+        return gradients
+
+    def compute_output_shape(self, input_shape):
+        if not self.return_magnitude:
+            input_shape = list(input_shape)
+            input_shape[-1] = self.n_dims
+        return tuple(input_shape)
+
+
+class RandomDilationErosion(Layer):
+    """
+    GPU implementation of binary dilation or erosion. The operation can be chosen to be always a dilation, or always an
+    erosion, or randomly choosing between them for each element of the batch.
+    The chosen operation is applied to the input with a given probability. Moreover, it is also possible to randomise
+    the factor of the operation for each element of the mini-batch.
+    :param min_factor: minimum possible value for the dilation/erosion factor. Must be an integer.
+    :param max_factor: minimum possible value for the dilation/erosion factor. Must be an integer.
+    Set it to the same value as min_factor to always perform dilation/erosion with the same factor.
+    :param prob: probability with which to apply the selected operation to the input.
+    :param operation: which operation to apply. Can be 'dilation' or 'erosion' or 'random'.
+    :param return_mask: if operation is erosion and the input of this layer is a label map, we have the
+    choice to either return the eroded label map or the mask (return_mask=True)
+    """
+
+    def __init__(self, min_factor, max_factor, max_factor_dilate=None, prob=1, operation='erosion', return_mask=False,
+                 **kwargs):
+
+        self.min_factor = min_factor
+        self.max_factor = max_factor
+        self.max_factor_dilate = max_factor_dilate if max_factor_dilate is not None else self.max_factor
+        self.prob = prob
+        self.operation = operation
+        self.return_mask = return_mask
+        self.n_dims = None
+        self.inshape = None
+        self.several_inputs = False
+        self.convnd = None
+        super(RandomDilationErosion, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["min_factor"] = self.min_factor
+        config["max_factor"] = self.max_factor
+        config["max_factor_dilate"] = self.max_factor_dilate
+        config["prob"] = self.prob
+        config["operation"] = self.operation
+        config["return_mask"] = self.return_mask
+        return config
+
+    def build(self, input_shape):
+
+        # input shape
+        if isinstance(input_shape, list):
+            self.several_inputs = True
+            self.inshape = input_shape
+        else:
+            self.inshape = [input_shape]
+        self.n_dims = len(self.inshape[0]) - 2
+        self.n_channels = self.inshape[0][-1]
+
+        # prepare convolution
+        self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
+
+        self.built = True
+        super(RandomDilationErosion, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+
+        # reorganise inputs
+        volume = inputs[0] if self.several_inputs else inputs
+
+        # sample probability of applying operation. If random negative is erosion and positive is dilation
+        batchsize = tf.split(tf.shape(volume), [1, -1])[0]
+        shape = tf.concat([batchsize, tf.convert_to_tensor([1], dtype='int32')], axis=0)
+        if self.operation == 'dilation':
+            prob = tf.random.uniform(shape, 0, 1)
+        elif self.operation == 'erosion':
+            prob = tf.random.uniform(shape, -1, 0)
+        elif self.operation == 'random':
+            prob = tf.random.uniform(shape, -1, 1)
+        else:
+            raise ValueError("operation should either be 'dilation' 'erosion' or 'random', had %s" % self.operation)
+
+        # build kernel
+        if self.min_factor == self.max_factor:
+            dist_threshold = self.min_factor * tf.ones(shape, dtype='int32')
+        else:
+            if (self.max_factor == self.max_factor_dilate) | (self.operation != 'random'):
+                dist_threshold = tf.random.uniform(shape, minval=self.min_factor, maxval=self.max_factor, dtype='int32')
+            else:
+                dist_threshold = tf.cast(tf.map_fn(self._sample_factor, [prob], dtype=tf.float32), dtype='int32')
+        kernel = l2i_et.unit_kernel(dist_threshold, self.n_dims, max_dist_threshold=self.max_factor)
+
+        # convolve input mask with kernel according to given probability
+        prob = prob * tf.cast(inputs[1], dtype='float32') if self.several_inputs else prob
+        mask = tf.cast(tf.cast(volume, dtype='bool'), dtype='float32')
+        mask = tf.map_fn(self._single_blur, [mask, kernel, prob], dtype=tf.float32)
+        mask = tf.cast(mask, 'bool')
+
+        if self.return_mask:
+            return mask
+        else:
+            return volume * tf.cast(mask, dtype=volume.dtype)
+
+    def _sample_factor(self, inputs):
+        return tf.cast(K.switch(K.less(tf.squeeze(inputs[0]), 0),
+                                tf.random.uniform((1,), self.min_factor, self.max_factor, dtype='int32'),
+                                tf.random.uniform((1,), self.min_factor, self.max_factor_dilate, dtype='int32')),
+                       dtype='float32')
+
+    def _single_blur(self, inputs):
+        # dilate...
+        new_mask = K.switch(K.greater(tf.squeeze(inputs[2]), 1 - self.prob + 0.001),
+                            tf.cast(tf.greater(tf.squeeze(self.convnd(tf.expand_dims(inputs[0], 0), inputs[1],
+                                    [1] * (self.n_dims + 2), padding='SAME'), axis=0), 0.01), dtype='float32'),
+                            inputs[0])
+        # ...or erode
+        new_mask = K.switch(K.less(tf.squeeze(inputs[2]), - (1 - self.prob + 0.001)),
+                            1 - tf.cast(tf.greater(tf.squeeze(self.convnd(tf.expand_dims(1 - new_mask, 0), inputs[1],
+                                        [1] * (self.n_dims + 2), padding='SAME'), axis=0), 0.01), dtype='float32'),
+                            new_mask)
+        return new_mask
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0] if self.several_inputs else input_shape

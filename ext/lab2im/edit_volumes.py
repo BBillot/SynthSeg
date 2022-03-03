@@ -549,6 +549,12 @@ def get_ras_axes(aff, n_dims=3):
     """
     aff_inverted = np.linalg.inv(aff)
     img_ras_axes = np.argmax(np.absolute(aff_inverted[0:n_dims, 0:n_dims]), axis=0)
+    for i in range(n_dims):
+        if i not in img_ras_axes:
+            unique, counts = np.unique(img_ras_axes, return_counts=True)
+            incorrect_value = unique[np.argmax(counts)]
+            img_ras_axes[np.where(img_ras_axes == incorrect_value)[0][-1]] = i
+
     return img_ras_axes
 
 
@@ -1898,7 +1904,7 @@ def check_images_in_dir(image_dir, check_values=False, keep_unique=True, max_cha
         # get info
         im, shape, aff, n_dims, _, h, res = utils.get_volume_info(path_image, True, np.eye(4), max_channels)
         axes = get_ras_axes(aff, n_dims=n_dims).tolist()
-        aff[:, np.arange(3)] = aff[:, axes]
+        aff[:, np.arange(n_dims)] = aff[:, axes]
         aff = (np.int32(np.round(np.array(aff[:3, :3]), 2) * 100) / 100).tolist()
         res = (np.int32(np.round(np.array(res), 2) * 100) / 100).tolist()
 
@@ -2040,13 +2046,15 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
                     smoothing_model = smoothing_gpu_model(label_shape, labels_list, connectivity)
                 unique_labels = np.unique(labels).astype('int32')
                 if labels_list is None:
-                    labels = smoothing_model.predict(utils.add_axis(labels))
+                    smoothed_labels = smoothing_model.predict(utils.add_axis(labels))
                 else:
                     labels_to_keep = [lab for lab in unique_labels if lab not in labels_list]
                     new_labels, mask_new_labels = mask_label_map(labels, labels_to_keep, return_mask=True)
-                    labels = smoothing_model.predict(utils.add_axis(labels))
-                    labels = np.where(mask_new_labels, new_labels, labels)
-                utils.save_volume(np.squeeze(labels), aff, h, path_result, dtype='int32')
+                    smoothed_labels = np.squeeze(smoothing_model.predict(utils.add_axis(labels)))
+                    smoothed_labels = np.where(mask_new_labels, new_labels, smoothed_labels)
+                    mask_new_zeros = (labels > 0) & (smoothed_labels == 0)
+                    smoothed_labels[mask_new_zeros] = labels[mask_new_zeros]
+                utils.save_volume(smoothed_labels, aff, h, path_result, dtype='int32')
 
     else:
         # build kernel
