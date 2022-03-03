@@ -163,7 +163,7 @@ def rescale_volume(volume, new_min=0, new_max=255, min_percentile=2, max_percent
 
     # define min and max intensities in original image for normalisation
     robust_min = np.min(intensities) if min_percentile == 0 else np.percentile(intensities, min_percentile)
-    robust_max = np.max(intensities) if max_percentile == 0 else np.percentile(intensities, max_percentile)
+    robust_max = np.max(intensities) if max_percentile == 100 else np.percentile(intensities, max_percentile)
 
     # trim values outside range
     new_volume = np.clip(new_volume, robust_min, robust_max)
