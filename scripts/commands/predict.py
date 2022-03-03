@@ -36,7 +36,7 @@ parser.add_argument("--names_list", type=str, dest="segmentation_label_names", d
 
 # Processing parameters
 parser.add_argument("--neutral_labels", type=int, dest="n_neutral_labels", default=None)
-parser.add_argument("--padding", type=int, dest="padding", default=None,
+parser.add_argument("--min_pad", type=int, dest="min_pad", default=None,
                     help="margin of the padding")
 parser.add_argument("--cropping", type=int, dest="cropping", default=None,
                     help="crop volume before processing. Segmentations will have the same size as input image.")

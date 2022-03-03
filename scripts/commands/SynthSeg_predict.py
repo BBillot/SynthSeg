@@ -48,11 +48,12 @@ parser.add_argument("--vol", type=str, default=None, dest="path_volumes",
                     help="(optional) Output CSV file with volumes for all structures and subjects.")
 
 # parameters
-parser.add_argument("--crop", nargs='+', type=int, default=192, dest="cropping",
+parser.add_argument("--crop", nargs='+', type=int, default=None, dest="cropping",
                     help="(optional) Size of 3D patches to analyse. Default is 192.")
 parser.add_argument("--threads", type=int, default=1, dest="threads",
                     help="(optional) Number of cores to be used. Default is 1.")
 parser.add_argument("--cpu", action="store_true", help="(optional) Enforce running with CPU rather than GPU.")
+parser.add_argument("--fast", action="store_true", help="(optional) Disbale postprocessing corrections.")
 
 # parse commandline
 args = vars(parser.parse_args())
@@ -68,13 +69,20 @@ import tensorflow as tf
 tf.config.threading.set_intra_op_parallelism_threads(args['threads'])
 del args['threads']
 
+# enforce CPU processing if necessary
+if args['fast']:
+    args['topology_classes'] = None
+    args['flip'] = False
+else:
+    args['topology_classes'] = os.path.join(synthseg_home, 'data/labels_classes_priors/topological_classes.npy')
+del args['fast']
+
 # default parameters
 args['segmentation_labels'] = os.path.join(synthseg_home, 'data/labels_classes_priors/segmentation_labels.npy')
 args['n_neutral_labels'] = 18
 args['segmentation_label_names'] = os.path.join(synthseg_home, 'data/labels_classes_priors/segmentation_names.npy')
-args['topology_classes'] = os.path.join(synthseg_home, 'data/labels_classes_priors/topological_classes.npy')
 args['path_model'] = os.path.join(synthseg_home, 'models/SynthSeg.h5')
-args['padding'] = args['cropping']
+args['min_pad'] = 160
 
 # call predict
 predict(**args)

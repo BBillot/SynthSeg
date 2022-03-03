@@ -18,7 +18,6 @@ License.
 import os
 import csv
 import numpy as np
-import keras
 import keras.layers as KL
 import keras.backend as K
 from keras.models import Model
@@ -42,7 +41,7 @@ def predict(path_images,
             path_resampled=None,
             path_volumes=None,
             segmentation_label_names=None,
-            padding=None,
+            min_pad=None,
             cropping=None,
             target_res=1.,
             gradients=False,
@@ -88,11 +87,9 @@ def predict(path_images,
     :param segmentation_label_names: (optional) List of names correponding to the names of the segmentation labels.
     Only used when path_volumes is provided. Must be of the same size as segmentation_labels. Can be given as a
     list, a numpy array of strings, or the path to such a numpy array. Default is None.
-    :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
-    Can be an int, a sequence or a 1d numpy array.
+    :param min_pad: (optional) minimum size of the images to process. Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) crop the images to the specified shape before predicting the segmentation maps.
-    If padding and cropping are specified, images are padded before being cropped.
-    Can be an int, a sequence or a 1d numpy array.
+    Cropping overwrites min_pad if min_pad>cropping. Can be an int, a sequence or a 1d numpy array.
     :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
     segmentations). This must match the resolution of the training data ! target_res is used to automatically resampled
     the images with resolutions outside [target_res-0.05, target_res+0.05].
@@ -173,13 +170,17 @@ def predict(path_images,
         with open(path_volumes, 'w') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(csv_header)
-        csvFile.close()
 
     # build network
     _, _, n_dims, n_channels, _, _ = utils.get_volume_info(path_images[0])
     model_input_shape = [None] * n_dims + [n_channels]
     net = build_model(path_model, model_input_shape, n_levels, len(segmentation_labels), conv_size,
                       nb_conv_per_level, unet_feat_count, feat_multiplier, activation, sigma_smoothing, gradients)
+
+    if (cropping is not None) & (min_pad is not None):
+        cropping = utils.reformat_to_list(cropping, length=n_dims, dtype='int')
+        min_pad = utils.reformat_to_list(min_pad, length=n_dims, dtype='int')
+        min_pad = np.minimum(cropping, min_pad)
 
     # perform segmentation
     loop_info = utils.LoopInfo(len(path_images), 10, 'predicting', True)
@@ -192,21 +193,20 @@ def predict(path_images,
                 loop_info.update(idx)
 
             # preprocessing
-            image, aff, h, im_res, _, _, shape, pad_shape, crop_idx, im_flipped = \
-                preprocess_image(path_image, n_levels, target_res, cropping, padding, flip, path_resample)
+            image, aff, h, im_res, shape, pad_idx, crop_idx, im_flipped = \
+                preprocess(path_image, n_levels, target_res, cropping, min_pad, flip, path_resample)
 
             # prediction
             prediction_patch = net.predict(image)
             prediction_patch_flip = net.predict(im_flipped) if flip else None
 
             # postprocessing
-            seg, posteriors = postprocess(prediction_patch, pad_shape, shape, crop_idx, n_dims, segmentation_labels,
+            seg, posteriors = postprocess(prediction_patch, shape, pad_idx, crop_idx, n_dims, segmentation_labels,
                                           lr_indices, keep_biggest_component, aff,
                                           topology_classes=topology_classes, post_patch_flip=prediction_patch_flip)
 
             # write results to disk
-            if path_segmentation is not None:
-                utils.save_volume(seg, aff, h, path_segmentation, dtype='int32')
+            utils.save_volume(seg, aff, h, path_segmentation, dtype='int32')
             if path_posterior is not None:
                 if n_channels > 1:
                     posteriors = utils.add_axis(posteriors, axis=[0, -1])
@@ -226,7 +226,6 @@ def predict(path_images,
             with open(path_volumes, 'a') as csvFile:
                 writer = csv.writer(csvFile)
                 writer.writerow(row)
-            csvFile.close()
 
     # evaluate
     if gt_folder is not None:
@@ -273,7 +272,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
     # convert path to absolute paths
     path_images = os.path.abspath(path_images)
     basename = os.path.basename(path_images)
-    out_seg = os.path.abspath(out_seg) if (out_seg is not None) else out_seg
+    out_seg = os.path.abspath(out_seg)
     out_posteriors = os.path.abspath(out_posteriors) if (out_posteriors is not None) else out_posteriors
     out_resampled = os.path.abspath(out_resampled) if (out_resampled is not None) else out_resampled
     out_volumes = os.path.abspath(out_volumes) if (out_volumes is not None) else out_volumes
@@ -376,10 +375,10 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
     return path_images, out_seg, out_posteriors, out_resampled, out_volumes, recompute_list
 
 
-def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, flip=False, path_resample=None):
+def preprocess(im_path, n_levels, target_res, crop=None, min_pad=None, flip=False, path_resample=None):
 
     # read image and corresponding info
-    im, _, aff, n_dims, n_channels, header, im_res = utils.get_volume_info(im_path, True)
+    im, _, aff, n_dims, n_channels, h, im_res = utils.get_volume_info(im_path, True)
 
     # resample image if necessary
     if target_res is not None:
@@ -388,33 +387,17 @@ def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, fli
             im_res = target_res
             im, aff = edit_volumes.resample_volume(im, aff, im_res)
             if path_resample is not None:
-                utils.save_volume(im, aff, header, path_resample)
+                utils.save_volume(im, aff, h, path_resample)
 
     # align image
     im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), n_dims=n_dims)
-    shape = list(im.shape)
-
-    # pad image if specified
-    if padding:
-        im = edit_volumes.pad_volume(im, padding_shape=padding)
-        pad_shape = im.shape[:n_dims]
-    else:
-        pad_shape = shape
-
-    # check that patch_shape or im_shape are divisible by 2**n_levels
-    if crop is not None:
-        crop = utils.reformat_to_list(crop, length=n_dims, dtype='int')
-        if not all([pad_shape[i] >= crop[i] for i in range(len(pad_shape))]):
-            crop = [min(pad_shape[i], crop[i]) for i in range(n_dims)]
-        if not all([size % (2**n_levels) == 0 for size in crop]):
-            crop = [utils.find_closest_number_divisible_by_m(size, 2 ** n_levels) for size in crop]
-    else:
-        if not all([size % (2**n_levels) == 0 for size in pad_shape]):
-            crop = [utils.find_closest_number_divisible_by_m(size, 2 ** n_levels) for size in pad_shape]
+    shape = list(im.shape[:n_dims])
 
     # crop image if necessary
     if crop is not None:
-        im, crop_idx = edit_volumes.crop_volume(im, cropping_shape=crop, return_crop_idx=True)
+        crop = utils.reformat_to_list(crop, length=n_dims, dtype='int')
+        crop_shape = [utils.find_closest_number_divisible_by_m(s, 2 ** n_levels, 'higher') for s in crop]
+        im, crop_idx = edit_volumes.crop_volume(im, cropping_shape=crop_shape, return_crop_idx=True)
     else:
         crop_idx = None
 
@@ -426,6 +409,15 @@ def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, fli
             im[..., i] = edit_volumes.rescale_volume(im[..., i], new_min=0., new_max=1.,
                                                      min_percentile=0.5, max_percentile=99.5)
 
+    # pad image
+    input_shape = im.shape[:n_dims]
+    pad_shape = [utils.find_closest_number_divisible_by_m(s, 2 ** n_levels, 'higher') for s in input_shape]
+    if min_pad is not None:  # in SynthSeg predict use crop flag and then if used do min_pad=crop else min_pad = 192
+        min_pad = utils.reformat_to_list(min_pad, length=n_dims, dtype='int')
+        min_pad = [utils.find_closest_number_divisible_by_m(s, 2 ** n_levels, 'higher') for s in min_pad]
+        pad_shape = np.maximum(pad_shape, min_pad)
+    im, pad_idx = edit_volumes.pad_volume(im, padding_shape=pad_shape, return_pad_idx=True)
+
     # flip image along right/left axis
     if flip & (n_dims > 2):
         im_flipped = edit_volumes.flip_volume(im, direction='rl', aff=np.eye(4))
@@ -436,7 +428,7 @@ def preprocess_image(im_path, n_levels, target_res, crop=None, padding=None, fli
     # add batch and channel axes
     im = utils.add_axis(im) if n_channels > 1 else utils.add_axis(im, axis=[0, -1])
 
-    return im, aff, header, im_res, n_channels, n_dims, shape, pad_shape, crop_idx, im_flipped
+    return im, aff, h, im_res, shape, pad_idx, crop_idx, im_flipped
 
 
 def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per_level, unet_feat_count,
@@ -475,7 +467,7 @@ def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per
     return net
 
 
-def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, segmentation_labels, lr_indices,
+def postprocess(post_patch, shape, pad_idx, crop_idx, n_dims, segmentation_labels, lr_indices,
                 keep_biggest_component, aff, topology_classes=True, post_patch_flip=None):
 
     # get posteriors and segmentation
@@ -511,30 +503,26 @@ def postprocess(post_patch, pad_shape, im_shape, crop, n_dims, segmentation_labe
     seg_patch = post_patch.argmax(-1)
 
     # paste patches back to matrix of original image size
-    if crop is not None:
-        seg = np.zeros(shape=pad_shape, dtype='int32')
-        posteriors = np.zeros(shape=[*pad_shape, segmentation_labels.shape[0]])
-        posteriors[..., 0] = np.ones(pad_shape)  # place background around patch
+    seg_patch = edit_volumes.crop_volume_with_idx(seg_patch, pad_idx, n_dims=n_dims)
+    post_patch = edit_volumes.crop_volume_with_idx(post_patch, pad_idx, n_dims=n_dims)
+    if crop_idx is not None:
+        # we need to go through this because of the posteriors of the background, otherwise pad_volume would work
+        seg = np.zeros(shape=shape, dtype='int32')
+        posteriors = np.zeros(shape=[*shape, segmentation_labels.shape[0]])
+        posteriors[..., 0] = np.ones(shape)  # place background around patch
         if n_dims == 2:
-            seg[crop[0]:crop[2], crop[1]:crop[3]] = seg_patch
-            posteriors[crop[0]:crop[2], crop[1]:crop[3], :] = post_patch
+            seg[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3]] = seg_patch
+            posteriors[crop_idx[0]:crop_idx[2], crop_idx[1]:crop_idx[3], :] = post_patch
         elif n_dims == 3:
-            seg[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5]] = seg_patch
-            posteriors[crop[0]:crop[3], crop[1]:crop[4], crop[2]:crop[5], :] = post_patch
+            seg[crop_idx[0]:crop_idx[3], crop_idx[1]:crop_idx[4], crop_idx[2]:crop_idx[5]] = seg_patch
+            posteriors[crop_idx[0]:crop_idx[3], crop_idx[1]:crop_idx[4], crop_idx[2]:crop_idx[5], :] = post_patch
     else:
         seg = seg_patch
         posteriors = post_patch
     seg = segmentation_labels[seg.astype('int')].astype('int')
 
-    if im_shape != pad_shape:
-        bounds = [int((p-i)/2) for (p, i) in zip(pad_shape, im_shape)]
-        bounds += [p + i for (p, i) in zip(bounds, im_shape)]
-        seg = edit_volumes.crop_volume_with_idx(seg, bounds)
-        posteriors = edit_volumes.crop_volume_with_idx(posteriors, bounds, n_dims=n_dims)
-
     # align prediction back to first orientation
-    if n_dims > 2:
-        seg = edit_volumes.align_volume_to_ref(seg, aff=np.eye(4), aff_ref=aff, n_dims=n_dims, return_aff=False)
-        posteriors = edit_volumes.align_volume_to_ref(posteriors, aff=np.eye(4), aff_ref=aff, n_dims=n_dims)
+    seg = edit_volumes.align_volume_to_ref(seg, aff=np.eye(4), aff_ref=aff, n_dims=n_dims, return_aff=False)
+    posteriors = edit_volumes.align_volume_to_ref(posteriors, aff=np.eye(4), aff_ref=aff, n_dims=n_dims)
 
     return seg, posteriors
