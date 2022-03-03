@@ -282,7 +282,7 @@ def evaluation(gt_dir,
             path_masks = [None] * len(path_segs)
 
         # load labels list
-        label_list, _ = utils.get_list_labels(label_list=label_list, FS_sort=True, labels_dir=gt_dir)
+        label_list, _ = utils.get_list_labels(label_list=label_list, labels_dir=gt_dir)
         n_labels = len(label_list)
         max_label = np.max(label_list) + 1
 
@@ -303,10 +303,10 @@ def evaluation(gt_dir,
                 loop_info.update(idx)
 
             # load gt labels and segmentation
-            gt_labels = utils.load_volume(path_gt, dtype='int')
-            seg = utils.load_volume(path_seg, dtype='int')
+            gt_labels = utils.load_volume(path_gt, dtype='int', aff_ref=np.eye(4))
+            seg = utils.load_volume(path_seg, dtype='int', aff_ref=np.eye(4))
             if path_mask is not None:
-                mask = utils.load_volume(path_mask, dtype='bool')
+                mask = utils.load_volume(path_mask, dtype='bool', aff_ref=np.eye(4))
                 gt_labels[mask] = max_label
                 seg[mask] = max_label
 
