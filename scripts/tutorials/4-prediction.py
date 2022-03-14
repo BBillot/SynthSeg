@@ -79,7 +79,7 @@ sigma_smoothing = 0.5
 # unsegmented structures must be set to 0 (like for 24 and 507).
 topology_classes = '../../data/labels_classes_priors/synthseg_topological_classes.npy'
 # Finally, we can also operate a strict version of biggest connected component, to get rid of unwanted noisy label
-# patch that can sometimes occur in the background. If so, we do recommend to use the smoothing option described above.
+# patch that can sometimes occur in the background. If so, we recommend using the smoothing option described above.
 keep_biggest_component = True
 
 # Regarding the architecture of the network, we must provide the predict function with the same parameters as during
