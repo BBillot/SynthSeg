@@ -14,7 +14,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -44,7 +44,7 @@ path_model = '../../models/SynthSeg_training/dice_100.h5'
 path_segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # We can now provide various parameters to control the preprocessing of the input.
-# First we can play witht he size of the input. Remember that the size of input must be divisible by 2**n_levels, so the
+# First we can play with the size of the input. Remember that the size of input must be divisible by 2**n_levels, so the
 # input image will be automatically cropped to such a shape. If you want to make sure that the whole image is processed,
 # (and not to have ugly cropping artefacts in your segmentations) you can pad it to a larger size with zeros.
 padding = 192  # pad the image to this shape if it is smaller
@@ -79,7 +79,7 @@ sigma_smoothing = 0.5
 # unsegmented structures must be set to 0 (like for 24 and 507).
 topology_classes = '../../data/labels_classes_priors/topological_classes.npy'
 # Finally, we can also operate a strict version of biggest connected component, to get rid of unwanted noisy label
-# patch that can sometimes occur in the background. If so, we do recommend to use the smoothing option described above.
+# patch that can sometimes occur in the background. If so, we recommend using the smoothing option described above.
 keep_biggest_component = True
 
 # Regarding the architecture of the network, we must provide the predict function with the same parameters as during

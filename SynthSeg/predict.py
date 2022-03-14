@@ -6,7 +6,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -18,7 +18,6 @@ License.
 import os
 import csv
 import numpy as np
-import keras
 import keras.layers as KL
 import keras.backend as K
 from keras.models import Model
@@ -85,7 +84,7 @@ def predict(path_images,
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
-    :param segmentation_label_names: (optional) List of names correponding to the names of the segmentation labels.
+    :param segmentation_label_names: (optional) List of names corresponding to the names of the segmentation labels.
     Only used when path_volumes is provided. Must be of the same size as segmentation_labels. Can be given as a
     list, a numpy array of strings, or the path to such a numpy array. Default is None.
     :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
@@ -100,14 +99,14 @@ def predict(path_images,
     :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
     a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
     :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
-    classes, for each of which we will operate a smooth version of biggest connected component.
+    classes, for each of which we will operate a smooth version of the biggest connected component.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_labels.
     Default is None, where no topological analysis is performed.
     :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
     This is applied independently of topology_classes, and it is applied to the whole segmentation
-    :param conv_size: (optional) size of unet's convolution masks. Default is 3.
+    :param conv_size: (optional) size of U-Net's convolution masks. Default is 3.
     :param n_levels: (optional) number of levels for unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolution layers per level. Default is 2.
     :param unet_feat_count: (optional) number of features for the first layer of the unet. Default is 24.
@@ -141,7 +140,7 @@ def predict(path_images,
     segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
     n_labels = len(segmentation_labels)
 
-    # get unique label values, and build correspondance table between contralateral structures if necessary
+    # get unique label values, and build correspondence table between contra-lateral structures if necessary
     if (n_neutral_labels is not None) & flip:
         n_sided_labels = int((n_labels - n_neutral_labels) / 2)
         lr_corresp = np.stack([segmentation_labels[n_neutral_labels:n_neutral_labels + n_sided_labels],
@@ -262,9 +261,9 @@ def predict(path_images,
 
 
 def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, out_volumes, recompute):
-    '''
+    """
     Prepare output files.
-    '''
+    """
 
     # check inputs
     assert path_images is not None, 'please specify an input file/folder (--i)'
