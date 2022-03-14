@@ -56,7 +56,7 @@ def fast_dice(x, y, labels):
 
 
 def dice(x, y):
-    """Implementation of dice scores ofr 0/1 numpy array"""
+    """Implementation of dice scores of 0/1 numpy array"""
     return 2 * np.sum(x * y) / (np.sum(x) + np.sum(y))
 
 
