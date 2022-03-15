@@ -278,11 +278,61 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
     out_resampled = os.path.abspath(out_resampled) if (out_resampled is not None) else out_resampled
     out_volumes = os.path.abspath(out_volumes) if (out_volumes is not None) else out_volumes
 
+    if basename[-4:] == '.txt':
+
+        # input images
+        if not os.path.isfile(path_images):
+            raise Exception('provided text file containing paths of input images does not exist' % path_images)
+        with open(path_images, 'r') as f:
+            path_images = [line.replace('\n', '') for line in f.readlines() if line != '\n']
+
+        # segmentations
+        assert out_seg[-4:] == '.txt', 'if path_images given as text file, so must be the output segmentations'
+        with open(out_seg, 'r') as f:
+            out_seg = [line.replace('\n', '') for line in f.readlines() if line != '\n']
+        recompute_seg = [not os.path.isfile(path_seg) for path_seg in out_seg]
+
+        # volumes
+        if out_volumes is not None:
+            assert out_volumes[-4:] == '.txt', 'if path_images given as text file, so must be the output volumes'
+            with open(out_volumes, 'r') as f:
+                out_volumes = [line.replace('\n', '') for line in f.readlines() if line != '\n']
+            recompute_volume = [not os.path.isfile(path_vol) for path_vol in out_volumes]
+        else:
+            out_volumes = [None] * len(path_images)
+            recompute_volume = [False] * len(path_images)
+        unique_volume_file = False
+
+        # posteriors
+        if out_posteriors is not None:
+            assert out_posteriors[-4:] == '.txt', 'if path_images given as text file, so must be the output posteriors'
+            with open(out_posteriors, 'r') as f:
+                out_posteriors = [line.replace('\n', '') for line in f.readlines() if line != '\n']
+            recompute_post = [not os.path.isfile(path_post) for path_post in out_posteriors]
+        else:
+            out_posteriors = [None] * len(path_images)
+            recompute_post = [False] * len(path_images)
+
+        # resampled
+        if out_resampled is not None:
+            assert out_resampled[-4:] == '.txt', 'if path_images given as text file, so must be the resampled images'
+            with open(out_resampled, 'r') as f:
+                out_resampled = [line.replace('\n', '') for line in f.readlines() if line != '\n']
+            recompute_resampled = [not os.path.isfile(path_post) for path_post in out_resampled]
+        else:
+            out_resampled = [None] * len(path_images)
+            recompute_resampled = [False] * len(path_images)
+
     # path_images is a folder
-    if ('.nii.gz' not in basename) & ('.nii' not in basename) & ('.mgz' not in basename) & ('.npz' not in basename):
+    elif ('.nii.gz' not in basename) & ('.nii' not in basename) & ('.mgz' not in basename) & ('.npz' not in basename):
+
+        # input images
         if os.path.isfile(path_images):
             raise Exception('Extension not supported for %s, only use: nii.gz, .nii, .mgz, or .npz' % path_images)
         path_images = utils.list_images_in_folder(path_images)
+
+        # segmentations
+        assert out_seg[-4:] != '.txt', 'path_segmentations can only be given as text file when path_images is.'
         if (out_seg[-7:] == '.nii.gz') | (out_seg[-4:] == '.nii') | (out_seg[-4:] == '.mgz') | (out_seg[-4:] == '.npz'):
             raise Exception('Output folders cannot have extensions: .nii.gz, .nii, .mgz, or .npz, had %s' % out_seg)
         utils.mkdir(out_seg)
@@ -291,7 +341,23 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
         out_seg = [seg_path.replace('.mgz', '_synthseg.mgz') for seg_path in out_seg]
         out_seg = [seg_path.replace('.npz', '_synthseg.npz') for seg_path in out_seg]
         recompute_seg = [not os.path.isfile(path_seg) for path_seg in out_seg]
+
+        # volumes
+        if out_volumes is not None:
+            assert out_volumes[-4:] != '.txt', 'path_volumes can only be given as text file when path_images is.'
+            if out_volumes[-4:] != '.csv':
+                print('Path for volume outputs provided without csv extension. Adding csv extension.')
+                out_volumes += '.csv'
+            utils.mkdir(os.path.dirname(out_volumes))
+            recompute_volume = [True] * len(path_images)
+        else:
+            recompute_volume = [False] * len(path_images)
+        out_volumes = [out_volumes] * len(path_images)
+        unique_volume_file = True
+
+        # posteriors
         if out_posteriors is not None:
+            assert out_posteriors[-4:] != '.txt', 'path_posteriors can only be given as text file when path_images is.'
             if (out_posteriors[-7:] == '.nii.gz') | (out_posteriors[-4:] == '.nii') | \
                     (out_posteriors[-4:] == '.mgz') | (out_posteriors[-4:] == '.npz'):
                 raise Exception('Output folders cannot have extensions: '
@@ -303,9 +369,12 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
             out_posteriors = [posteriors_path.replace('.npz', '_posteriors.npz') for posteriors_path in out_posteriors]
             recompute_post = [not os.path.isfile(path_post) for path_post in out_posteriors]
         else:
-            out_posteriors = [out_posteriors] * len(path_images)
-            recompute_post = [out_volumes is not None] * len(path_images)
+            out_posteriors = [None] * len(path_images)
+            recompute_post = [False] * len(path_images)
+
+        # resampled
         if out_resampled is not None:
+            assert out_resampled[-4:] != '.txt', 'path_resampled can only be given as text file when path_images is.'
             if (out_resampled[-7:] == '.nii.gz') | (out_resampled[-4:] == '.nii') | \
                     (out_resampled[-4:] == '.mgz') | (out_resampled[-4:] == '.npz'):
                 raise Exception('Output folders cannot have extensions: '
@@ -317,14 +386,19 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
             out_resampled = [resampled_path.replace('.npz', '_resampled.npz') for resampled_path in out_resampled]
             recompute_resampled = [not os.path.isfile(path_post) for path_post in out_resampled]
         else:
-            out_resampled = [out_resampled] * len(path_images)
-            recompute_resampled = [out_volumes is not None] * len(path_images)
+            out_resampled = [None] * len(path_images)
+            recompute_resampled = [False] * len(path_images)
 
     # path_images is an image
     else:
-        assert os.path.isfile(path_images), "file does not exist: %s \n" \
-                                            "please make sure the path and the extension are correct" % path_images
+
+        # input images
+        assert os.path.isfile(path_images), 'file does not exist: %s \n' \
+                                            'please make sure the path and the extension are correct' % path_images
         path_images = [path_images]
+
+        # segmentations
+        assert out_seg[-4:] != '.txt', 'path_segmentations can only be given as text file when path_images is.'
         if ('.nii.gz' not in out_seg) & ('.nii' not in out_seg) & ('.mgz' not in out_seg) & ('.npz' not in out_seg):
             utils.mkdir(out_seg)
             filename = os.path.basename(path_images[0]).replace('.nii', '_synthseg.nii')
@@ -333,9 +407,25 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
             out_seg = os.path.join(out_seg, filename)
         else:
             utils.mkdir(os.path.dirname(out_seg))
+        recompute_seg = [not os.path.isfile(out_seg)]
         out_seg = [out_seg]
-        recompute_seg = [not os.path.isfile(out_seg[0])]
+
+        # volumes
+        if out_volumes is not None:
+            assert out_volumes[-4:] != '.txt', 'path_volumes can only be given as text file when path_images is.'
+            if out_volumes[-4:] != '.csv':
+                print('Path for volume outputs provided without csv extension. Adding csv extension.')
+                out_volumes += '.csv'
+            utils.mkdir(os.path.dirname(out_volumes))
+            recompute_volume = [True]
+        else:
+            recompute_volume = [False]
+        out_volumes = [out_volumes]
+        unique_volume_file = True
+
+        # posteriors
         if out_posteriors is not None:
+            assert out_posteriors[-4:] != '.txt', 'path_posteriors can only be given as text file when path_images is.'
             if ('.nii.gz' not in out_posteriors) & ('.nii' not in out_posteriors) &\
                     ('.mgz' not in out_posteriors) & ('.npz' not in out_posteriors):
                 utils.mkdir(out_posteriors)
@@ -347,9 +437,12 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
                 utils.mkdir(os.path.dirname(out_posteriors))
             recompute_post = [not os.path.isfile(out_posteriors)]
         else:
-            recompute_post = [out_volumes is not None]
+            recompute_post = [False]
         out_posteriors = [out_posteriors]
+
+        # resampled
         if out_resampled is not None:
+            assert out_resampled[-4:] != '.txt', 'path_resampled can only be given as text file when path_images is.'
             if ('.nii.gz' not in out_resampled) & ('.nii' not in out_resampled) &\
                     ('.mgz' not in out_resampled) & ('.npz' not in out_resampled):
                 utils.mkdir(out_resampled)
@@ -361,25 +454,20 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
                 utils.mkdir(os.path.dirname(out_resampled))
             recompute_resampled = [not os.path.isfile(out_resampled)]
         else:
-            recompute_resampled = [out_volumes is not None]
+            recompute_resampled = [False]
         out_resampled = [out_resampled]
 
-    recompute_list = [recompute | re_seg | re_post | re_res
-                      for (re_seg, re_post, re_res) in zip(recompute_seg, recompute_post, recompute_resampled)]
+    recompute_list = [recompute | re_seg | re_post | re_res | re_vol
+                      for (re_seg, re_post, re_res, re_vol)
+                      in zip(recompute_seg, recompute_post, recompute_resampled, recompute_volume)]
 
-    if out_volumes is not None:
-        if out_volumes[-4:] != '.csv':
-            print('Path for volume outputs provided without csv extension. Adding csv extension.')
-            out_volumes += '.csv'
-            utils.mkdir(os.path.dirname(out_volumes))
-
-    return path_images, out_seg, out_posteriors, out_resampled, out_volumes, recompute_list
+    return path_images, out_seg, out_posteriors, out_resampled, out_volumes, recompute_list, unique_volume_file
 
 
-def preprocess(im_path, n_levels, target_res, crop=None, min_pad=None, flip=False, path_resample=None):
+def preprocess(path_image, n_levels, target_res, crop=None, min_pad=None, flip=False, path_resample=None):
 
     # read image and corresponding info
-    im, _, aff, n_dims, n_channels, h, im_res = utils.get_volume_info(im_path, True)
+    im, _, aff, n_dims, n_channels, h, im_res = utils.get_volume_info(path_image, True)
 
     # resample image if necessary
     if target_res is not None:
@@ -391,7 +479,7 @@ def preprocess(im_path, n_levels, target_res, crop=None, min_pad=None, flip=Fals
                 utils.save_volume(im, aff, h, path_resample)
 
     # align image
-    im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), n_dims=n_dims)
+    im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=np.eye(4), n_dims=n_dims, return_copy=False)
     shape = list(im.shape[:n_dims])
 
     # crop image if necessary
@@ -471,21 +559,22 @@ def build_model(model_file, input_shape, n_levels, n_lab, conv_size, nb_conv_per
 def postprocess(post_patch, shape, pad_idx, crop_idx, n_dims, segmentation_labels, lr_indices,
                 keep_biggest_component, aff, topology_classes=True, post_patch_flip=None):
 
-    # get posteriors and segmentation
+    # get posteriors
     post_patch = np.squeeze(post_patch)
     if post_patch_flip is not None:
-        post_patch_flip = edit_volumes.flip_volume(np.squeeze(post_patch_flip), direction='rl', aff=np.eye(4))
+        post_patch_flip = np.squeeze(post_patch_flip)
+        post_patch_flip = edit_volumes.flip_volume(post_patch_flip, direction='rl', aff=np.eye(4), return_copy=False)
         if lr_indices is not None:
             post_patch_flip[..., lr_indices.flatten()] = post_patch_flip[..., lr_indices[::-1].flatten()]
         post_patch = 0.5 * (post_patch + post_patch_flip)
 
-    # keep biggest connected component (use it with smoothing!)
+    # keep biggest connected component
     if keep_biggest_component:
         tmp_post_patch = post_patch[..., 1:]
         post_patch_mask = np.sum(tmp_post_patch, axis=-1) > 0.25
         post_patch_mask = edit_volumes.get_largest_connected_component(post_patch_mask)
         post_patch_mask = np.stack([post_patch_mask]*tmp_post_patch.shape[-1], axis=-1)
-        tmp_post_patch = edit_volumes.mask_volume(tmp_post_patch, mask=post_patch_mask)
+        tmp_post_patch = edit_volumes.mask_volume(tmp_post_patch, mask=post_patch_mask, return_copy=False)
         post_patch[..., 1:] = tmp_post_patch
 
     # reset posteriors to zero outside the largest connected component of each topological class
@@ -504,8 +593,8 @@ def postprocess(post_patch, shape, pad_idx, crop_idx, n_dims, segmentation_label
     seg_patch = post_patch.argmax(-1)
 
     # paste patches back to matrix of original image size
-    seg_patch = edit_volumes.crop_volume_with_idx(seg_patch, pad_idx, n_dims=n_dims)
-    post_patch = edit_volumes.crop_volume_with_idx(post_patch, pad_idx, n_dims=n_dims)
+    seg_patch = edit_volumes.crop_volume_with_idx(seg_patch, pad_idx, n_dims=n_dims, return_copy=False)
+    post_patch = edit_volumes.crop_volume_with_idx(post_patch, pad_idx, n_dims=n_dims, return_copy=False)
     if crop_idx is not None:
         # we need to go through this because of the posteriors of the background, otherwise pad_volume would work
         seg = np.zeros(shape=shape, dtype='int32')
@@ -523,7 +612,7 @@ def postprocess(post_patch, shape, pad_idx, crop_idx, n_dims, segmentation_label
     seg = segmentation_labels[seg.astype('int')].astype('int')
 
     # align prediction back to first orientation
-    seg = edit_volumes.align_volume_to_ref(seg, aff=np.eye(4), aff_ref=aff, n_dims=n_dims, return_aff=False)
-    posteriors = edit_volumes.align_volume_to_ref(posteriors, aff=np.eye(4), aff_ref=aff, n_dims=n_dims)
+    seg = edit_volumes.align_volume_to_ref(seg, aff=np.eye(4), aff_ref=aff, n_dims=n_dims, return_copy=False)
+    posteriors = edit_volumes.align_volume_to_ref(posteriors, np.eye(4), aff_ref=aff, n_dims=n_dims, return_copy=False)
 
     return seg, posteriors
