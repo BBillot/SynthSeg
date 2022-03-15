@@ -43,7 +43,7 @@ def fast_dice(x, y, labels):
         label_edges = np.sort(np.concatenate([labels_sorted - 0.1, labels_sorted + 0.1]))
         label_edges = np.insert(label_edges, [0, len(label_edges)], [labels_sorted[0] - 0.1, labels_sorted[-1] + 0.1])
 
-        # compute Dice and re-arange scores in initial order
+        # compute Dice and re-arrange scores in initial order
         hst = np.histogram2d(x.flatten(), y.flatten(), bins=label_edges)[0]
         idx = np.arange(start=1, stop=2 * len(labels_sorted), step=2)
         dice_score = 2 * np.diag(hst)[idx] / (np.sum(hst, 0)[idx] + np.sum(hst, 1)[idx] + 1e-5)
@@ -56,7 +56,7 @@ def fast_dice(x, y, labels):
 
 
 def dice(x, y):
-    """Implementation of dice scores ofr 0/1 numy array"""
+    """Implementation of dice scores for 0/1 numpy array"""
     return 2 * np.sum(x * y) / (np.sum(x) + np.sum(y))
 
 
@@ -65,7 +65,7 @@ def surface_distances(x, y, hausdorff_percentile=None, return_coordinate_max_dis
     :param x: numpy array (boolean or 0/1)
     :param y: numpy array (boolean or 0/1)
     :param hausdorff_percentile: (optional) percentile (from 0 to 100) for which to compute the Hausdorff distance.
-    Set this to 100 to compute the real Hausdorff distance (default). Can also be a list, where HD will be compute for
+    Set this to 100 to compute the real Hausdorff distance (default). Can also be a list, where HD will be computed for
     the provided values.
     :param return_coordinate_max_distance: (optional) when set to true, the function will return the coordinates of the
     voxel with the highest distance (only if hausdorff_percentile=100).
@@ -158,7 +158,7 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None
     :param eval_indices: (optional) list or 1d array indicating the row indices of structures to run the tests for.
     Default is None, for which p-values are computed for all rows.
     :param alternative: (optional) The alternative hypothesis to be tested, Cab be 'two-sided', 'greater', 'less'.
-    :return: 1d numpy array, with p-values for all tests on evaluated structures, as well as an additionnal test for
+    :return: 1d numpy array, with p-values for all tests on evaluated structures, as well as an additional test for
     average scores (last value of the array). The average score is computed only on the evaluation structures.
     """
 
@@ -227,7 +227,7 @@ def evaluation(gt_dir,
                recompute=True,
                verbose=True):
     """This function computes Dice scores, as well as surface distances, between two sets of labels maps in gt_dir
-    (ground truth) and seg_dir (typically predictions). Labels maps in both folders are matched by sorting order.
+    (ground truth) and seg_dir (typically predictions). Label maps in both folders are matched by sorting order.
     The resulting scores are saved at the specified locations.
     :param gt_dir: path of directory with gt label maps
     :param seg_dir: path of directory with label maps to compare to gt_dir. Matched to gt label maps by sorting order.
@@ -246,14 +246,14 @@ def evaluation(gt_dir,
     :param path_hausdorff_95: same as for path_hausdorff but for the 95th percentile of the boundary distance.
     :param path_mean_distance: path where the resulting mean distances will be writen as numpy array (only if
     compute_distances is True). Default is None, where the array is not saved.
-    :param crop_margin_around_gt: (optional) margin by which to crop around the gt volumes, in order to copute the
+    :param crop_margin_around_gt: (optional) margin by which to crop around the gt volumes, in order to compute the
     scores more efficiently. If None, no cropping is performed.
     :param list_incorrect_labels: (optional) this option enables to replace some label values in the maps in seg_dir by
     other label values. Can be a list, a 1d numpy array, or the path to such an array.
     The incorrect labels can then be replaced either by specified values, or by the nearest value (see below).
     :param list_correct_labels: (optional) list of values to correct the labels specified in list_incorrect_labels.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
-    :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
+    :param use_nearest_label: (optional) whether to correct the incorrect label values with the nearest labels.
     :param recompute: (optional) whether to recompute the already existing results. Default is True.
     :param verbose: (optional) whether to print out info about the remaining number of cases.
     """

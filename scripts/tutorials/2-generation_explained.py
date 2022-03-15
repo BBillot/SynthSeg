@@ -38,7 +38,7 @@ result_dir = './generated_examples'  # folder where examples will be saved
 path_label_map = '../../data/training_label_maps'
 
 # Here we specify the structures in the label maps for which we want to generate intensities.
-# This is given as a list of label values, which do not necesseraly need to be present in every label map.
+# This is given as a list of label values, which do not necesserily need to be present in every label map.
 # However, these labels must follow a specific order: first the background, and then all the other labels. Moreover, if
 # 1) the label maps contain some right/left-specific label values, and 2) we activate flipping augmentation (which is
 # true by default), then the rest of the labels must follow a strict order:
@@ -63,7 +63,7 @@ path_label_map = '../../data/training_label_maps'
 generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 
 
-# We also have to specify the number of non-sided labels in order to differenciate them from the labels with
+# We also have to specify the number of non-sided labels in order to differentiate them from the labels with
 # right/left values.
 # Example: (continuing the previous one): in this example it would be 3 (background, CSF, extra-cerebral soft tissues).
 n_neutral_labels = 18
@@ -138,7 +138,7 @@ randomise_res = True
 # Before downsampling images to a random resolution, we blur them to avoid aliasing issues.
 # However, we introduce small variations in the standard deviation of the Gaussian blurring kernel, in order to:
 #      - make the downstream network robust to small changes in acquisition resolution
-#      - mitigate the assumption over the slice slection profile.
+#      - mitigate the assumption over the slice selection profile.
 # This is achieved by multiplying the standard deviation of the Gaussian blurring kernel by a random coefficient
 # "blur_range", which is drawn in the uniform distribution U(1/blur_range; blur_range)
 blur_range = 1.03

@@ -35,7 +35,7 @@ n_levels = 5           # number of resolution levels
 nb_conv_per_level = 2  # number of convolution per level
 conv_size = 3          # size of the convolution kernel (e.g. 3x3x3)
 unet_feat_count = 24   # number of feature maps after the first convolution
-activation = 'elu'     # activation for all convolution layers except the last, which will use sofmax regardless
+activation = 'elu'     # activation for all convolution layers except the last, which will use softmax regardless
 feat_multiplier = 2    # if feat_multiplier is set to 1, we will keep the number of feature maps constant throughout the
 #                        network; 2 will double them(resp. half) after each max-pooling (resp. upsampling);
 #                        3 will triple them, etc.
@@ -65,7 +65,7 @@ n_channels = 1
 prior_distributions = 'uniform'
 path_generation_classes = '../../data/labels_classes_priors/generation_classes.npy'
 
-# spatial deformation paramaters
+# spatial deformation parameters
 flipping = True
 scaling_bounds = .15
 rotation_bounds = 15

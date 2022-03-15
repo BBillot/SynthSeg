@@ -40,11 +40,11 @@ def build_model_inputs(path_label_maps,
     :param path_label_maps: list of the paths of the input label maps.
     :param n_labels: number of labels in the input label maps.
     :param batchsize: (optional) numbers of images to generate per mini-batch. Default is 1.
-    :param n_channels: (optional) number of channels to be synthetised. Default is 1.
+    :param n_channels: (optional) number of channels to be synthesised. Default is 1.
     :param subjects_prob: (optional) relative order of importance (doesn't have to be probabilistic), with which to pick
     the provided label maps at each minibatch. Must be a 1D numpy array, as long as path_label_maps.
     :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
-    distribution. Regouped labels will thus share the same Gaussian when samling a new image. Can be a sequence or a
+    distribution. Regrouped labels will thus share the same Gaussian when sampling a new image. Can be a sequence or a
     1d numpy array. It should have the same length as generation_labels, and contain values between 0 and K-1, where K
     is the total number of classes. Default is all labels have different classes.
     :param prior_distributions: (optional) type of distribution from which we sample the GMM parameters.
@@ -70,7 +70,7 @@ def build_model_inputs(path_label_maps,
     :param use_specific_stats_for_channel: (optional) whether the i-th block of two rows in the prior arrays must be
     only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
     :param mix_prior_and_random: (optional) if prior_means is not None, enables to reset the priors to their default
-    values for half of thes cases, and thus generate images of random contrast.
+    values for half of these cases, and thus generate images of random contrast.
     """
 
     # get label info

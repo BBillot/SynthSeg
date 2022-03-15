@@ -134,7 +134,7 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
                                                rescale=True):
     """This function aims at estimating the intensity distributions of K different structure types from a set of images.
     The distribution of each structure type is modelled as a Gaussian, parametrised by a mean and a standard deviation.
-    Because the intensity distribution of structures can vary accross images, we additionally use Gausian priors for the
+    Because the intensity distribution of structures can vary across images, we additionally use Gaussian priors for the
     parameters of each Gaussian distribution. Therefore, the intensity distribution of each structure type is described
     by 4 parameters: a mean/std for the mean intensity, and a mean/std for the std deviation.
     This function uses a set of images along with corresponding segmentations to estimate the 4*K parameters.
@@ -146,11 +146,11 @@ def sample_intensity_stats_from_single_dataset(image_dir, labels_dir, labels_lis
     :param labels_list: list of labels for which to evaluate mean and std intensity.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param classes_list: (optional) enables to regroup structures into classes of similar intensity statistics.
-    Intenstites associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
+    Intensities associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
     classes. Default is all labels have different classes (K=len(labels_list)).
-    :param max_channel: (optional) maximum number of channels to consider if the data is multispectral. Default is 3.
+    :param max_channel: (optional) maximum number of channels to consider if the data is multi-spectral. Default is 3.
     :param rescale: (optional) whether to rescale images between 0 and 255 before intensity estimation
     :return: 2 numpy arrays of size (2*n_channels, K), one with the evaluated means/std for the mean
     intensity, and one for the mean/std for the standard deviation.
@@ -230,7 +230,7 @@ def build_intensity_stats(list_image_dir,
                           rescale=True):
     """This function aims at estimating the intensity distributions of K different structure types from a set of images.
     The distribution of each structure type is modelled as a Gaussian, parametrised by a mean and a standard deviation.
-    Because the intensity distribution of structures can vary accross images, we additionally use Gausian priors for the
+    Because the intensity distribution of structures can vary across images, we additionally use Gaussian priors for the
     parameters of each Gaussian distribution. Therefore, the intensity distribution of each structure type is described
     by 4 parameters: a mean/std for the mean intensity, and a mean/std for the std deviation.
     This function uses a set of images along with corresponding segmentations to estimate the 4*K parameters.
@@ -251,11 +251,11 @@ def build_intensity_stats(list_image_dir,
     :param estimation_labels: labels to estimate intensity statistics from.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param estimation_classes: (optional) enables to regroup structures into classes of similar intensity statistics.
-    Intenstites associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
+    Intensities associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
     classes. Default is all labels have different classes (K=len(estimation_labels)).
-    :param max_channel: (optional) maximum number of channels to consider if the data is multispectral. Default is 3.
+    :param max_channel: (optional) maximum number of channels to consider if the data is multi-spectral. Default is 3.
     :param rescale: (optional) whether to rescale images between 0 and 255 before intensity estimation
     """
 

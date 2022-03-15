@@ -37,7 +37,6 @@ def validate_training(image_dir,
                       n_neutral_labels=None,
                       evaluation_labels=None,
                       step_eval=1,
-                      padding=None,
                       cropping=None,
                       target_res=1.,
                       gradients=False,
@@ -55,7 +54,7 @@ def validate_training(image_dir,
                       compute_distances=False,
                       recompute=True):
     """This function validates models saved at different epochs of the same training.
-    All models are assumed to be in the same folder.contained in models_dir.
+    All models are assumed to be in the same folder.
     The results of each model are saved in a subfolder in validation_main_dir.
     :param image_dir: path of the folder with validation images.
     :param gt_dir: path of the folder with ground truth label maps.
@@ -67,8 +66,6 @@ def validate_training(image_dir,
     :param evaluation_labels: (optional) label values to validate on. Must be a subset of the segmentation labels.
     Can be a sequence, a 1d numpy array, or the path to a numpy 1d array. Default is the same as segmentation_label_list
     :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
-    :param padding: (optional) pad the images to the specified shape before predicting the segmentation maps.
-    Can be an int, a sequence or a 1d numpy array.
     :param cropping: (optional) whether to crop the input to smaller size while being run through the network.
     The result is then given in the original image space. Can be an int, a sequence, or a 1d numpy array.
     :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
@@ -89,7 +86,7 @@ def validate_training(image_dir,
     :param n_levels: (optional) number of level for the Unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
     :param unet_feat_count: (optional) number of feature maps for the first level. Default is 24.
-    :param feat_multiplier: (optional) multiply the number of feature by this nummber at each new level. Default is 1.
+    :param feat_multiplier: (optional) multiply the number of feature by this number at each new level. Default is 1.
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
     :param mask_dir: (optional) path of masks that will be used to mask out some parts of the obtained segmentations
     during the evaluation. Default is None, where nothing is masked.
@@ -118,7 +115,6 @@ def validate_training(image_dir,
                     segmentation_labels=segmentation_labels,
                     n_neutral_labels=n_neutral_labels,
                     path_segmentations=model_val_dir,
-                    padding=padding,
                     cropping=cropping,
                     target_res=target_res,
                     gradients=gradients,
@@ -150,7 +146,7 @@ def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_i
     :param eval_indices: (optional) compute the average Dice on a subset of labels indicated by the specified indices.
     Can be a 1d numpy array, the path to such an array, or a list of 1d numpy arrays as long as list_validation_dirs.
     :param skip_first_dice_row: if eval_indices is None, skip the first row of the dice matrices (usually background)
-    :param size_max_circle: (optional) size of the marker for epochs achieveing the best validation scores.
+    :param size_max_circle: (optional) size of the marker for epochs achieving the best validation scores.
     :param figsize: (optional) size of the figure to draw.
     :param fontsize: (optional) fontsize used for the graph."""
 

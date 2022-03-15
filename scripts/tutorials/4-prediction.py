@@ -44,7 +44,7 @@ path_model = '../../models/SynthSeg_training/dice_100.h5'
 path_segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
 
 # We can now provide various parameters to control the preprocessing of the input.
-# First we can play witht he size of the input. Remember that the size of input must be divisible by 2**n_levels, so the
+# First we can play with the size of the input. Remember that the size of input must be divisible by 2**n_levels, so the
 # input image will be automatically cropped to such a shape. If you want to make sure that the whole image is processed,
 # (and not to have ugly cropping artefacts in your segmentations) you can pad it to a larger size with zeros.
 padding = 192  # pad the image to this shape if it is smaller

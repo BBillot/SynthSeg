@@ -84,7 +84,7 @@ def predict(path_images,
     :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
-    :param segmentation_label_names: (optional) List of names correponding to the names of the segmentation labels.
+    :param segmentation_label_names: (optional) List of names corresponding to the names of the segmentation labels.
     Only used when path_volumes is provided. Must be of the same size as segmentation_labels. Can be given as a
     list, a numpy array of strings, or the path to such a numpy array. Default is None.
     :param min_pad: (optional) minimum size of the images to process. Can be an int, a sequence or a 1d numpy array.
@@ -104,7 +104,7 @@ def predict(path_images,
     standard deviation.
     :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
     This is applied independently of topology_classes, and it is applied to the whole segmentation
-    :param conv_size: (optional) size of unet's convolution masks. Default is 3.
+    :param conv_size: (optional) size of UNet's convolution masks. Default is 3.
     :param n_levels: (optional) number of levels for unet. Default is 5.
     :param nb_conv_per_level: (optional) number of convolution layers per level. Default is 2.
     :param unet_feat_count: (optional) number of features for the first layer of the unet. Default is 24.
@@ -131,14 +131,14 @@ def predict(path_images,
     """
 
     # prepare input/output filepaths
-    path_images, path_segmentations, path_posteriors, path_resampled, path_volumes, compute = \
+    path_images, path_segmentations, path_posteriors, path_resampled, path_volumes, compute, unique_vol_file = \
         prepare_output_files(path_images, path_segmentations, path_posteriors, path_resampled, path_volumes, recompute)
 
     # get label list
     segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels)
     n_labels = len(segmentation_labels)
 
-    # get unique label values, and build correspondance table between contralateral structures if necessary
+    # get unique label values, and build correspondence table between contralateral structures if necessary
     if (n_neutral_labels is not None) & flip:
         n_sided_labels = int((n_labels - n_neutral_labels) / 2)
         lr_corresp = np.stack([segmentation_labels[n_neutral_labels:n_neutral_labels + n_sided_labels],
@@ -160,14 +160,14 @@ def predict(path_images,
         topology_classes = utils.load_array_if_path(topology_classes, load_as_numpy=True)[indices]
 
     # prepare volume file if needed
-    if path_volumes is not None:
+    if unique_vol_file & (path_volumes[0] is not None):
         if segmentation_label_names is not None:
             segmentation_label_names = utils.load_array_if_path(segmentation_label_names)[indices]
             csv_header = [[''] + segmentation_label_names[1:].tolist()]
             csv_header += [[''] + [str(lab) for lab in segmentation_labels[1:]]]
         else:
             csv_header = [['subjects'] + [str(lab) for lab in segmentation_labels[1:]]]
-        with open(path_volumes, 'w') as csvFile:
+        with open(path_volumes[0], 'w') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(csv_header)
 
@@ -184,8 +184,8 @@ def predict(path_images,
 
     # perform segmentation
     loop_info = utils.LoopInfo(len(path_images), 10, 'predicting', True)
-    for idx, (path_image, path_segmentation, path_posterior, path_resample, tmp_compute) in \
-            enumerate(zip(path_images, path_segmentations, path_posteriors, path_resampled, compute)):
+    for idx, (path_image, path_segmentation, path_posterior, path_resample, path_volume, tmp_compute) in \
+            enumerate(zip(path_images, path_segmentations, path_posteriors, path_resampled, path_volumes, compute)):
 
         # compute segmentation only if needed
         if tmp_compute:
@@ -212,20 +212,21 @@ def predict(path_images,
                     posteriors = utils.add_axis(posteriors, axis=[0, -1])
                 utils.save_volume(posteriors, aff, h, path_posterior, dtype='float32')
 
-        else:
-            if path_volumes is not None:
-                posteriors, _, _, _, _, _, im_res = utils.get_volume_info(path_posterior, True, aff_ref=np.eye(4))
-            else:
-                posteriors = im_res = None
-
-        # compute volumes
-        if path_volumes is not None:
-            volumes = np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1)))
-            volumes = np.around(volumes * np.prod(im_res), 3)
-            row = [os.path.basename(path_image).replace('.nii.gz', '')] + [str(vol) for vol in volumes]
-            with open(path_volumes, 'a') as csvFile:
-                writer = csv.writer(csvFile)
-                writer.writerow(row)
+            # compute volumes
+            if path_volume is not None:
+                utils.mkdir(os.path.dirname(path_volume))
+                volumes = np.sum(posteriors[..., 1:], axis=tuple(range(0, len(posteriors.shape) - 1)))
+                volumes = np.around(volumes * np.prod(im_res), 3)
+                row = [os.path.basename(path_image).replace('.nii.gz', '')] + [str(vol) for vol in volumes]
+                if unique_vol_file:
+                    with open(path_volume, 'a') as csvFile:
+                        writer = csv.writer(csvFile)
+                        writer.writerow(row)
+                else:
+                    rows = [[''] + [str(lab) for lab in segmentation_labels[1:]], row]
+                    with open(path_volume, 'w') as csvFile:
+                        writer = csv.writer(csvFile)
+                        writer.writerows(rows)
 
     # evaluate
     if gt_folder is not None:

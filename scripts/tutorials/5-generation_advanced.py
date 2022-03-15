@@ -5,7 +5,7 @@ at a specific resolution. All the arguments shown here can be used in the traini
 These parameters were not explained in the previous tutorials as they were not used for the training of SynthSeg.
 
 Specifically, this script generates 5 examples of training data simulating 3mm axial T1 scans, which have been resampled
-at 1mm resolution to be segmentated.
+at 1mm resolution to be segmented.
 Contrast-specificity is achieved by now imposing Gaussian priors (instead of uniform) over the GMM parameters.
 Resolution-specificity is achieved by first blurring and downsampling to the simulated LR. The data will then be
 upsampled back to HR, so that the downstream network is trained to segment at HR. This upsampling step mimics the
@@ -59,7 +59,7 @@ generation_classes = '../../data/labels_classes_priors/generation_classes_contra
 
 # We specify here the hyperparameters governing the prior distribution of the GMM.
 # As these prior distributions are Gaussians, they are each controlled by a mean and a standard deviation.
-# Therefore, the numpy array pointed by prior_means is of size (2, K), where K is the total nummber of classes specified
+# Therefore, the numpy array pointed by prior_means is of size (2, K), where K is the total number of classes specified
 # in generation_classes. The first row of prior_means correspond to the means of the Gaussian priors, and the second row
 # correspond to standard deviations.
 #
@@ -67,7 +67,7 @@ generation_classes = '../../data/labels_classes_priors/generation_classes_contra
 #                                                                [0, 10, 50,  15, 10, 15, 30]])
 # This means that intensities of label 3 and 17, which are both in class 4, will be drawn from the Gaussian
 # distribution, whose mean will be sampled from the Gaussian distribution with index 4 in prior_means N(95, 10).
-# Here is the complete table of correspondance for this example:
+# Here is the complete table of correspondence for this example:
 # mean of Gaussian for label   0 drawn from N(0,0)=0
 # mean of Gaussian for label  24 drawn from N(30,10)
 # mean of Gaussian for label 507 drawn from N(80,50)
