@@ -9,8 +9,12 @@ scripts/gradients
 scripts/heart
 scripts/PAMI
 scripts/previous_papers
+scripts/*.py
 
 SynthSeg/boxplots.py
+SynthSeg/brain_generator_*
 SynthSeg/check_*
+SynthSeg/labels_to_image_model_*
 SynthSeg/training_*
 SynthSeg/predict_*
+SynthSeg/validate_*
