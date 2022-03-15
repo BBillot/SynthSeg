@@ -93,7 +93,7 @@ from .edit_tensors import blurring_sigma_for_downsampling
 # ---------------------------------------------------- edit volume -----------------------------------------------------
 
 def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=False, masking_value=0,
-                return_mask=False):
+                return_mask=False, return_copy=True):
     """Mask a volume, either with a given mask, or by keeping only the values above a threshold.
     :param volume: a numpy array, possibly with several channels
     :param mask: (optional) a numpy array to mask volume with.
@@ -110,7 +110,7 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
     """
 
     # get info
-    new_volume = volume.copy()
+    new_volume = volume.copy() if return_copy else volume
     vol_shape = list(new_volume.shape)
     n_dims, n_channels = utils.get_dims(vol_shape)
 
@@ -349,7 +349,7 @@ def crop_volume_around_region(volume,
         return new_vol, cropping
 
 
-def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None):
+def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None, return_copy=True):
     """Crop a volume with given indices.
     :param volume: a 2d or 3d numpy array
     :param crop_idx: croppping indices, in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...].
@@ -362,7 +362,7 @@ def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None):
     """
 
     # get info
-    new_volume = volume.copy()
+    new_volume = volume.copy() if return_copy else volume
     n_dims = int(np.array(crop_idx).shape[0] / 2) if n_dims is None else n_dims
 
     # crop image
@@ -426,7 +426,7 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
     return output[0] if len(output) == 1 else tuple(output)
 
 
-def flip_volume(volume, axis=None, direction=None, aff=None):
+def flip_volume(volume, axis=None, direction=None, aff=None, return_copy=True):
     """Flip volume along a specified axis.
     If unknown, this axis can be inferred from an affine matrix with a specified anatomical direction.
     :param volume: a numpy array
@@ -437,7 +437,7 @@ def flip_volume(volume, axis=None, direction=None, aff=None):
     :return: flipped volume
     """
 
-    new_volume = volume.copy()
+    new_volume = volume.copy() if return_copy else volume
     assert (axis is not None) | ((aff is not None) & (direction is not None)), \
         'please provide either axis, or an affine matrix with a direction'
 
@@ -558,7 +558,7 @@ def get_ras_axes(aff, n_dims=3):
     return img_ras_axes
 
 
-def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None):
+def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None, return_copy=True):
     """This function aligns a volume to a reference orientation (axis and direction) specified by an affine matrix.
     :param volume: a numpy array
     :param aff: affine matrix of the floating volume
@@ -570,7 +570,7 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     """
 
     # work on copy
-    new_volume = volume.copy()
+    new_volume = volume.copy() if return_copy else volume
     aff_flo = aff.copy()
 
     # default value for aff_ref
@@ -730,21 +730,18 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
                     correct_labels = np.unique(tmp_labels)
                     for il in list_incorrect_labels:
                         correct_labels = np.delete(correct_labels, np.where(correct_labels == il))
+                    if remove_zero:
+                        correct_labels = np.delete(correct_labels, np.where(correct_labels == 0))
 
+                    # replace incorrect voxels by new value
+                    incorrect_voxels = np.where(tmp_labels == incorrect_label)
                     if len(correct_labels) == 1:
-                        tmp_new_labels = correct_labels[0] * np.ones_like(tmp_labels)
+                        idx_correct_lab = np.zeros(len(incorrect_voxels[0]), dtype='int32')
                     else:
-                        if remove_zero:
-                            correct_labels = np.delete(correct_labels, np.where(correct_labels == 0))
-
-                        # calculate distance maps for all new label candidates
-                        incorrect_voxels = np.where(tmp_labels == incorrect_label)
                         distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_labels]
                         distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
-
-                        # select nearest value
                         idx_correct_lab = np.argmin(distances_correct, axis=0)
-                        tmp_new_labels[incorrect_voxels] = np.array(correct_labels)[idx_correct_lab]
+                    tmp_new_labels[incorrect_voxels] = np.array(correct_labels)[idx_correct_lab]
 
                     # paste back
                     if n_dims == 2:

@@ -254,10 +254,11 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
             if la in neutral_FS_labels:
                 if la not in neutral:
                     neutral.append(la)
-            elif (0 < la < 14) | (16 < la < 21) | (24 < la < 40) | (135 < la < 138) | (20100 < la < 20110):
+            elif (0 < la < 14) | (16 < la < 21) | (24 < la < 40) | (135 < la < 138) | (1000 <= la <= 1035) | \
+                    (20100 < la < 20110):
                 if la not in left:
                     left.append(la)
-            elif (39 < la < 72) | (162 < la < 165) | (20000 < la < 20010):
+            elif (39 < la < 72) | (162 < la < 165) | (2000 <= la <= 2035) | (20000 < la < 20010):
                 if la not in right:
                     right.append(la)
             else:
@@ -613,7 +614,7 @@ def get_padding_margin(cropping, loss_cropping):
 
 def create_affine_transformation_matrix(n_dims, scaling=None, rotation=None, shearing=None, translation=None):
     """Create a 4x4 affine transformation matrix from specified values
-    :param n_dims: integer
+    :param n_dims: integer, can either be 2 or 3.
     :param scaling: list of 3 scaling values
     :param rotation: list of 3 angles (degrees) for rotations around 1st, 2nd, 3rd axis
     :param shearing: list of 6 shearing values
