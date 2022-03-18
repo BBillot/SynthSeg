@@ -49,7 +49,7 @@ parser.add_argument("--mix_prior_and_random", action='store_true', dest="mix_pri
 
 # spatial deformation parameters
 parser.add_argument("--no_flipping", action='store_false', dest="flipping")
-parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=0.15)
+parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=0.2)
 parser.add_argument("--rotation", dest="rotation_bounds", type=infer, default=15)
 parser.add_argument("--shearing", dest="shearing_bounds", type=infer, default=.012)
 parser.add_argument("--translation", dest="translation_bounds", type=infer, default=False)

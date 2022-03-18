@@ -53,7 +53,7 @@ def training(labels_dir,
              use_specific_stats_for_channel=False,
              mix_prior_and_random=False,
              flipping=True,
-             scaling_bounds=.15,
+             scaling_bounds=.2,
              rotation_bounds=15,
              shearing_bounds=.012,
              translation_bounds=False,
@@ -162,7 +162,7 @@ def training(labels_dir,
     2) the path to a numpy array of shape (2, n_dims), in which case the scaling factor in dimension i is sampled from
     the uniform distribution of bounds (scaling_bounds[0, i], scaling_bounds[1, i]) for the i-th dimension.
     3) False, in which case scaling is completely turned off.
-    Default is scaling_bounds = 0.15 (case 1)
+    Default is scaling_bounds = 0.2 (case 1)
     :param rotation_bounds: (optional) same as scaling bounds but for the rotation angle, except that for case 1 the
     bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
     Default is rotation_bounds = 15.

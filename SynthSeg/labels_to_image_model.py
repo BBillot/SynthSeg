@@ -39,7 +39,7 @@ def labels_to_image_model(labels_shape,
                           output_div_by_n=None,
                           flipping=True,
                           aff=None,
-                          scaling_bounds=0.15,
+                          scaling_bounds=0.2,
                           rotation_bounds=15,
                           shearing_bounds=0.012,
                           translation_bounds=False,
@@ -103,7 +103,7 @@ def labels_to_image_model(labels_shape,
     3) a numpy array of shape (2, n_dims), in which case the scaling factor is sampled from the uniform distribution
      of bounds (scaling_bounds[0, i], scaling_bounds[1, i]) for the i-th dimension.
     4) False, in which case scaling is completely turned off.
-    Default is scaling_bounds = 0.15 (case 1)
+    Default is scaling_bounds = 0.2 (case 1)
     :param rotation_bounds: (optional) same as scaling bounds but for the rotation angle, except that for cases 1
     and 2, the bounds are centred on 0 rather than 1, i.e. [0+rotation_bounds[i], 0-rotation_bounds[i]].
     Default is rotation_bounds = 15.

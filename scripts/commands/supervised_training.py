@@ -36,7 +36,7 @@ parser.add_argument("--output_shape", type=int, dest="output_shape", default=Non
 # ----------------------------------------------- Augmentation parameters ----------------------------------------------
 # spatial deformation parameters
 parser.add_argument("--no_flipping", action='store_false', dest="flipping")
-parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=.15)
+parser.add_argument("--scaling", dest="scaling_bounds", type=infer, default=.2)
 parser.add_argument("--rotation", dest="rotation_bounds", type=infer, default=15)
 parser.add_argument("--shearing", dest="shearing_bounds", type=infer, default=.012)
 parser.add_argument("--translation", dest="translation_bounds", type=infer, default=False)
