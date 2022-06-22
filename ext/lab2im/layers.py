@@ -1221,6 +1221,11 @@ class DiceLoss(Layer):
         self.enable_checks = enable_checks
         super(DiceLoss, self).__init__(**kwargs)
 
+    def get_config(self):
+        config = super().get_config()
+        config["enable_checks"] = self.enable_checks
+        return config
+
     def build(self, input_shape):
         assert len(input_shape) == 2, 'DiceLoss expects 2 inputs to compute the Dice loss.'
         assert input_shape[0] == input_shape[1], 'the two inputs must have the same shape.'
@@ -1234,8 +1239,8 @@ class DiceLoss(Layer):
         x = inputs[0]
         y = inputs[1]
         if self.enable_checks:  # disabling is useful to, e.g., use incomplete label maps
-            x = K.clip(x / tf.math.reduce_sum(x, axis=-1, keepdims=True), 0, 1)
-            y = K.clip(y / tf.math.reduce_sum(y, axis=-1, keepdims=True), 0, 1)
+            x = K.clip(x / (tf.math.reduce_sum(x, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
+            y = K.clip(y / (tf.math.reduce_sum(y, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
 
         # compute dice loss for each label
         top = tf.math.reduce_sum(2 * x * y, axis=list(range(1, len(self.inshape))))

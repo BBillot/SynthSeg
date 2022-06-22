@@ -649,7 +649,7 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
     :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
     :param remove_zero: (optional) if use_nearest_label is True, set to True not to consider zero among the potential
-    candidates for the nearest neighbour.
+    candidates for the nearest neighbour. -1 will be returned when no solution are possible.
     :param smooth: (optional) whether to smooth the corrected label map
     :return: corrected label map
     """
@@ -735,13 +735,16 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
 
                     # replace incorrect voxels by new value
                     incorrect_voxels = np.where(tmp_labels == incorrect_label)
-                    if len(correct_labels) == 1:
-                        idx_correct_lab = np.zeros(len(incorrect_voxels[0]), dtype='int32')
+                    if len(correct_labels) == 0:
+                        tmp_new_labels[incorrect_voxels] = -1
                     else:
-                        distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_labels]
-                        distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
-                        idx_correct_lab = np.argmin(distances_correct, axis=0)
-                    tmp_new_labels[incorrect_voxels] = np.array(correct_labels)[idx_correct_lab]
+                        if len(correct_labels) == 1:
+                            idx_correct_lab = np.zeros(len(incorrect_voxels[0]), dtype='int32')
+                        else:
+                            distance_map_list = [distance_transform_edt(tmp_labels != lab) for lab in correct_labels]
+                            distances_correct = np.stack([dist[incorrect_voxels] for dist in distance_map_list])
+                            idx_correct_lab = np.argmin(distances_correct, axis=0)
+                        tmp_new_labels[incorrect_voxels] = np.array(correct_labels)[idx_correct_lab]
 
                     # paste back
                     if n_dims == 2:
