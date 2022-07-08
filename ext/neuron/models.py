@@ -687,7 +687,7 @@ def single_ae(enc_size,
     # if want to go through a dense layer in the middle of the U, need to:
     # - flatten last layer if not flat
     # - do dense encoding and decoding
-    # - unflatten (rehsape spatially) at end
+    # - unflatten (reshape spatially) at end
     if ae_type == 'dense' and len(input_shape) > 1:
         name = '%s_ae_%s_down_flat' % (prefix, ae_type)
         last_tensor = KL.Flatten(name=name)(last_tensor)

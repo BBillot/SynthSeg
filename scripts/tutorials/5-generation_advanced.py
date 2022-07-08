@@ -35,13 +35,13 @@ from SynthSeg.brain_generator import BrainGenerator
 
 # script parameters
 n_examples = 5  # number of examples to generate in this script
-result_dir = './generated_examples'  # folder where examples will be saved
+result_dir = '../../generated_examples/tutorial_5'  # folder where examples will be saved
 
 
 # path training label maps
 path_label_map = '../../data/training_label_maps'
 generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
-output_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
+output_labels = '../../data/labels_classes_priors/synthseg_segmentation_labels.npy'
 n_neutral_labels = 18
 output_shape = 160
 

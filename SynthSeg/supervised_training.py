@@ -188,25 +188,19 @@ def build_augmentation_model(im_shape,
 
     # cropping
     if crop_shape != im_shape:
-        labels._keras_shape = tuple(labels.get_shape().as_list())
-        image._keras_shape = tuple(image.get_shape().as_list())
         labels, image = layers.RandomCrop(crop_shape)([labels, image])
 
     # flipping
     if flipping:
         assert aff is not None, 'aff should not be None if flipping is True'
-        labels._keras_shape = tuple(labels.get_shape().as_list())
-        image._keras_shape = tuple(image.get_shape().as_list())
         labels, image = layers.RandomFlip(get_ras_axes(aff, n_dims)[0], [True, False],
                                           segmentation_labels, n_neutral_labels)([labels, image])
 
     # apply bias field
     if bias_field_std > 0:
-        image._keras_shape = tuple(image.get_shape().as_list())
         image = layers.BiasFieldCorruption(bias_field_std, bias_shape_factor, False)(image)
 
     # intensity augmentation
-    image._keras_shape = tuple(image.get_shape().as_list())
     image = layers.IntensityAugmentation(6, clip=False, normalise=True, gamma_std=.4, separate_channels=True)(image)
 
     # if necessary, loop over channels to 1) blur, 2) downsample to simulated LR, and 3) upsample to target
@@ -216,7 +210,6 @@ def build_augmentation_model(im_shape,
         for i, channel in enumerate(split):
 
             # blur
-            channel._keras_shape = tuple(channel.get_shape().as_list())
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
             channel = layers.GaussianBlur(sigma, blur_range)(channel)
 
@@ -268,7 +261,7 @@ def build_model_inputs(path_images, path_label_maps, batchsize=1):
                 list_images.append(utils.add_axis(image, axis=[0, -1]))
 
             # add labels
-            labels = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
+            labels = utils.load_volume(path_label_maps[idx], dtype='int32', aff_ref=np.eye(4))
             list_label_maps.append(utils.add_axis(labels, axis=[0, -1]))
 
         # build list of inputs of augmentation model

@@ -27,6 +27,6 @@ from SynthSeg.brain_generator import BrainGenerator
 brain_generator = BrainGenerator('../../data/training_label_maps/training_seg_01.nii.gz')
 im, lab = brain_generator.generate_brain()
 
-# save output image and label map
-utils.save_volume(im, brain_generator.aff, brain_generator.header, './generated_examples/image_default.nii.gz')
-utils.save_volume(lab, brain_generator.aff, brain_generator.header, './generated_examples/labels_default.nii.gz')
+# save output image and label map under SynthSeg/generated_examples
+utils.save_volume(im, brain_generator.aff, brain_generator.header, '../../generated_examples/tutorial_1/image.nii.gz')
+utils.save_volume(lab, brain_generator.aff, brain_generator.header, '../../generated_examples/tutorial_1/labels.nii.gz')

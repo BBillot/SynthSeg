@@ -17,7 +17,7 @@ This file regroups several custom keras layers used in the generation model:
     - PadAroundCentre,
     - MaskEdges
     - ImageGradients
-    -RandomDilationErosion
+    - RandomDilationErosion
 
 
 If you use this code, please cite the first SynthSeg paper:
@@ -322,7 +322,7 @@ class RandomFlip(Layer):
     This doesn't concern the image input, as its values are not swapped.
     """
 
-    def __init__(self, flip_axis=None, swap_labels=False, label_list=None, n_neutral_labels=None, **kwargs):
+    def __init__(self, flip_axis=None, swap_labels=False, label_list=None, n_neutral_labels=None, prob=0.5, **kwargs):
 
         # shape attributes
         self.several_inputs = True
@@ -338,6 +338,8 @@ class RandomFlip(Layer):
         self.n_neutral_labels = n_neutral_labels
         self.swap_lut = None
 
+        self.prob = prob
+
         super(RandomFlip, self).__init__(**kwargs)
 
     def get_config(self):
@@ -346,6 +348,7 @@ class RandomFlip(Layer):
         config["swap_labels"] = self.swap_labels
         config["label_list"] = self.label_list
         config["n_neutral_labels"] = self.n_neutral_labels
+        config["prob"] = self.prob
         return config
 
     def build(self, input_shape):
@@ -385,7 +388,8 @@ class RandomFlip(Layer):
 
         # sample boolean for each element of the batch
         batchsize = tf.split(tf.shape(inputs[0]), [1, self.n_dims + 1])[0]
-        rand_flip = K.greater(tf.random.uniform(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0), 0, 1), 0.5)
+        rand_flip = K.less(tf.random.uniform(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0), 0, 1),
+                           self.prob)
 
         # swap r/l labels if necessary
         swapped_inputs = list()

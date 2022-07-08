@@ -27,7 +27,7 @@ from SynthSeg.training import training
 
 # path training label maps
 path_training_label_maps = '../../data/training_label_maps'
-path_model_dir = '../../models/SynthSeg_training'
+path_model_dir = '../../tutorial_3/SynthSeg_training'
 batchsize = 1
 
 # architecture parameters
@@ -54,11 +54,11 @@ steps_per_epoch = 5000  # number of iteration per epoch
 # generation and segmentation labels
 path_generation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 n_neutral_labels = 18
-path_segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
+path_segmentation_labels = '../../data/labels_classes_priors/synthseg_segmentation_labels.npy'
 
 # shape and resolution of the outputs
 target_res = None
-output_shape = 96
+output_shape = 160
 n_channels = 1
 
 # GMM sampling

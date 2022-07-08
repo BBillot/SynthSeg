@@ -29,7 +29,7 @@ from SynthSeg.brain_generator import BrainGenerator
 
 # script parameters
 n_examples = 5  # number of examples to generate in this script
-result_dir = './generated_examples'  # folder where examples will be saved
+result_dir = '../../generated_examples/tutorial_2'  # folder where examples will be saved
 
 
 # ---------- Input label maps and associated values ----------
@@ -78,7 +78,7 @@ n_neutral_labels = 18
 # Note that in this example the labels 24 (CSF), and 507 (extra-cerebral soft tissues) are not predicted, or said
 # differently they are segmented as background.
 # Also, the left and right lesions (labels 25 and 57) are segmented as left and right white matter (labels 2 and 41).
-output_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
+output_labels = '../../data/labels_classes_priors/synthseg_segmentation_labels.npy'
 
 
 # ---------- Shape and resolution of the outputs ----------
@@ -118,7 +118,9 @@ generation_classes = '../../data/labels_classes_priors/generation_classes.npy'
 # ---------- Spatial augmentation ----------
 
 # We now introduce some parameters concerning the spatial deformation. They enable to set the range of the uniform
-# distribution from which the corresponding parameters are selected
+# distribution from which the corresponding parameters are selected.
+# We note that because the label maps will be resampled with nearest neighbour interpolation, they can look less smooth
+# than the original segmentations.
 
 flipping = True  # enable right/left flipping
 scaling_bounds = 0.15  # the scaling coefficients will be sampled from U(1-scaling_bounds; 1+scaling_bounds)
@@ -131,8 +133,8 @@ bias_field_std = 0.5  # his controls the maximum bias field corruption (higher =
 
 # ---------- Resolution parameters ----------
 
-# This enables us to randomise the resolution of the produces images
-# Although being only one parameter it is crucial !!
+# This enables us to randomise the resolution of the produces images.
+# Although being only one parameter, this is crucial !!
 randomise_res = True
 
 # Before downsampling images to a random resolution, we blur them to avoid aliasing issues.

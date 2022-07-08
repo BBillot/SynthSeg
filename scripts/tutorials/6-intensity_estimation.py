@@ -1,6 +1,8 @@
 """
 
 Examples to show how to estimate of the hyperparameters governing the GMM prior distributions.
+This in the case where you want to train contrast-specific versions of SynthSeg.
+Beware, if you do so, your model will not be able to segment any contrast at test time !
 We do not provide example images and associated label maps, so do not try to run this directly !
 
 
@@ -31,7 +33,7 @@ labels_dir = '/labels_folder'
 # list of labels from which we want to evaluate the GMM prior distributions
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 # path of folder where to write estimated priors
-result_dir = '../../data/t1_priors'
+result_dir = '../../generated_examples/tutorial_6/t1_priors'
 
 build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
@@ -45,10 +47,11 @@ build_intensity_stats(list_image_dir=image_dir,
 image_dir = '/image_folder/t1'
 labels_dir = '/labels_folder'
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
-result_dir = '../../data/estimated_t1_priors_classes'
+result_dir = '../../generated_examples/tutorial_6/estimated_t1_priors_classes'
 
 # In the previous example, each label value is used to build the priors of a single Gaussian distribution.
-# We show here how to build Gaussian priors from intensities associated to several label values.
+# We show here how to build Gaussian priors from intensities associated to several label values. For example, that could
+# be building the Gaussian prior of white matter by using the labels of right and left white matter.
 # This is done by specifying a vector, which regroups label values into "classes".
 # Labels sharing the same class will contribute to the construction of the same Gaussian prior.
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
@@ -70,7 +73,7 @@ image_dir = '/image_folder/multi-modal_t1_t2'
 labels_dir = '/labels_folder'
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
-result_dir = '../../data/estimated_priors_multi_modal'
+result_dir = '../../generated_examples/tutorial_6/estimated_priors_multi_modal'
 
 build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
@@ -91,7 +94,7 @@ labels_dir = '/labels_folder'
 # same as before
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
-result_dir = '../../data/estimated_priors_multi_modal'
+result_dir = '../../generated_examples/tutorial_6/estimated_priors_multi_modal'
 
 build_intensity_stats(list_image_dir=list_image_dir,
                       list_labels_dir=labels_dir,
@@ -111,7 +114,7 @@ labels_dir = ['/labels_folder/t1', '/labels_folder/t2']
 # same as before
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
-result_dir = '../../data/estimated_unregistered_multi_modal'
+result_dir = '../../generated_examples/tutorial_6/estimated_unregistered_multi_modal'
 
 build_intensity_stats(list_image_dir=list_image_dir,
                       list_labels_dir=labels_dir,

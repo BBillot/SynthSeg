@@ -1,21 +1,14 @@
 # SynthSeg
 
-\
-\
-:tada: Update 29/10/2021: SynthSeg is now available on the dev version of 
-[FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)   !! :tada: \
-See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
-\
-\
-\
-In this repository, we present SynthSeg, the first convolutional neural network to segment brain scans of
-any contrast and resolution, without retraining or fine-tuning. In addition, SynthSeg is also robust to:
+
+In this repository, we present SynthSeg, the first convolutional neural network for segmentation of brain scans of
+any contrast and resolution that works out-of-the-box, without retraining or fine-tuning. SynthSeg relies on a single 
+model, which is robust to:
 - a wide array of subject populations: from young and healthy to ageing and diseased subjects,
 - white matter lesions,
 - scans with or without preprocessing, including bias field corruption, skull stripping, intensity normalisation, 
 template registration, etc.
-
-As a result, SynthSeg relies on a single model that can be used out-of-the-box without retraining or fine-tuning. 
+ 
 Here, we distribute the open-source model along with the corresponding code to enable researchers to run SynthSeg on 
 their own data. We emphasise that predictions are given at 1mm isotropic resolution (regardless of the resolution of the
 input images), and can be obtained either by running on the GPU (6s per scan) or on the CPU (1min). 
@@ -23,72 +16,102 @@ input images), and can be obtained either by running on the GPU (6s per scan) or
 \
 ![Generation examples](data/README_figures/segmentations.png)
 
+
 ----------------
 
-### Easily segment your data with one command
+### New features and updates
+
+29/10/2021: **SynthSeg is now available on the dev version of
+[FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) !!** :tada: \
+See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
+
+01/03/2022: **Robust version** :hammer: \
+SynthSeg sometimes falters on scans with low signal-to-noise ratio, or with very low tissue contrast. For this reason, 
+we developed a new model for increased robustness, named "SynthSeg-robust". You can use this mode when SynthSeg gives 
+results like in the figure below:
+\
+\
+![Robust](data/README_figures/robust.png)
+
+29/06/2022: **SynthSeg 2.0 is out !** :v: \
+In addition to whole-brain segmentation, it now also performs **Cortical parcellation, automated QC, and intracranial 
+volume (ICV) estimation** (see figure below).
+\
+\
+![new features](data/README_figures/new_features.png)
+
+For practical reasons, most of these features are compatible with SynthSeg 1.0. Here is a table with a summary of the 
+functionalities supported by each version.
+\
+\
+![table versions](data/README_figures/table_versions.png)
+
+----------------
+
+### Try it in one command !
 
 Once all the python packages are installed (see below), you can simply test SynthSeg on your own data with:
 ```
-python ./scripts/commands/SynthSeg_predict.py --i <image> --o <segmentation> --post <post> --resample <resample> --vol <vol>
+python ./scripts/commands/SynthSeg_predict.py --i <input> --o <output> [--parc --robust --vol <vol> --qc <qc> --post <post> --resample <resample>]
 ```
+
+
 where:
-- `<image>` is the path to an image to segment (supported formats are .nii, .nii.gz, and .mgz). \
-This can also be a folder, in which case all the image inside that folder will be segmented.
-- `<segmentation>` is the path where the output segmentation(s) will be saved. \
-This must be a folder if `<image>` designates a folder.
-- `<post>` (optional) is the path where the posteriors (given as soft probability maps) will be saved. \
-This must be a folder if `<image>` designates a folder.
-- `<resample>` (optional) SynthSeg segmentations are always given at 1mm isotropic resolution. Therefore, 
-images are internally resampled to this resolution (except if they already are at 1mm resolution). 
-Use this optional flag to save the resampled images: it must be the path to a single image, or a folder
-if `<image>` designates a folder.
-- `<vol>` (optional) is the path to an output csv file where the volumes of every segmented structures
-will be saved for all scans (i.e., one csv file for all subjects; e.g. /path/to/volumes.csv)
+- `<input>` path to a scan to segment, or to a folder. This can also be the path to a text file, where each line is the
+path of an image to segment.
+- `<output>` path where the output segmentations will be saved. This must be the same type as `<input>` (i.e., the path 
+to a file, a folder, or a text file where each line is the path to an output segmentation).
+- `--parc` (optional) to perform cortical parcellation in addition to whole-brain segmentation.
+- `--robust` (optional) to use the variant for increased robustness (e.g., when analysing clinical data with large space
+spacing). This can be slower than the other model.
+- `<vol>` (optional) path to a CSV file where the volumes of all segmented regions will be saved for all scans 
+(e.g. /path/to/volumes.csv). If `<input> ` is a text file, so must be `<vol>`, for which each line is the path to a 
+different CSV file corresponding to one subject only.
+- `<qc>` (optional) path to a CSV file where QC scores will be saved. The same formatting requirements apply as for
+`<vol>`.
+- `<post>` (optional) path where the posteriors, given as soft probability maps, will be saved (same formatting 
+requirements as for `<output>`).
+- `<resample>` (optional) SynthSeg segmentations are always given at 1mm isotropic resolution. Hence, 
+images are always resampled internally to this resolution (except if they are already at 1mm resolution). 
+Use this flag to save the resampled images (same formatting requirements as for `<output>`).
 
-\
 Additional optional flags are also available:
-- `--cpu`: to enforce the code to run on the CPU, even if a GPU is available.
-- `--threads`: to indicate the number of cores to be used if running on a CPU (example: `--threads 3` to run on 3 cores).
-This value defaults to 1, but we recommend increasing it for faster analysis.
-- `--crop`: to crop the input images to a given shape before segmentation. The given size must be divisible by 32.
+- `--cpu`: (optional) to enforce the code to run on the CPU, even if a GPU is available.
+- `--threads`: (optional) number of threads to be used by Tensorflow (default uses one core). Increase it to decrease 
+the runtime when using the CPU version.
+- `--crop`: (optional) to crop the input images to a given shape before segmentation. This must be divisible by 32.
 Images are cropped around their centre, and their segmentations are given at the original size. It can be given as a 
-single (i.e., `--crop 160` to run on 160<sup>3</sup> patches), or several integers (i.e, `--crop 160 128 192` to crop to
-different sizes in each direction, ordered in RAS coordinates). This value defaults to 192, but it can be decreased
-for faster analysis or to fit in your GPU.
+single (i.e., `--crop 160`), or several integers (i.e, `--crop 160 128 192`, ordered in RAS coordinates). By default the
+whole image is processed. Use this flag for faster analysis or to fit in your GPU.
+- `--fast`: (optional) to disable some operations for faster prediction (twice as fast, but slightly less accurate). 
+This doesn't apply when the --robust flag is used.
+- `--v1`: (optional) to run the first version of SynthSeg (SynthSeg 1.0, updated 29/06/2022).
 
 
-**IMPORTANT:** Because SynthSeg may produce segmentations at higher resolution than the images (i.e., at 
-1mm<sup>3</sup>), some viewers will not display them correctly when overlaying the segmentations on the
-original images. If that’s the case, you can use the `--resample` flag to obtain a resampled image that
-lives in the same space as the segmentation, such that any viewer can be used to visualize them together.
-We highlight that the resampling is performed internally to avoid the dependence on any external tool.
+**IMPORTANT:** SynthSeg always give results at 1mm isotropic resolution, regardless of the input. However, this can 
+cause some viewers to not correctly overlay segmentations on their corresponding images. In this case, you can use the
+`--resample` flag to obtain a resampled image that lives in the same space as the segmentation, such that they can be 
+visualised together with any viewer.
 
 The complete list of segmented structures is available in [labels table.txt](data/labels%20table.txt) along with their
 corresponding values. This table also details the order in which the posteriors maps are sorted.
 
+
 ----------------
 
-### Requirements
+### Installation
 
-All the python requirements are listed in requirements.txt. We give here the important dependencies:
+1. Clone this repository
 
-- Python 3.6 (this is important to have access to the right keras and tensorflow versions!)
-- tensorflow-gpu 2.0.1
-- keras 2.3.1
-- nibabel
-- numpy, scipy, sklearn, tqdm, pillow, matplotlib, ipython, ...
+2. Create a virtual environment, and install all the required packages (see [requirements](requirements.txt)). 
+Here we use Python 3.6, which is important to have access to the right keras (2.3.1) and tensorflow (2.0.1) versions.
+If you wish to run SynthSeg on the GPU, or to train your own model, you will also need the usual deep learning 
+libraries Cuda (10.0), and CUDNN (7.0).
 
-This code also relies on several external packages (already included in `\ext` for convenience):
+3. Go to this link (UCL onedrive), and download the missing models. Then simply copy them to [models](models).
 
-- [lab2im](https://github.com/BBillot/lab2im): contains functions for data augmentation, and a simple version of 
- the generative model, on which we build to build `label_to_image_model`
-- [neuron](https://github.com/adalca/neuron): contains functions for deforming, and resizing tensors, as well as 
-functions to build the segmentation network [1,2].
-- [pytool-lib](https://github.com/adalca/pytools-lib): library required by the *neuron* package.
 
-If you wish to run SynthSeg on the GPU, or to train your own model, you will also need the usual deep learning libraries:
-- Cuda 10.0
-- CUDNN 7.0
+That's it ! You're ow ready to use this tool ! :tada:
 
 
 ----------------
@@ -97,21 +120,21 @@ If you wish to run SynthSeg on the GPU, or to train your own model, you will als
 
 In short, we train a network with synthetic images sampled on the fly from a generative model based on the forward
 model of Bayesian segmentation. Crucially, we adopt a domain randomisation strategy where we fully randomise the 
-generation parameters which are drawn from uninformative uniform distributions. Therefore, by maximising the variability
-of the training data, we force the network to learn domain-agnostic features. As a result, SynthSeg is able to readily 
+generation parameters which are drawn at each minibatch from uninformative uniform priors. By exposing the network to 
+extremely variable input data, we force it to learn domain-agnostic features. As a result, SynthSeg is able to readily 
 segment real scans of any target domain, without retraining or fine-tuning. 
 
 The following figure first illustrates the workflow of a training iteration, and then provides an overview of the 
 different steps of the generative model:
 \
 \
-![Generation examples](data/README_figures/overview.png)
+![Overview](data/README_figures/overview.png)
 \
 \
 Finally we show additional examples of the synthesised images along with an overlay of their target segmentations:
 \
 \
-![Generation examples](data/README_figures/training_data.png)
+![Training data](data/README_figures/training_data.png)
 \
 \
 If you are interested to learn more about SynthSeg, you can read the associated publication (see below), and watch this
@@ -120,6 +143,7 @@ MR contrast but not resolution).
 \
 \
 [![Talk SynthSeg](data/README_figures/youtube_link.png)](https://www.youtube.com/watch?v=Bfp3cILSKZg&t=1s)
+
 
 ----------------
 
@@ -153,6 +177,7 @@ Gaussian priors of the GMM when training a contrast-specific version of SynthSeg
 These tutorials cover a lot of materials and will enable you to train your own SynthSeg model. Moreover, even more 
 detailed information is provided in the docstrings of all functions, so don't hesitate to have a look at these !
 
+
 ----------------
 
 ### Content
@@ -185,36 +210,18 @@ detailed information is provided in the docstrings of all functions, so don't he
 
 ### Citation/Contact
 
-This code is under [Apache 2.0](LICENSE.txt) licensing. \
-If you use it, please cite one of the following papers:
+This code is under [Apache 2.0](LICENSE.txt) licensing. If you use it, please cite the following paper:
 
 **SynthSeg: Domain Randomisation for Segmentation of Brain MRI Scans of any Contrast and Resolution** \
 B. Billot, D.N. Greve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V. Dalca, J.E. Iglesias \
 [[arxiv](https://arxiv.org/abs/2107.09559) | [bibtex](bibtex.bib)]
 
-**A Learning Strategy for Contrast-agnostic MRI Segmentation** \
-B. Billot, D.N. Greve, K. Van Leemput, B. Fischl, J.E. Iglesias*, A.V. Dalca* \
-*contributed equally \
-MIDL 2020 \
-[[link](http://proceedings.mlr.press/v121/billot20a.html) | [arxiv](https://arxiv.org/abs/2003.01995) | [bibtex](bibtex.bib)]
+Instead, if you use the cortical parcellation, automated QC, or robust version, please cite the following paper:
 
-**Partial Volume Segmentation of Brain MRI Scans of any Resolution and Contrast** \
-B. Billot, E.D. Robinson, A.V. Dalca, J.E. Iglesias \
-MICCAI 2020 \
-[[link](https://link.springer.com/chapter/10.1007/978-3-030-59728-3_18) | [arxiv](https://arxiv.org/abs/2004.10221) | [bibtex](bibtex.bib)]
+**Robust Segmentation of Brain MRI in the Wild with Hierarchical CNNs and no Retraining** \
+B. Billot, M. Colin, S.E. Arnold, S. Das, J.E. Iglesias \
+MICCAI 2022 \
+[[arxiv](https://arxiv.org/abs/2203.01969) | [bibtex](bibtex.bib)]
 
 If you have any question regarding the usage of this code, or any suggestions to improve it, you can contact us at: \
 benjamin.billot.18@ucl.ac.uk
-
-
-----------------
-
-### References
-
-[1] *[Anatomical Priors in Convolutional Networks for Unsupervised Biomedical Segmentation](http://www.mit.edu/~adalca/files/papers/cvpr2018_priors.pdf)* \
-Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
-CVPR 2018
-
-[2] *[Unsupervised Data Imputation via Variational Inference of Deep Subspaces](https://arxiv.org/abs/1903.03503)* \
-Adrian V. Dalca, John Guttag, Mert R. Sabuncu \
-Arxiv preprint 2019

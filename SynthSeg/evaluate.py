@@ -247,7 +247,7 @@ def evaluation(gt_dir,
     :param path_mean_distance: path where the resulting mean distances will be writen as numpy array (only if
     compute_distances is True). Default is None, where the array is not saved.
     :param crop_margin_around_gt: (optional) margin by which to crop around the gt volumes, in order to compute the
-    scores more efficiently. If None, no cropping is performed.
+    scores more efficiently. If 0, no cropping is performed.
     :param list_incorrect_labels: (optional) this option enables to replace some label values in the maps in seg_dir by
     other label values. Can be a list, a 1d numpy array, or the path to such an array.
     The incorrect labels can then be replaced either by specified values, or by the nearest value (see below).
@@ -311,7 +311,7 @@ def evaluation(gt_dir,
                 seg[mask] = max_label
 
             # crop images
-            if crop_margin_around_gt is not None:
+            if crop_margin_around_gt > 0:
                 gt_labels, cropping = edit_volumes.crop_volume_around_region(gt_labels, margin=crop_margin_around_gt)
                 seg = edit_volumes.crop_volume_with_idx(seg, cropping)
 
@@ -367,4 +367,4 @@ def evaluation(gt_dir,
             np.save(path_hausdorff_95, max_dists[..., 2])
         if path_mean_distance is not None:
             utils.mkdir(os.path.dirname(path_mean_distance))
-            np.save(path_mean_distance, max_dists[..., 2])
+            np.save(path_mean_distance, mean_dists)

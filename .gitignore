@@ -4,6 +4,11 @@ venv
 
 ext/neuron/models_*
 
+models/synthseg_2.0.h5
+models/synthseg_parc_2.0.h5
+models/synthseg_qc_2.0.h5
+models/synthseg_robust_2.0.h5
+
 scripts/commands/training_*
 scripts/gradients
 scripts/heart
@@ -11,10 +16,14 @@ scripts/PAMI
 scripts/previous_papers
 scripts/*.py
 
+SynthSeg/auc_roc_delong.py
 SynthSeg/boxplots.py
 SynthSeg/brain_generator_*
 SynthSeg/check_*
 SynthSeg/labels_to_image_model_*
 SynthSeg/training_*
-SynthSeg/predict_*
+SynthSeg/predict_aparc.py
+SynthSeg/predict_group.py
+SynthSeg/predict_qc.py
+SynthSeg/predict_synthseg_*
 SynthSeg/validate_*

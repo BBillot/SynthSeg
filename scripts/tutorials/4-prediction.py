@@ -30,33 +30,33 @@ from SynthSeg.predict import predict
 # Input images must have a .nii, .nii.gz, or .mgz extension.
 # Note that path_images can also be the path to an entire folder, in which case all the images within this folder will
 # be segmented. In this case, please provide path_segm (and possibly path_posteriors, and path_resampled) as folder.
-path_images = '../../data/inputs/im.nii.gz'
+path_images = '/a/path/to/an/image/im.nii.gz'
 # path to the output segmentation
-path_segm = '../../data/outputs/im_seg.nii.gz'
+path_segm = '../../generated_examples/tutorial_4/predicted_segmentations/im_seg.nii.gz'
 # we can also provide paths for optional files containing the probability map for all predicted labels
-path_posteriors = '../../data/outputs/im_post.nii.gz'
+path_posteriors = '../../generated_examples/tutorial_4/predicted_information/im_post.nii.gz'
 # and for a csv file that will contain the volumes of each segmented structure
-path_vol = '../../data/outputs/volumes.csv'
+path_vol = '../../generated_examples/tutorial_4/predicted_information/volumes.csv'
 
-# of course we need to provide the path to the trained model
-path_model = '../../models/SynthSeg_training/dice_100.h5'
+# of course we need to provide the path to the trained model (here we use the main synthseg model).
+path_model = '../../models/synthseg_1.0.h5'
 # but we also need to provide the path to the segmentation labels used during training
-path_segmentation_labels = '../../data/labels_classes_priors/segmentation_labels.npy'
+path_segmentation_labels = '../../data/labels_classes_priors/synthseg_segmentation_labels.npy'
+# optionally we can give a numpy array with the names corresponding to the structures in path_segmentation_labels
+path_segmentation_names = '../../data/labels_classes_priors/synthseg_segmentation_names.npy'
 
 # We can now provide various parameters to control the preprocessing of the input.
 # First we can play with the size of the input. Remember that the size of input must be divisible by 2**n_levels, so the
-# input image will be automatically cropped to such a shape. If you want to make sure that the whole image is processed,
-# (and not to have ugly cropping artefacts in your segmentations) you can pad it to a larger size with zeros.
-padding = 192  # pad the image to this shape if it is smaller
-# On the contrary, if the ROI is much smaller than the actual image, you can crop the input to a smaller shape for
-# faster processing, or to make it fit on your GPU.
-cropping = 160
+# input image will be automatically padded to the nearest shape divisible by 2**n_levels (this is just for processing,
+# the output will then be cropped to the original image size).
+# Alternatively, you can crop the input to a smaller shape for faster processing, or to make it fit on your GPU.
+cropping = 192
 # Finally, we finish preprocessing the input by resampling it to the resolution at which the network has been trained to
 # produce predictions. If the input image has a resolution outside the range [target_res-0.05, target_res+0.05], it will
-# automatically be resampled to target_res. Note that if the image is indeed resampled, you have the option to save the
-# resampled image.
+# automatically be resampled to target_res.
 target_res = 1.
-path_resampled = '../../data/outputs/im_resampled_target_res.nii.gz'
+# Note that if the image is indeed resampled, you have the option to save the resampled image.
+path_resampled = '../../generated_examples/tutorial_4/predicted_information/im_resampled_target_res.nii.gz'
 
 # After the image has been processed by the network, there are again various options to postprocess it.
 # First, we can apply some test-time augmentation by flipping the input along the right-left axis and segmenting
@@ -77,7 +77,7 @@ sigma_smoothing = 0.5
 #                                       topological_classes = [0,  0,  0,  1, 1, 2,  3,  1,  4,  4,  5,  6,  7]
 # Here we regroup labels 2 and 3 in the same topological class, same for labels 41 and 42. The topological class of
 # unsegmented structures must be set to 0 (like for 24 and 507).
-topology_classes = '../../data/labels_classes_priors/topological_classes.npy'
+topology_classes = '../../data/labels_classes_priors/synthseg_topological_classes.npy'
 # Finally, we can also operate a strict version of biggest connected component, to get rid of unwanted noisy label
 # patch that can sometimes occur in the background. If so, we do recommend to use the smoothing option described above.
 keep_biggest_component = True
@@ -92,7 +92,13 @@ activation = 'elu'
 feat_multiplier = 2
 
 # Finally, we can set up an evaluation step after all images have been segmented.
-# In this case, Dice scores will be computed and saved as a numpy array in the folder containing the segmentation(s).
+# In this purpose, we need to provide the path to the ground truth corresponding to the input image(s).
+# This is done by using the "gt_folder" parameter, which must have the same type as path_images (i.e., the path to a
+# single image or to a folder). If provided as a folder, grount truths must be sorted in the same order as images in
+# path_images.
+# Just set this to None if you do not want to run evaluation.
+gt_folder = '/the/path/to/the/grount_truth/gt.nii.gz'
+# Dice scores will be computed and saved as a numpy array in the folder containing the segmentation(s).
 # This numpy array will be organised as follows: rows correspond to structures, and columns to subjects. Importantly,
 # rows are given in a sorted order.
 # Example: we segment 2 subjects, where output_labels = [0,  0,  0,  2, 3, 4, 17,  2, 41, 42, 43, 53, 41]
@@ -106,12 +112,9 @@ feat_multiplier = 2
 #         [xxx, xxx],  # scores for label 42
 #         [xxx, xxx],  # scores for label 43
 #         [xxx, xxx]]  # scores for label 53
-#          /     \
-#    subject 1  subject 2
+#         /       \
+#   subject 1    subject 2
 #
-# The provided GT folder must contain images sorted in the same order as images in path_images (images/gt are matched by
-# sorting order).
-gt_folder = '../../data/inputs/gt.nii.gz'
 # Also we can compute different surface distances (Hausdorff, Hausdorff99, Hausdorff95 and mean surface distance). The
 # results will be saved in arrays similar to the Dice scores.
 compute_distances = True
@@ -125,7 +128,7 @@ predict(path_images,
         path_posteriors=path_posteriors,
         path_resampled=path_resampled,
         path_volumes=path_vol,
-        padding=padding,
+        segmentation_label_names=path_segmentation_names,
         cropping=cropping,
         target_res=target_res,
         flip=flip,
