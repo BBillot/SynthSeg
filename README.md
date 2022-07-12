@@ -108,7 +108,7 @@ Here we use Python 3.6, which is important to have access to the right keras (2.
 If you wish to run SynthSeg on the GPU, or to train your own model, you will also need the usual deep learning 
 libraries Cuda (10.0), and CUDNN (7.0).
 
-3. Go to this link (UCL onedrive), and download the missing models. Then simply copy them to [models](models).
+3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
 
 That's it ! You're ow ready to use this tool ! :tada:
