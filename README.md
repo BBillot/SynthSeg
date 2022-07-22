@@ -111,7 +111,7 @@ libraries Cuda (10.0), and CUDNN (7.0).
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
 
-That's it ! You're ow ready to use this tool ! :tada:
+That's it ! You're now ready to use this tool ! :tada:
 
 
 ----------------
