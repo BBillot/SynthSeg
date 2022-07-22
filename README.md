@@ -164,7 +164,7 @@ how the synthetic data is formed before you start training your own models.
 - [3-training](scripts/tutorials/3-training.py): This scripts re-uses the parameters explained in the previous tutorial
 and focuses on the learning/architecture parameters. The script here is the very one we used to train SynthSeg !
 
-- [4-training](scripts/tutorials/4-prediction.py): This scripts shows how to make predictions, once the network has been 
+- [4-prediction](scripts/tutorials/4-prediction.py): This scripts shows how to make predictions, once the network has been 
 trained.
 
 - [5-generation_advanced](scripts/tutorials/5-generation_advanced.py): Here we detail more advanced generation options, 
