@@ -17,7 +17,6 @@ License.
 # python imports
 import os
 import sys
-import csv
 import traceback
 import numpy as np
 import tensorflow as tf
@@ -27,6 +26,7 @@ from keras.models import Model
 
 # project imports
 from SynthSeg import evaluate
+from SynthSeg.predict import write_csv, get_flip_indices
 
 # third-party imports
 from ext.lab2im import utils
@@ -117,13 +117,6 @@ def predict(path_images,
         if names_qc is not None:
             names_qc = utils.load_array_if_path(names_qc)[unique_idx]
 
-    # set cropping/padding
-    if cropping is not None:
-        cropping = utils.reformat_to_list(cropping, length=3, dtype='int')
-        min_pad = cropping
-    else:
-        min_pad = 128
-
     # prepare volume/QC files if necessary
     if unique_vol_file & (path_volumes[0] is not None):
         write_csv(path_volumes[0], None, True, labels_volumes, names_volumes, last_first=(not v1))
@@ -131,9 +124,9 @@ def predict(path_images,
         write_csv(path_qc_scores[0], None, True, labels_qc, names_qc)
 
     # build network
-    net = build_model(model_file_segmentation=path_model_segmentation,
-                      model_file_parcellation=path_model_parcellation,
-                      model_file_qc=path_model_qc,
+    net = build_model(path_model_segmentation=path_model_segmentation,
+                      path_model_parcellation=path_model_parcellation,
+                      path_model_qc=path_model_qc,
                       input_shape_qc=input_shape_qc,
                       labels_segmentation=labels_segmentation,
                       labels_denoiser=labels_denoiser,
@@ -144,6 +137,13 @@ def predict(path_images,
                       robust=robust,
                       do_parcellation=do_parcellation,
                       do_qc=do_qc)
+
+    # set cropping/padding
+    if cropping is not None:
+        cropping = utils.reformat_to_list(cropping, length=3, dtype='int')
+        min_pad = cropping
+    else:
+        min_pad = 128
 
     # perform segmentation
     if len(path_images) <= 10:
@@ -472,9 +472,9 @@ def preprocess(path_image, target_res=1., n_levels=5, crop=None, min_pad=None, p
     return im, aff, h, im_res, shape, pad_idx, crop_idx
 
 
-def build_model(model_file_segmentation,
-                model_file_parcellation,
-                model_file_qc,
+def build_model(path_model_segmentation,
+                path_model_parcellation,
+                path_model_qc,
                 input_shape_qc,
                 labels_segmentation,
                 labels_denoiser,
@@ -486,7 +486,7 @@ def build_model(model_file_segmentation,
                 do_parcellation,
                 do_qc):
 
-    assert os.path.isfile(model_file_segmentation), "The provided model path does not exist."
+    assert os.path.isfile(path_model_segmentation), "The provided model path does not exist."
 
     # get labels
     n_labels_seg = len(labels_segmentation)
@@ -495,14 +495,14 @@ def build_model(model_file_segmentation,
         n_groups = len(labels_denoiser)
 
         # build first UNet
-        net = nrn_models.unet(nb_features=24,
-                              input_shape=[None, None, None, 1],
-                              nb_levels=5,
-                              conv_size=3,
+        net = nrn_models.unet(input_shape=[None, None, None, 1],
                               nb_labels=n_groups,
+                              nb_levels=5,
+                              nb_conv_per_level=2,
+                              conv_size=3,
+                              nb_features=24,
                               feat_mult=2,
                               activation='elu',
-                              nb_conv_per_level=2,
                               batch_norm=-1,
                               name='unet')
 
@@ -513,17 +513,17 @@ def build_model(model_file_segmentation,
         net = Model(inputs=net.inputs, outputs=last_tensor)
 
         # build denoiser
-        net = nrn_models.unet(nb_features=16,
+        net = nrn_models.unet(input_model=net,
                               input_shape=[None, None, None, 1],
-                              nb_levels=5,
-                              conv_size=5,
                               nb_labels=n_groups,
-                              feat_mult=2,
+                              nb_levels=5,
                               nb_conv_per_level=2,
-                              batch_norm=-1,
+                              conv_size=5,
+                              nb_features=16,
+                              feat_mult=2,
                               activation='elu',
+                              batch_norm=-1,
                               skip_n_concatenations=2,
-                              input_model=net,
                               name='l2l')
 
         # transition between the two networks: one_hot -> argmax -> one_hot, and concatenate input image and labels
@@ -537,34 +537,34 @@ def build_model(model_file_segmentation,
         net = Model(inputs=net.inputs, outputs=last_tensor)
 
         # build 2nd network
-        net = nrn_models.unet(nb_features=24,
+        net = nrn_models.unet(input_model=net,
                               input_shape=[None, None, None, 2],
-                              nb_levels=5,
-                              conv_size=3,
                               nb_labels=n_labels_seg,
+                              nb_levels=5,
+                              nb_conv_per_level=2,
+                              conv_size=3,
+                              nb_features=24,
                               feat_mult=2,
                               activation='elu',
-                              nb_conv_per_level=2,
                               batch_norm=-1,
-                              input_model=net,
                               name='unet2')
-        net.load_weights(model_file_segmentation, by_name=True)
+        net.load_weights(path_model_segmentation, by_name=True)
         name_segm_prediction_layer = 'unet2_prediction'
 
     else:
 
         # build UNet
-        net = nrn_models.unet(nb_features=24,
-                              input_shape=[None, None, None, 1],
-                              nb_levels=5,
-                              conv_size=3,
+        net = nrn_models.unet(input_shape=[None, None, None, 1],
                               nb_labels=n_labels_seg,
+                              nb_levels=5,
+                              nb_conv_per_level=2,
+                              conv_size=3,
+                              nb_features=24,
                               feat_mult=2,
                               activation='elu',
-                              nb_conv_per_level=2,
                               batch_norm=-1,
                               name='unet')
-        net.load_weights(model_file_segmentation, by_name=True)
+        net.load_weights(path_model_segmentation, by_name=True)
         input_image = net.inputs[0]
         name_segm_prediction_layer = 'unet_prediction'
 
@@ -607,18 +607,18 @@ def build_model(model_file_segmentation,
         net = Model(inputs=net.inputs, outputs=last_tensor)
 
         # build UNet
-        net = nrn_models.unet(nb_features=24,
+        net = nrn_models.unet(input_model=net,
                               input_shape=[None, None, None, 3],
-                              nb_levels=5,
-                              conv_size=3,
                               nb_labels=n_labels_parcellation,
+                              nb_levels=5,
+                              nb_conv_per_level=2,
+                              conv_size=3,
+                              nb_features=24,
                               feat_mult=2,
                               activation='elu',
-                              nb_conv_per_level=2,
                               batch_norm=-1,
-                              name='unet_parc',
-                              input_model=net)
-        net.load_weights(model_file_parcellation, by_name=True)
+                              name='unet_parc')
+        net.load_weights(path_model_parcellation, by_name=True)
 
         # smooth predictions
         last_tensor = net.output
@@ -643,17 +643,17 @@ def build_model(model_file_segmentation,
         net = Model(inputs=[*net.inputs, shape_prediction], outputs=last_tensor)
 
         # build QC regressor network
-        net = nrn_models.conv_enc(nb_features=24,
-                                    input_shape=[None, None, None, 1],
-                                    nb_levels=4,
-                                    conv_size=5,
-                                    name='qc',
-                                    feat_mult=2,
-                                    activation='relu',
-                                    use_residuals=True,
-                                    nb_conv_per_level=2,
-                                    batch_norm=-1,
-                                    input_model=net)
+        net = nrn_models.conv_enc(input_model=net,
+                                  input_shape=[None, None, None, 1],
+                                  nb_levels=4,
+                                  nb_conv_per_level=2,
+                                  conv_size=5,
+                                  nb_features=24,
+                                  feat_mult=2,
+                                  activation='relu',
+                                  batch_norm=-1,
+                                  use_residuals=True,
+                                  name='qc')
         last_tensor = net.outputs[0]
         conv_kwargs = {'padding': 'same', 'activation': 'relu', 'data_format': 'channels_last'}
         last_tensor = KL.MaxPool3D(pool_size=(2, 2, 2), name='qc_maxpool_3', padding='same')(last_tensor)
@@ -669,7 +669,7 @@ def build_model(model_file_segmentation,
         else:
             outputs = [net.get_layer(name_segm_prediction_layer).output, last_tensor]
         net = Model(inputs=net.inputs, outputs=outputs)
-        net.load_weights(model_file_qc, by_name=True)
+        net.load_weights(path_model_qc, by_name=True)
 
     return net
 
@@ -804,77 +804,3 @@ class MakeShape(KL.Layer):
                      x)
 
         return x
-
-
-def get_flip_indices(labels_segmentation, n_neutral_labels):
-
-    # get position labels
-    n_sided_labels = int((len(labels_segmentation) - n_neutral_labels) / 2)
-    neutral_labels = labels_segmentation[:n_neutral_labels]
-    left = labels_segmentation[n_neutral_labels:n_neutral_labels + n_sided_labels]
-
-    # get correspondance between labels
-    lr_corresp = np.stack([labels_segmentation[n_neutral_labels:n_neutral_labels + n_sided_labels],
-                           labels_segmentation[n_neutral_labels + n_sided_labels:]])
-    lr_corresp_unique, lr_corresp_indices = np.unique(lr_corresp[0, :], return_index=True)
-    lr_corresp_unique = np.stack([lr_corresp_unique, lr_corresp[1, lr_corresp_indices]])
-    lr_corresp_unique = lr_corresp_unique[:, 1:] if not np.all(lr_corresp_unique[:, 0]) else lr_corresp_unique
-
-    # get unique labels
-    labels_segmentation, unique_idx = np.unique(labels_segmentation, return_index=True)
-
-    # get indices of corresponding labels
-    lr_indices = np.zeros_like(lr_corresp_unique)
-    for i in range(lr_corresp_unique.shape[0]):
-        for j, lab in enumerate(lr_corresp_unique[i]):
-            lr_indices[i, j] = np.where(labels_segmentation == lab)[0]
-
-    # build 1d vector to swap LR corresponding labels taking into account neutral labels
-    flip_indices = np.zeros_like(labels_segmentation)
-    for i in range(len(flip_indices)):
-        if labels_segmentation[i] in neutral_labels:
-            flip_indices[i] = i
-        elif labels_segmentation[i] in left:
-            flip_indices[i] = lr_indices[1, np.where(lr_corresp_unique[0, :] == labels_segmentation[i])]
-        else:
-            flip_indices[i] = lr_indices[0, np.where(lr_corresp_unique[1, :] == labels_segmentation[i])]
-
-    return labels_segmentation, flip_indices, unique_idx
-
-
-def write_csv(path_csv, data, unique_file, labels, names, skip_first=True, last_first=False):
-
-    # initialisation
-    utils.mkdir(os.path.dirname(path_csv))
-    labels, unique_idx = np.unique(labels, return_index=True)
-    if skip_first:
-        labels = labels[1:]
-    if names is not None:
-        names = names[unique_idx].tolist()
-        if skip_first:
-            names = names[1:]
-        header = names
-    else:
-        header = [str(lab) for lab in labels]
-    if last_first:
-        header = [header[-1]] + header[:-1]
-    if (not unique_file) & (data is None):
-        raise ValueError('data can only be None when initialising a unique volume file')
-
-    # modify data
-    if unique_file:
-        if data is None:
-            type_open = 'w'
-            data = ['subject'] + header
-        else:
-            type_open = 'a'
-        data = [data]
-    else:
-        type_open = 'w'
-        header = [''] + header
-        data = [header, data]
-
-    # write csv
-    with open(path_csv, type_open) as csvFile:
-        writer = csv.writer(csvFile)
-        writer.writerows(data)

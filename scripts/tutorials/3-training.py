@@ -27,7 +27,7 @@ from SynthSeg.training import training
 
 # path training label maps
 path_training_label_maps = '../../data/training_label_maps'
-path_model_dir = '../../tutorial_3/SynthSeg_training'
+path_model_dir = './outputs_tutorial_3/'
 batchsize = 1
 
 # architecture parameters
@@ -42,7 +42,6 @@ feat_multiplier = 2    # if feat_multiplier is set to 1, we will keep the number
 
 # training parameters
 lr = 1e-4               # learning rate
-lr_decay = 0            # learning rate decay (knowing that Adam already has its own internal decay)
 wl2_epochs = 1          # number of pre-training epochs with wl2 metric w.r.t. the layer before the softmax
 dice_epochs = 100       # number of training epochs
 steps_per_epoch = 5000  # number of iteration per epoch
@@ -76,7 +75,6 @@ bias_field_std = .5
 
 # acquisition resolution parameters
 randomise_res = True
-blur_range = 1.03
 
 # ------------------------------------------------------ Training ------------------------------------------------------
 
@@ -98,7 +96,6 @@ training(path_training_label_maps,
          translation_bounds=translation_bounds,
          nonlin_std=nonlin_std,
          randomise_res=randomise_res,
-         blur_range=blur_range,
          bias_field_std=bias_field_std,
          n_levels=n_levels,
          nb_conv_per_level=nb_conv_per_level,
@@ -107,7 +104,6 @@ training(path_training_label_maps,
          feat_multiplier=feat_multiplier,
          activation=activation,
          lr=lr,
-         lr_decay=lr_decay,
          wl2_epochs=wl2_epochs,
          dice_epochs=dice_epochs,
          steps_per_epoch=steps_per_epoch)

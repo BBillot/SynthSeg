@@ -23,116 +23,65 @@ import matplotlib.pyplot as plt
 from tensorflow.python.summary.summary_iterator import summary_iterator
 
 # project imports
-from .predict import predict
+from .predict_qc import predict
 
 # third-party imports
 from ext.lab2im import utils
 
 
-def validate_training(image_dir,
+def validate_training(prediction_dir,
                       gt_dir,
                       models_dir,
                       validation_main_dir,
-                      labels_segmentation,
-                      n_neutral_labels=None,
-                      evaluation_labels=None,
-                      step_eval=1,
-                      min_pad=None,
-                      cropping=None,
-                      target_res=1.,
-                      gradients=False,
-                      flip=False,
-                      topology_classes=None,
-                      sigma_smoothing=0,
-                      keep_biggest_component=False,
+                      labels_list,
+                      labels_to_convert=None,
+                      convert_gt=False,
+                      shape=224,
                       n_levels=5,
-                      nb_conv_per_level=2,
-                      conv_size=3,
+                      nb_conv_per_level=3,
+                      conv_size=5,
                       unet_feat_count=24,
                       feat_multiplier=2,
-                      activation='elu',
+                      activation='relu',
+                      step_eval=1,
                       recompute=False):
-    """This function validates models saved at different epochs of the same training.
-    All models are assumed to be in the same folder.
-    The results of each model are saved in a subfolder in validation_main_dir.
-    :param image_dir: path of the folder with validation images.
-    :param gt_dir: path of the folder with ground truth label maps.
-    These are matched to the validation images by sorting order.
-    :param models_dir: path of the folder with the models to validate.
-    :param validation_main_dir: path of the folder where all the models validation subfolders will be saved.
-    :param labels_segmentation: path of the numpy array containing all the segmentation labels used during training.
-    :param n_neutral_labels: (optional) value of n_neutral_labels used during training. Used only if flip is True.
-    :param evaluation_labels: (optional) label values to validate on. Must be a subset of the segmentation labels.
-    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array. Default is the same as segmentation_label_list
-    :param step_eval: (optional) If step_eval > 1 skips models when validating, by validating on models step_eval apart.
-    :param cropping: (optional) whether to crop the input to smaller size while being run through the network.
-    The result is then given in the original image space. Can be an int, a sequence, or a 1d numpy array.
-    :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
-    segmentations). This must match the resolution of the training data ! target_res is used to automatically resampled
-    the images with resolutions outside [target_res-0.05, target_res+0.05].
-    Can be a sequence, a 1d numpy array. Set to None to disable the automatic resampling. Default is 1mm.
-    :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
-    a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
-    :param topology_classes: List of classes corresponding to all segmentation labels, in order to group them into
-    classes, for each of which we will operate a smooth version of biggest connected component.
-    Can be a sequence, a 1d numpy array, or the path to a numpy 1d array in the same order as segmentation_label_list.
-    Default is None, where no topological analysis is performed.
-    :param sigma_smoothing: (optional) If not None, the posteriors are smoothed with a gaussian kernel of the specified
-    standard deviation.
-    :param keep_biggest_component: (optional) whether to only keep the biggest component in the predicted segmentation.
-    This is applied independently of topology_classes, and it is applied to the whole segmentation
-    :param n_levels: (optional) number of level for the Unet. Default is 5.
-    :param nb_conv_per_level: (optional) number of convolutional layers per level. Default is 2.
-    :param conv_size: (optional) size of the convolution kernels. Default is 2.
-    :param unet_feat_count: (optional) number of feature maps for the first level. Default is 24.
-    :param feat_multiplier: (optional) multiply the number of feature by this number at each new level. Default is 1.
-    :param activation: (optional) activation function. Can be 'elu', 'relu'.
-    :param recompute: (optional) whether to recompute result files even if they already exists."""
 
     # create result folder
     utils.mkdir(validation_main_dir)
 
     # loop over models
-    list_models = utils.list_files(models_dir, expr=['dice', '.h5'], cond_type='and')[::step_eval]
+    list_models = utils.list_files(models_dir, expr=['qc', '.h5'], cond_type='and')[::step_eval]
     # list_models = [p for p in list_models if int(os.path.basename(p)[-6:-3]) % 10 == 0]
     loop_info = utils.LoopInfo(len(list_models), 1, 'validating', True)
     for model_idx, path_model in enumerate(list_models):
 
         # build names and create folders
         model_val_dir = os.path.join(validation_main_dir, os.path.basename(path_model).replace('.h5', ''))
-        dice_path = os.path.join(model_val_dir, 'dice.npy')
+        score_path = os.path.join(model_val_dir, 'pred_qc_results.npy')
         utils.mkdir(model_val_dir)
 
-        if (not os.path.isfile(dice_path)) | recompute:
+        if (not os.path.isfile(score_path)) | recompute:
             loop_info.update(model_idx)
-            predict(path_images=image_dir,
-                    path_segmentations=model_val_dir,
+            predict(path_predictions=prediction_dir,
+                    path_qc_results=score_path,
                     path_model=path_model,
-                    labels_segmentation=labels_segmentation,
-                    n_neutral_labels=n_neutral_labels,
-                    min_pad=min_pad,
-                    cropping=cropping,
-                    target_res=target_res,
-                    gradients=gradients,
-                    flip=flip,
-                    topology_classes=topology_classes,
-                    sigma_smoothing=sigma_smoothing,
-                    keep_biggest_component=keep_biggest_component,
+                    labels_list=labels_list,
+                    labels_to_convert=labels_to_convert,
+                    convert_gt=convert_gt,
+                    shape=shape,
                     n_levels=n_levels,
                     nb_conv_per_level=nb_conv_per_level,
                     conv_size=conv_size,
                     unet_feat_count=unet_feat_count,
                     feat_multiplier=feat_multiplier,
                     activation=activation,
-                    gt_folder=gt_dir,
-                    evaluation_labels=evaluation_labels,
-                    recompute=recompute,
+                    path_gts=gt_dir,
                     verbose=False)
 
 
 def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_indices=None,
                            skip_first_dice_row=True, size_max_circle=100, figsize=(11, 6), y_lim=None, fontsize=18,
-                           list_linestyles=None, list_colours=None, plot_legend=False, draw_line=None):
+                           list_linestyles=None, list_colours=None, plot_legend=False):
     """This function plots the validation curves of several networks, based on the results of validate_training().
     It takes as input a list of validation folders (one for each network), each containing subfolders with dice scores
     for the corresponding validated epoch.
@@ -207,8 +156,9 @@ def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_i
         for epoch_dir in list_epochs_dir:
 
             # build names and create folders
-            path_epoch_scores = os.path.join(net_val_dir, epoch_dir, 'dice.npy')
-            if os.path.isfile(path_epoch_scores):
+            path_epoch_scores = utils.list_files(os.path.join(net_val_dir, epoch_dir), expr='diff')
+            if len(path_epoch_scores) == 1:
+                path_epoch_scores = path_epoch_scores[0]
                 if eval_idx is not None:
                     list_net_scores.append(np.mean(np.abs(np.load(path_epoch_scores)[eval_idx, :])))
                 else:
@@ -224,21 +174,16 @@ def plot_validation_curves(list_validation_dirs, architecture_names=None, eval_i
             list_epochs = np.array(list_epochs)
             list_epochs, idx = np.unique(list_epochs, return_index=True)
             list_net_scores = list_net_scores[idx]
-            max_score = np.max(list_net_scores)
-            epoch_max_score = list_epochs[np.argmax(list_net_scores)]
+            min_score = np.min(list_net_scores)
+            epoch_min_score = list_epochs[np.argmin(list_net_scores)]
             print('\n'+net_name)
-            print('epoch max score: %d' % epoch_max_score)
-            print('max score: %0.3f' % max_score)
+            print('epoch min score: %d' % epoch_min_score)
+            print('min score: %0.3f' % min_score)
             plt.plot(list_epochs, list_net_scores, label=legend_label, linestyle=linestyle, color=colour)
-            plt.scatter(epoch_max_score, max_score, s=size_max_circle, color=colour)
+            plt.scatter(epoch_min_score, min_score, s=size_max_circle, color=colour)
 
     # finalise plot
     plt.grid()
-    if draw_line is not None:
-        draw_line = utils.reformat_to_list(draw_line)
-        list_linestyles = ['dotted', 'dashed', 'solid', 'dashdot'][:len(draw_line)]
-        for line, linestyle in zip(draw_line, list_linestyles):
-            plt.axhline(line, color='black', linestyle=linestyle)
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.ylabel('Scores', fontsize=fontsize)
     plt.xlabel('Epochs', fontsize=fontsize)
@@ -281,7 +226,7 @@ def draw_learning_curve(path_tensorboard_files, architecture_names, figsize=(11,
                     if v.tag == 'loss' or v.tag == 'accuracy' or v.tag == 'epoch_loss':
                         list_losses.append(v.simple_value)
                         list_epochs.append(e.step)
-        plt.plot(np.array(list_epochs), 1-np.array(list_losses), label=name, linewidth=2)
+        plt.plot(np.array(list_epochs), np.array(list_losses), label=name, linewidth=2)
 
     # finalise plot
     plt.grid()

@@ -5,6 +5,6 @@ from . import labels_to_image_model
 from . import metrics_model
 from . import model_inputs
 from . import predict
-from . import supervised_training
+from . import training_supervised
 from . import training
 from . import validate

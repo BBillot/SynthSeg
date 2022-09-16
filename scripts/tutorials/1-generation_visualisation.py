@@ -28,5 +28,5 @@ brain_generator = BrainGenerator('../../data/training_label_maps/training_seg_01
 im, lab = brain_generator.generate_brain()
 
 # save output image and label map under SynthSeg/generated_examples
-utils.save_volume(im, brain_generator.aff, brain_generator.header, '../../generated_examples/tutorial_1/image.nii.gz')
-utils.save_volume(lab, brain_generator.aff, brain_generator.header, '../../generated_examples/tutorial_1/labels.nii.gz')
+utils.save_volume(im, brain_generator.aff, brain_generator.header, './outputs_tutorial_1/image.nii.gz')
+utils.save_volume(lab, brain_generator.aff, brain_generator.header, './outputs_tutorial_1/labels.nii.gz')

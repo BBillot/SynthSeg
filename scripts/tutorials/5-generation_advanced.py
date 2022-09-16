@@ -35,7 +35,7 @@ from SynthSeg.brain_generator import BrainGenerator
 
 # script parameters
 n_examples = 5  # number of examples to generate in this script
-result_dir = '../../generated_examples/tutorial_5'  # folder where examples will be saved
+result_dir = './outputs_tutorial_5'  # folder where examples will be saved
 
 
 # path training label maps
@@ -84,7 +84,6 @@ prior_stds = '../../data/labels_classes_priors/prior_stds_t1.npy'
 
 # here we aim to synthesise data at a specific resolution, thus we do not randomise it anymore !
 randomise_res = False
-blur_range = 1.03
 
 # blurring/downsampling parameters
 # We specify here the slice spacing/thickness that we want the synthetic scans to mimic. The axes refer to the *RAS*
@@ -92,14 +91,6 @@ blur_range = 1.03
 # RAS refers to Right-left/Anterior-posterior/Superior-inferior axes, i.e. sagittal/coronal/axial directions.
 data_res = np.array([1., 1., 3.])  # slice spacing i.e. resolution to mimic
 thickness = np.array([1., 1., 3.])  # slice thickness
-
-# Because we have a large gap between the resolution at which we sample the GMM (1mm iso) and the LR we want to
-# simulate, we decide here to downsample the Gaussian image to LR. If downsampled, the data will then be upsampled back
-# to the target HR resolution (the one of the training label maps by default). This downsampling/upsampling step
-# enables to reproduce the process that will happen at test time: real LR scans will be upsampled to HR, and run through
-# the network to obtain the HR regressed scan.
-downsample = True
-
 
 # ------------------------------------------------------ Generate ------------------------------------------------------
 
@@ -115,9 +106,7 @@ brain_generator = BrainGenerator(labels_dir=path_label_map,
                                  prior_stds=prior_stds,
                                  randomise_res=randomise_res,
                                  data_res=data_res,
-                                 thickness=thickness,
-                                 downsample=downsample,
-                                 blur_range=blur_range)
+                                 thickness=thickness)
 
 for n in range(n_examples):
 

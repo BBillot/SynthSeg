@@ -24,18 +24,20 @@ parser = ArgumentParser()
 parser.add_argument("path_images", type=str, help="path single image or path of the folders with training labels")
 parser.add_argument("path_segmentations", type=str, help="segmentations folder/path")
 parser.add_argument("path_model", type=str, help="model file path")
-parser.add_argument("segmentation_labels", type=str, help="path label list")
+
+# labels parameters
+parser.add_argument("labels_segmentation", type=str, help="path label list")
+parser.add_argument("--neutral_labels", type=int, dest="n_neutral_labels", default=None)
+parser.add_argument("--names_list", type=str, dest="names_segmentation", default=None,
+                    help="path list of label names, only used if --vol is specified")
 
 # Saving paths
 parser.add_argument("--post", type=str, dest="path_posteriors", default=None, help="posteriors folder/path")
 parser.add_argument("--resampled", type=str, dest="path_resampled", default=None,
-                    help="path/folder of the resampled images (1mm isotropic resolution)")
+                    help="path/folder of the images resampled at the given target resolution")
 parser.add_argument("--vol", type=str, dest="path_volumes", default=None, help="path volume file")
-parser.add_argument("--names_list", type=str, dest="segmentation_label_names", default=None,
-                    help="path list of label names, only used if --vol is specified")
 
 # Processing parameters
-parser.add_argument("--neutral_labels", type=int, dest="n_neutral_labels", default=None)
 parser.add_argument("--min_pad", type=int, dest="min_pad", default=None,
                     help="margin of the padding")
 parser.add_argument("--cropping", type=int, dest="cropping", default=None,
@@ -46,10 +48,10 @@ parser.add_argument("--flip", action='store_true', dest="flip",
                     help="to activate test-time augmentation (right/left flipping)")
 parser.add_argument("--topology_classes", type=str, dest="topology_classes", default=None,
                     help="path list of classes, for topologically enhanced biggest connected component analysis")
-parser.add_argument("--smoothing", type=float, dest="sigma_smoothing", default=0,
+parser.add_argument("--smoothing", type=float, dest="sigma_smoothing", default=0.5,
                     help="var for gaussian blurring of the posteriors")
 parser.add_argument("--biggest_component", action='store_true', dest="keep_biggest_component",
-                    help="only keep biggest component in segmentation")
+                    help="only keep biggest component in segmentation (recommanded)")
 
 # Architecture parameters
 parser.add_argument("--conv_size", type=int, dest="conv_size", default=3, help="size of unet's convolution masks")
@@ -64,14 +66,12 @@ parser.add_argument("--activation", type=str, dest="activation", default='elu', 
 # Evaluation parameters
 parser.add_argument("--gt", type=str, default=None, dest="gt_folder",
                     help="folder containing ground truth segmentations, which triggers the evaluation.")
-parser.add_argument("--mask", type=str, default=None, dest="mask_folder",
-                    help="folder containing masks to mask out areas of the obtained segmentations.")
+parser.add_argument("--eval_label_list", type=str, dest="evaluation_labels", default=None,
+                    help="labels to evaluate Dice scores on if gt is provided. Default is the same as label_list.")
 parser.add_argument("--incorrect_labels", type=str, default=None, dest="list_incorrect_labels",
                     help="path list labels to correct.")
 parser.add_argument("--correct_labels", type=str, default=None, dest="list_correct_labels",
                     help="path list correct labels.")
-parser.add_argument("--eval_label_list", type=str, dest="evaluation_labels", default=None,
-                    help="labels to evaluate Dice scores on if gt is provided. Default is the same as label_list.")
 
 args = parser.parse_args()
 predict(**vars(args))

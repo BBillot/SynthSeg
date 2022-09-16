@@ -29,7 +29,7 @@ from SynthSeg.brain_generator import BrainGenerator
 
 # script parameters
 n_examples = 5  # number of examples to generate in this script
-result_dir = '../../generated_examples/tutorial_2'  # folder where examples will be saved
+result_dir = './outputs_tutorial_2'  # folder where examples will be saved
 
 
 # ---------- Input label maps and associated values ----------
@@ -137,14 +137,6 @@ bias_field_std = 0.5  # his controls the maximum bias field corruption (higher =
 # Although being only one parameter, this is crucial !!
 randomise_res = True
 
-# Before downsampling images to a random resolution, we blur them to avoid aliasing issues.
-# However, we introduce small variations in the standard deviation of the Gaussian blurring kernel, in order to:
-#      - make the downstream network robust to small changes in acquisition resolution
-#      - mitigate the assumption over the slice selection profile.
-# This is achieved by multiplying the standard deviation of the Gaussian blurring kernel by a random coefficient
-# "blur_range", which is drawn in the uniform distribution U(1/blur_range; blur_range)
-blur_range = 1.03
-
 
 # ------------------------------------------------------ Generate ------------------------------------------------------
 
@@ -165,8 +157,7 @@ brain_generator = BrainGenerator(labels_dir=path_label_map,
                                  translation_bounds=translation_bounds,
                                  nonlin_std=nonlin_std,
                                  bias_field_std=bias_field_std,
-                                 randomise_res=randomise_res,
-                                 blur_range=blur_range)
+                                 randomise_res=randomise_res)
 
 for n in range(n_examples):
 

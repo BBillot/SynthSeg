@@ -9,21 +9,21 @@ models/synthseg_parc_2.0.h5
 models/synthseg_qc_2.0.h5
 models/synthseg_robust_2.0.h5
 
-scripts/commands/training_*
+scripts/commands/training_group.py
+scripts/Denoiser
 scripts/gradients
 scripts/heart
 scripts/PAMI
 scripts/previous_papers
 scripts/*.py
+scripts/run_synthseg
 
 SynthSeg/auc_roc_delong.py
 SynthSeg/boxplots.py
 SynthSeg/brain_generator_*
 SynthSeg/check_*
-SynthSeg/labels_to_image_model_*
-SynthSeg/training_*
-SynthSeg/predict_aparc.py
-SynthSeg/predict_group.py
-SynthSeg/predict_qc.py
 SynthSeg/predict_synthseg_*
-SynthSeg/validate_*
+SynthSeg/predict_vae.py
+SynthSeg/training_heart.py
+SynthSeg/training_vae.py
+SynthSeg/validate_vae.py

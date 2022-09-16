@@ -33,7 +33,7 @@ labels_dir = '/labels_folder'
 # list of labels from which we want to evaluate the GMM prior distributions
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 # path of folder where to write estimated priors
-result_dir = '../../generated_examples/tutorial_6/t1_priors'
+result_dir = './outputs_tutorial_6/t1_priors'
 
 build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
@@ -47,7 +47,7 @@ build_intensity_stats(list_image_dir=image_dir,
 image_dir = '/image_folder/t1'
 labels_dir = '/labels_folder'
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
-result_dir = '../../generated_examples/tutorial_6/estimated_t1_priors_classes'
+result_dir = './outputs_tutorial_6/estimated_t1_priors_classes'
 
 # In the previous example, each label value is used to build the priors of a single Gaussian distribution.
 # We show here how to build Gaussian priors from intensities associated to several label values. For example, that could
@@ -73,7 +73,7 @@ image_dir = '/image_folder/multi-modal_t1_t2'
 labels_dir = '/labels_folder'
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
-result_dir = '../../generated_examples/tutorial_6/estimated_priors_multi_modal'
+result_dir = './outputs_tutorial_6/estimated_priors_multi_modal'
 
 build_intensity_stats(list_image_dir=image_dir,
                       list_labels_dir=labels_dir,
@@ -94,7 +94,7 @@ labels_dir = '/labels_folder'
 # same as before
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
-result_dir = '../../generated_examples/tutorial_6/estimated_priors_multi_modal'
+result_dir = './outputs_tutorial_6/estimated_priors_multi_modal'
 
 build_intensity_stats(list_image_dir=list_image_dir,
                       list_labels_dir=labels_dir,
@@ -114,7 +114,7 @@ labels_dir = ['/labels_folder/t1', '/labels_folder/t2']
 # same as before
 estimation_labels = '../../data/labels_classes_priors/generation_labels.npy'
 estimation_classes = '../../data/labels_classes_priors/generation_classes.npy'
-result_dir = '../../generated_examples/tutorial_6/estimated_unregistered_multi_modal'
+result_dir = './outputs_tutorial_6/estimated_unregistered_multi_modal'
 
 build_intensity_stats(list_image_dir=list_image_dir,
                       list_labels_dir=labels_dir,

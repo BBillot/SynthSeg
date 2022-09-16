@@ -23,7 +23,6 @@ from keras.models import Model
 # third-party imports
 from ext.lab2im import utils
 from ext.lab2im import layers
-from ext.neuron import layers as nrn_layers
 from ext.lab2im import edit_tensors as l2i_et
 from ext.lab2im.edit_volumes import get_ras_axes
 
@@ -44,16 +43,14 @@ def labels_to_image_model(labels_shape,
                           shearing_bounds=0.012,
                           translation_bounds=False,
                           nonlin_std=3.,
-                          nonlin_shape_factor=.0625,
+                          nonlin_scale=.0625,
                           randomise_res=False,
                           max_res_iso=4.,
                           max_res_aniso=8.,
                           data_res=None,
                           thickness=None,
-                          downsample=False,
-                          blur_range=1.03,
                           bias_field_std=.5,
-                          bias_shape_factor=.025,
+                          bias_scale=.025,
                           return_gradients=False):
     """
     This function builds a keras/tensorflow model to generate images from provided label maps.
@@ -113,7 +110,7 @@ def labels_to_image_model(labels_shape,
     :param nonlin_std: (optional) Maximum value for the standard deviation of the normal distribution from which we
     sample the first tensor for synthesising the deformation field. Set to 0 if you wish to completely turn the elastic
     deformation off.
-    :param nonlin_shape_factor: (optional) if nonlin_std is strictly positive, factor between the shapes of the input
+    :param nonlin_scale: (optional) if nonlin_std is strictly positive, factor between the shapes of the input
     label maps and the shape of the input non-linear tensor.
     :param randomise_res: (optional) whether to mimic images that would have been 1) acquired at low resolution, and
     2) resampled to high resolution. The low resolution is uniformly resampled at each minibatch from [1mm, 9mm].
@@ -136,16 +133,11 @@ def labels_to_image_model(labels_shape,
     path) of size (n_mod, n_dims), where each row is the acquisition resolution of the corresponding channel.
     :param thickness: (optional) if data_res is provided, we can further specify the slice thickness of the low
     resolution images to mimic. Must be provided in the same format as data_res. Default thickness = data_res.
-    :param downsample: (optional) whether to actually downsample the volume images to data_res after blurring.
-    Default is False, except when thickness is provided, and thickness < data_res.
-    :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is given
-    or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a coefficient sampled
-    from a uniform distribution with bounds [1/blur_range, blur_range]. If None, no randomisation. Default is 1.15.
     :param bias_field_std: (optional) If strictly positive, this triggers the corruption of synthesised images with a
     bias field. It is obtained by sampling a first small tensor from a normal distribution, resizing it to full size,
     and rescaling it to positive values by taking the voxel-wise exponential. bias_field_std designates the std dev of
     the normal distribution from which we sample the first tensor. Set to 0 to deactivate bias field corruption.
-    :param bias_shape_factor: (optional) If bias_field_std is strictly positive, this designates the ratio between the
+    :param bias_scale: (optional) If bias_field_std is strictly positive, this designates the ratio between the
     size of the input label maps and the size of the first sampled tensor for synthesising the bias field.
     :param return_gradients: (optional) whether to return the synthetic image or the magnitude of its spatial gradient
     (computed with Sobel kernels).
@@ -157,7 +149,6 @@ def labels_to_image_model(labels_shape,
     atlas_res = utils.reformat_to_n_channels_array(atlas_res, n_dims, n_channels)
     data_res = atlas_res if data_res is None else utils.reformat_to_n_channels_array(data_res, n_dims, n_channels)
     thickness = data_res if thickness is None else utils.reformat_to_n_channels_array(thickness, n_dims, n_channels)
-    downsample = utils.reformat_to_list(downsample, n_channels) if downsample else (np.min(thickness - data_res, 1) < 0)
     atlas_res = atlas_res[0]
     target_res = atlas_res if target_res is None else utils.reformat_to_n_channels_array(target_res, n_dims)[0]
 
@@ -176,7 +167,7 @@ def labels_to_image_model(labels_shape,
                                              shearing_bounds=shearing_bounds,
                                              translation_bounds=translation_bounds,
                                              nonlin_std=nonlin_std,
-                                             nonlin_shape_factor=nonlin_shape_factor,
+                                             nonlin_scale=nonlin_scale,
                                              inter_method='nearest')(labels_input)
 
     # cropping
@@ -193,7 +184,7 @@ def labels_to_image_model(labels_shape,
 
     # apply bias field
     if bias_field_std > 0:
-        image = layers.BiasFieldCorruption(bias_field_std, bias_shape_factor, False)(image)
+        image = layers.BiasFieldCorruption(bias_field_std, bias_scale, False)(image)
 
     # intensity augmentation
     image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
@@ -209,18 +200,15 @@ def labels_to_image_model(labels_shape,
             max_res = np.maximum(max_res_iso, max_res_aniso)
             resolution, blur_res = layers.SampleResolution(atlas_res, max_res_iso, max_res_aniso)(means_input)
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, resolution, thickness=blur_res)
-            channel = layers.DynamicGaussianBlur(0.75 * max_res / np.array(atlas_res), blur_range)([channel, sigma])
+            channel = layers.DynamicGaussianBlur(0.75 * max_res / np.array(atlas_res), 1.03)([channel, sigma])
             channel = layers.MimicAcquisition(atlas_res, atlas_res, output_shape, False)([channel, resolution])
             channels.append(channel)
 
         else:
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
-            channel = layers.GaussianBlur(sigma, blur_range)(channel)
-            if downsample[i]:
-                resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
-                channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
-            elif output_shape != crop_shape:
-                channel = nrn_layers.Resize(size=output_shape)(channel)
+            channel = layers.GaussianBlur(sigma, 1.03)(channel)
+            resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
+            channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
             channels.append(channel)
 
     # concatenate all channels back

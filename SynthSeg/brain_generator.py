@@ -33,7 +33,6 @@ class BrainGenerator:
                  n_neutral_labels=None,
                  output_labels=None,
                  subjects_prob=None,
-                 patch_dir=None,
                  batchsize=1,
                  n_channels=1,
                  target_res=None,
@@ -51,16 +50,14 @@ class BrainGenerator:
                  shearing_bounds=.012,
                  translation_bounds=False,
                  nonlin_std=3.,
-                 nonlin_shape_factor=.04,
+                 nonlin_scale=.04,
                  randomise_res=True,
                  max_res_iso=4.,
                  max_res_aniso=8.,
                  data_res=None,
                  thickness=None,
-                 downsample=False,
-                 blur_range=1.03,
                  bias_field_std=.5,
-                 bias_shape_factor=.025,
+                 bias_scale=.025,
                  return_gradients=False):
         """
         This class is wrapper around the labels_to_image_model model. It contains the GPU model that generates images
@@ -157,7 +154,7 @@ class BrainGenerator:
         :param nonlin_std: (optional) Maximum value for the standard deviation of the normal distribution from which we
         sample the first tensor for synthesising the deformation field. Set to 0 if you wish to completely turn the
         elastic deformation off.
-        :param nonlin_shape_factor: (optional) if nonlin_std is strictly positive, factor between the shapes of the
+        :param nonlin_scale: (optional) if nonlin_std is strictly positive, factor between the shapes of the
         input label maps and the shape of the input non-linear tensor.
 
         # blurring/resampling parameters
@@ -182,19 +179,13 @@ class BrainGenerator:
         (or a path) of size (n_mod, n_dims), where each row is the acquisition resolution of the corresponding channel.
         :param thickness: (optional) if data_res is provided, we can further specify the slice thickness of the low
         resolution images to mimic. Must be provided in the same format as data_res. Default thickness = data_res.
-        :param downsample: (optional) whether to actually downsample the volume images to data_res after blurring.
-        Default is False, except when thickness is provided, and thickness < data_res.
-        :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is
-        given or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a
-        coefficient sampled from a uniform distribution with bounds [1/blur_range, blur_range].
-        If None, no randomisation. Default is 1.15.
 
         # bias field parameters
         :param bias_field_std: (optional) If strictly positive, this triggers the corruption of synthesised images with
         a bias field. It is obtained by sampling a first small tensor from a normal distribution, resizing it to full
         size, and rescaling it to positive values by taking the voxel-wise exponential. bias_field_std designates the
         std dev of the normal distribution from which we sample the first tensor. Set to 0 to deactivate bias field.
-        :param bias_shape_factor: (optional) If bias_field_std is strictly positive, this designates the ratio between
+        :param bias_scale: (optional) If bias_field_std is strictly positive, this designates the ratio between
         the size of the input label maps and the size of the first sampled tensor for synthesising the bias field.
 
         :param return_gradients: (optional) whether to return the synthetic image or the magnitude of its spatial
@@ -203,7 +194,6 @@ class BrainGenerator:
 
         # prepare data files
         self.labels_paths = utils.list_images_in_folder(labels_dir)
-        self.path_patches = utils.list_images_in_folder(patch_dir) if (patch_dir is not None) else None
         if subjects_prob is not None:
             self.subjects_prob = np.array(utils.reformat_to_list(subjects_prob, load_as_numpy=True), dtype='float32')
             assert len(self.subjects_prob) == len(self.labels_paths), \
@@ -255,7 +245,7 @@ class BrainGenerator:
         self.translation_bounds = utils.load_array_if_path(translation_bounds)
         # elastic transformation parameters
         self.nonlin_std = nonlin_std
-        self.nonlin_shape_factor = nonlin_shape_factor
+        self.nonlin_scale = nonlin_scale
         # blurring parameters
         self.randomise_res = randomise_res
         self.max_res_iso = max_res_iso
@@ -264,11 +254,9 @@ class BrainGenerator:
         assert not (self.randomise_res & (self.data_res is not None)), \
             'randomise_res and data_res cannot be provided at the same time'
         self.thickness = utils.load_array_if_path(thickness)
-        self.downsample = downsample
-        self.blur_range = blur_range
         # bias field parameters
         self.bias_field_std = bias_field_std
-        self.bias_shape_factor = bias_shape_factor
+        self.bias_scale = bias_scale
         self.return_gradients = return_gradients
 
         # build transformation model
@@ -298,16 +286,14 @@ class BrainGenerator:
                                                 shearing_bounds=self.shearing_bounds,
                                                 translation_bounds=self.translation_bounds,
                                                 nonlin_std=self.nonlin_std,
-                                                nonlin_shape_factor=self.nonlin_shape_factor,
+                                                nonlin_scale=self.nonlin_scale,
                                                 randomise_res=self.randomise_res,
                                                 max_res_iso=self.max_res_iso,
                                                 max_res_aniso=self.max_res_aniso,
                                                 data_res=self.data_res,
                                                 thickness=self.thickness,
-                                                downsample=self.downsample,
-                                                blur_range=self.blur_range,
                                                 bias_field_std=self.bias_field_std,
-                                                bias_shape_factor=self.bias_shape_factor,
+                                                bias_scale=self.bias_scale,
                                                 return_gradients=self.return_gradients)
         out_shape = lab_to_im_model.output[0].get_shape().as_list()[1:]
         return lab_to_im_model, out_shape
@@ -324,8 +310,7 @@ class BrainGenerator:
                                                     prior_stds=self.prior_stds,
                                                     prior_distributions=self.prior_distributions,
                                                     use_specific_stats_for_channel=self.use_specific_stats_for_channel,
-                                                    mix_prior_and_random=mix_prior_and_random,
-                                                    path_patches=self.path_patches)
+                                                    mix_prior_and_random=mix_prior_and_random)
         return model_inputs_generator
 
     def _build_brain_generator(self):

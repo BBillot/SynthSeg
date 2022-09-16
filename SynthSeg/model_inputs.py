@@ -32,8 +32,7 @@ def build_model_inputs(path_label_maps,
                        prior_means=None,
                        prior_stds=None,
                        use_specific_stats_for_channel=False,
-                       mix_prior_and_random=False,
-                       path_patches=None):
+                       mix_prior_and_random=False):
     """
     This function builds a generator that will be used to give the necessary inputs to the label_to_image model: the
     input label maps, as well as the means and stds defining the parameters of the GMM (which change at each minibatch).
@@ -82,6 +81,7 @@ def build_model_inputs(path_label_maps,
     n_classes = len(np.unique(generation_classes))
 
     # make sure subjects_prob sums to 1
+    subjects_prob = utils.load_array_if_path(subjects_prob)
     if subjects_prob is not None:
         subjects_prob /= np.sum(subjects_prob)
 
@@ -102,14 +102,6 @@ def build_model_inputs(path_label_maps,
             lab = utils.load_volume(path_label_maps[idx], dtype='int', aff_ref=np.eye(4))
             if (npr.uniform() > 0.7) & ('seg_cerebral' in path_label_maps[idx]):
                 lab[lab == 24] = 0
-
-            # add noise patch if necessary
-            if path_patches is not None:
-                idx_517 = np.where(lab == 517)
-                if np.any(idx_517) & (npr.uniform() > 0.5):
-                    noise_patch = utils.load_volume(path_patches[npr.randint(len(path_patches))], dtype='int')
-                    noise_patch = np.flip(noise_patch, tuple([i for i in range(n_dims) if np.random.normal() > 0]))
-                    lab[idx_517] = noise_patch[idx_517]
 
             # add label map to inputs
             list_label_maps.append(utils.add_axis(lab, axis=[0, -1]))

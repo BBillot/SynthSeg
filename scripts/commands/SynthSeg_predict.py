@@ -20,7 +20,7 @@ import os
 import sys
 from argparse import ArgumentParser
 
-# add main folder to python path and import ./SynthSeg/predict.py
+# add main folder to python path and import ./SynthSeg/predict_synthseg.py
 synthseg_home = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))))
 sys.path.append(synthseg_home)
 model_dir = os.path.join(synthseg_home, 'models')

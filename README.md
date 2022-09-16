@@ -111,7 +111,7 @@ libraries Cuda (10.0), and CUDNN (7.0).
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
 
-That's it ! You're ow ready to use this tool ! :tada:
+That's it ! You're now ready to use this tool ! :tada:
 
 
 ----------------
@@ -164,15 +164,18 @@ how the synthetic data is formed before you start training your own models.
 - [3-training](scripts/tutorials/3-training.py): This scripts re-uses the parameters explained in the previous tutorial
 and focuses on the learning/architecture parameters. The script here is the very one we used to train SynthSeg !
 
-- [4-training](scripts/tutorials/4-prediction.py): This scripts shows how to make predictions, once the network has been 
-trained.
+- [4-prediction](scripts/tutorials/4-prediction.py): This scripts shows how to make predictions, once the network has 
+been trained.
 
 - [5-generation_advanced](scripts/tutorials/5-generation_advanced.py): Here we detail more advanced generation options, 
 in the case of training a version of SynthSeg that is specific to a given contrast and/or resolution (although these
 types of variants were shown to be outperformed by the SynthSeg model trained in the 3rd tutorial).
 
-- [6-intensity_estimation](scripts/tutorials/6-intensity_estimation.py): Finally, this script shows how to estimate the 
+- [6-intensity_estimation](scripts/tutorials/6-intensity_estimation.py): This script shows how to estimate the 
 Gaussian priors of the GMM when training a contrast-specific version of SynthSeg.
+
+- [7-synthseg+n](scripts/tutorials/6-intensity_estimation.py): Finally, we show how the robust version of SynthSeg was 
+trained.
 
 These tutorials cover a lot of materials and will enable you to train your own SynthSeg model. Moreover, even more 
 detailed information is provided in the docstrings of all functions, so don't hesitate to have a look at these !

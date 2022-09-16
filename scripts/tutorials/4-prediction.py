@@ -32,11 +32,11 @@ from SynthSeg.predict import predict
 # be segmented. In this case, please provide path_segm (and possibly path_posteriors, and path_resampled) as folder.
 path_images = '/a/path/to/an/image/im.nii.gz'
 # path to the output segmentation
-path_segm = '../../generated_examples/tutorial_4/predicted_segmentations/im_seg.nii.gz'
+path_segm = './outputs_tutorial_4/predicted_segmentations/im_seg.nii.gz'
 # we can also provide paths for optional files containing the probability map for all predicted labels
-path_posteriors = '../../generated_examples/tutorial_4/predicted_information/im_post.nii.gz'
+path_posteriors = './outputs_tutorial_4/predicted_information/im_post.nii.gz'
 # and for a csv file that will contain the volumes of each segmented structure
-path_vol = '../../generated_examples/tutorial_4/predicted_information/volumes.csv'
+path_vol = './outputs_tutorial_4/predicted_information/volumes.csv'
 
 # of course we need to provide the path to the trained model (here we use the main synthseg model).
 path_model = '../../models/synthseg_1.0.h5'
@@ -56,7 +56,7 @@ cropping = 192
 # automatically be resampled to target_res.
 target_res = 1.
 # Note that if the image is indeed resampled, you have the option to save the resampled image.
-path_resampled = '../../generated_examples/tutorial_4/predicted_information/im_resampled_target_res.nii.gz'
+path_resampled = './outputs_tutorial_4/predicted_information/im_resampled_target_res.nii.gz'
 
 # After the image has been processed by the network, there are again various options to postprocess it.
 # First, we can apply some test-time augmentation by flipping the input along the right-left axis and segmenting
@@ -128,16 +128,16 @@ predict(path_images,
         path_posteriors=path_posteriors,
         path_resampled=path_resampled,
         path_volumes=path_vol,
-        segmentation_label_names=path_segmentation_names,
+        names_segmentation=path_segmentation_names,
         cropping=cropping,
         target_res=target_res,
         flip=flip,
         topology_classes=topology_classes,
         sigma_smoothing=sigma_smoothing,
         keep_biggest_component=keep_biggest_component,
-        conv_size=conv_size,
         n_levels=n_levels,
         nb_conv_per_level=nb_conv_per_level,
+        conv_size=conv_size,
         unet_feat_count=unet_feat_count,
         feat_multiplier=feat_multiplier,
         activation=activation,

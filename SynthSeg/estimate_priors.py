@@ -24,55 +24,6 @@ from ext.lab2im import utils
 from ext.lab2im import edit_volumes
 
 
-def estimate_t2_cropping(image_dir, result_dir=None, dilation=5):
-    """This function takes all the hippocampus images (with 2 channels) within the specified directory, and estimates
-    the cropping dimensions around the hippocampus in the t2 channel.
-    It returns the mean and sts deviation for the minimal and maximal croppings, proportional to image size.
-    :param image_dir: path of the folder containing hippocampus images
-    :param result_dir: if not None, path of the folder where to write the computed statistics.
-    :param dilation: dilation coefficient used to extract full brain mask. Default is 5.
-    :returns t2_cropping_stats: numpy vector of size 4 [mean min crop, std min crop, mean max crop, std max crop]
-    """
-
-    # create result dir
-    if result_dir is not None:
-        utils.mkdir(result_dir)
-
-    # loop through images
-    list_image_paths = utils.list_images_in_folder(image_dir)
-    max_cropping_proportions = np.zeros(len(list_image_paths))
-    min_cropping_proportions = np.zeros(len(list_image_paths))
-    loop_info = utils.LoopInfo(len(list_image_paths), 10, 'processing')
-    for im_idx, image_path in enumerate(list_image_paths):
-        loop_info.update(im_idx)
-
-        # load t2 channel
-        im = utils.load_volume(image_path)
-        t2 = im[..., 1]
-        shape = t2.shape
-        hdim = int(np.argmax(shape))
-
-        # mask image
-        _, mask = edit_volumes.mask_volume(t2, threshold=0, dilate=dilation, return_mask=True)
-
-        # find cropping indices
-        indices = np.nonzero(mask)[hdim]
-        min_cropping_proportions[im_idx] = np.maximum(np.min(indices) + int(dilation/2), 0) / shape[hdim]
-        max_cropping_proportions[im_idx] = np.minimum(np.max(indices) - int(dilation/2), shape[hdim]) / shape[hdim]
-
-    # compute and save stats
-    t2_cropping_stats = np.array([np.mean(min_cropping_proportions),
-                                  np.std(min_cropping_proportions),
-                                  np.mean(max_cropping_proportions),
-                                  np.std(max_cropping_proportions)])
-
-    # save stats if necessary
-    if result_dir is not None:
-        np.save(os.path.join(result_dir, 't2_cropping_stats.npy'), t2_cropping_stats)
-
-    return t2_cropping_stats
-
-
 def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_list=None, keep_strictly_positive=True):
     """This function takes an image and corresponding segmentation as inputs. It estimates the mean and std intensity
     for all specified label values. Labels can share the same statistics by being regrouped into K classes.

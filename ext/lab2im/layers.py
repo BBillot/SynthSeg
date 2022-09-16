@@ -79,7 +79,7 @@ class RandomSpatialDeformation(Layer):
     This is done regardless of the value of rotation_bounds. If true, a different value is sampled for each dimension.
     :param nonlin_std: (optional) maximum value of the standard deviation of the normal distribution from which we
     sample the small-size SVF. Set to 0 if you wish to completely turn the elastic deformation off.
-    :param nonlin_shape_factor: (optional) if nonlin_std is not False, factor between the shapes of the input tensor
+    :param nonlin_scale: (optional) if nonlin_std is not False, factor between the shapes of the input tensor
     and the shape of the input non-linear tensor.
     :param inter_method: (optional) interpolation method when deforming the input tensor. Can be 'linear', or 'nearest'
     """
@@ -91,7 +91,7 @@ class RandomSpatialDeformation(Layer):
                  translation_bounds=False,
                  enable_90_rotations=False,
                  nonlin_std=4.,
-                 nonlin_shape_factor=.0625,
+                 nonlin_scale=.0625,
                  inter_method='linear',
                  prob_deform=1,
                  **kwargs):
@@ -109,7 +109,7 @@ class RandomSpatialDeformation(Layer):
         self.translation_bounds = translation_bounds
         self.enable_90_rotations = enable_90_rotations
         self.nonlin_std = nonlin_std
-        self.nonlin_shape_factor = nonlin_shape_factor
+        self.nonlin_scale = nonlin_scale
 
         # boolean attributes
         self.apply_affine_trans = (self.scaling_bounds is not False) | (self.rotation_bounds is not False) | \
@@ -131,7 +131,7 @@ class RandomSpatialDeformation(Layer):
         config["translation_bounds"] = self.translation_bounds
         config["enable_90_rotations"] = self.enable_90_rotations
         config["nonlin_std"] = self.nonlin_std
-        config["nonlin_shape_factor"] = self.nonlin_shape_factor
+        config["nonlin_scale"] = self.nonlin_scale
         config["inter_method"] = self.inter_method
         config["prob_deform"] = self.prob_deform
         return config
@@ -148,7 +148,7 @@ class RandomSpatialDeformation(Layer):
 
         if self.apply_elastic_trans:
             self.small_shape = utils.get_resample_shape(self.inshape[:self.n_dims],
-                                                        self.nonlin_shape_factor, self.n_dims)
+                                                        self.nonlin_scale, self.n_dims)
         else:
             self.small_shape = None
 
@@ -991,11 +991,11 @@ class BiasFieldCorruption(Layer):
 
     :param bias_field_std: maximum value of the standard deviation sampled in 1 (it will be sampled from the range
     [0, bias_field_std])
-    :param bias_shape_factor: ratio between the shape of the input tensor and the shape of the sampled SVF.
+    :param bias_scale: ratio between the shape of the input tensor and the shape of the sampled SVF.
     :param same_bias_for_all_channels: whether to apply the same bias field to all the channels of the input tensor.
     """
 
-    def __init__(self, bias_field_std=.5, bias_shape_factor=.025, same_bias_for_all_channels=False, **kwargs):
+    def __init__(self, bias_field_std=.5, bias_scale=.025, same_bias_for_all_channels=False, **kwargs):
 
         # input shape
         self.several_inputs = False
@@ -1009,7 +1009,7 @@ class BiasFieldCorruption(Layer):
 
         # bias field parameters
         self.bias_field_std = bias_field_std
-        self.bias_shape_factor = bias_shape_factor
+        self.bias_scale = bias_scale
         self.same_bias_for_all_channels = same_bias_for_all_channels
 
         super(BiasFieldCorruption, self).__init__(**kwargs)
@@ -1017,7 +1017,7 @@ class BiasFieldCorruption(Layer):
     def get_config(self):
         config = super().get_config()
         config["bias_field_std"] = self.bias_field_std
-        config["bias_shape_factor"] = self.bias_shape_factor
+        config["bias_scale"] = self.bias_scale
         config["same_bias_for_all_channels"] = self.same_bias_for_all_channels
         return config
 
@@ -1034,7 +1034,7 @@ class BiasFieldCorruption(Layer):
 
         # sampling shapes
         self.std_shape = [1] * (self.n_dims + 1)
-        self.small_bias_shape = utils.get_resample_shape(self.inshape[0][1:self.n_dims + 1], self.bias_shape_factor, 1)
+        self.small_bias_shape = utils.get_resample_shape(self.inshape[0][1:self.n_dims + 1], self.bias_scale, 1)
         if not self.same_bias_for_all_channels:
             self.std_shape[-1] = self.n_channels
             self.small_bias_shape[-1] = self.n_channels
@@ -1642,7 +1642,7 @@ class RandomDilationErosion(Layer):
     choice to either return the eroded label map or the mask (return_mask=True)
     """
 
-    def __init__(self, min_factor, max_factor, max_factor_dilate=None, prob=1, operation='erosion', return_mask=False,
+    def __init__(self, min_factor, max_factor, max_factor_dilate=None, prob=1, operation='random', return_mask=False,
                  **kwargs):
 
         self.min_factor = min_factor
@@ -1653,7 +1653,6 @@ class RandomDilationErosion(Layer):
         self.return_mask = return_mask
         self.n_dims = None
         self.inshape = None
-        self.several_inputs = False
         self.convnd = None
         super(RandomDilationErosion, self).__init__(**kwargs)
 
@@ -1670,13 +1669,8 @@ class RandomDilationErosion(Layer):
     def build(self, input_shape):
 
         # input shape
-        if isinstance(input_shape, list):
-            self.several_inputs = True
-            self.inshape = input_shape
-        else:
-            self.inshape = [input_shape]
-        self.n_dims = len(self.inshape[0]) - 2
-        self.n_channels = self.inshape[0][-1]
+        self.n_dims = len(self.inshape) - 2
+        self.n_channels = self.inshape[-1]
 
         # prepare convolution
         self.convnd = getattr(tf.nn, 'conv%dd' % self.n_dims)
@@ -1686,11 +1680,8 @@ class RandomDilationErosion(Layer):
 
     def call(self, inputs, **kwargs):
 
-        # reorganise inputs
-        volume = inputs[0] if self.several_inputs else inputs
-
         # sample probability of applying operation. If random negative is erosion and positive is dilation
-        batchsize = tf.split(tf.shape(volume), [1, -1])[0]
+        batchsize = tf.split(tf.shape(inputs), [1, -1])[0]
         shape = tf.concat([batchsize, tf.convert_to_tensor([1], dtype='int32')], axis=0)
         if self.operation == 'dilation':
             prob = tf.random.uniform(shape, 0, 1)
@@ -1712,15 +1703,14 @@ class RandomDilationErosion(Layer):
         kernel = l2i_et.unit_kernel(dist_threshold, self.n_dims, max_dist_threshold=self.max_factor)
 
         # convolve input mask with kernel according to given probability
-        prob = prob * tf.cast(inputs[1], dtype='float32') if self.several_inputs else prob
-        mask = tf.cast(tf.cast(volume, dtype='bool'), dtype='float32')
+        mask = tf.cast(tf.cast(inputs, dtype='bool'), dtype='float32')
         mask = tf.map_fn(self._single_blur, [mask, kernel, prob], dtype=tf.float32)
         mask = tf.cast(mask, 'bool')
 
         if self.return_mask:
             return mask
         else:
-            return volume * tf.cast(mask, dtype=volume.dtype)
+            return inputs * tf.cast(mask, dtype=inputs.dtype)
 
     def _sample_factor(self, inputs):
         return tf.cast(K.switch(K.less(tf.squeeze(inputs[0]), 0),
@@ -1742,4 +1732,4 @@ class RandomDilationErosion(Layer):
         return new_mask
 
     def compute_output_shape(self, input_shape):
-        return input_shape[0] if self.several_inputs else input_shape
+        return input_shape
