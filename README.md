@@ -21,17 +21,14 @@ input images), and can be obtained either by running on the GPU (6s per scan) or
 
 ### New features and updates
 
-29/10/2021: **SynthSeg is now available on the dev version of
-[FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) !!** :tada: \
-See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
-
-01/03/2022: **Robust version** :hammer: \
-SynthSeg sometimes falters on scans with low signal-to-noise ratio, or with very low tissue contrast. For this reason, 
-we developed a new model for increased robustness, named "SynthSeg-robust". You can use this mode when SynthSeg gives 
-results like in the figure below:
-\
-\
-![Robust](data/README_figures/robust.png)
+04/10/2022: **SynthSeg is available with Matlab!** :star: \
+We are delighted, as much as surprised, that Matlab 2022b (and onwards) now includes SynthSeg in its Medical Image
+Toolbox. They have a fully documented example on how to use it 
+[here](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html). 
+But, to simplify things, we wrote our own Matlab wrapper, which you can call in one single line. Just download this zip
+file by clicking 
+[here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg?action=AttachFile&do=get&target=SynthSegMatlab.zip|SynthSegMatlab.zip),
+uncompress it, open Matlab, and type `help SynthSeg` for instructions.
 
 29/06/2022: **SynthSeg 2.0 is out !** :v: \
 In addition to whole-brain segmentation, it now also performs **Cortical parcellation, automated QC, and intracranial 
@@ -45,6 +42,18 @@ functionalities supported by each version.
 \
 \
 ![table versions](data/README_figures/table_versions.png)
+
+01/03/2022: **Robust version** :hammer: \
+SynthSeg sometimes falters on scans with low signal-to-noise ratio, or with very low tissue contrast. For this reason, 
+we developed a new model for increased robustness, named "SynthSeg-robust". You can use this mode when SynthSeg gives 
+results like in the figure below:
+\
+\
+![Robust](data/README_figures/robust.png)
+
+29/10/2021: **SynthSeg is now available on the dev version of
+[FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) !!** :tada: \
+See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
 
 ----------------
 
@@ -174,7 +183,7 @@ types of variants were shown to be outperformed by the SynthSeg model trained in
 - [6-intensity_estimation](scripts/tutorials/6-intensity_estimation.py): This script shows how to estimate the 
 Gaussian priors of the GMM when training a contrast-specific version of SynthSeg.
 
-- [7-synthseg+n](scripts/tutorials/6-intensity_estimation.py): Finally, we show how the robust version of SynthSeg was 
+- [7-synthseg+](scripts/tutorials/7-synthseg+.py): Finally, we show how the robust version of SynthSeg was 
 trained.
 
 These tutorials cover a lot of materials and will enable you to train your own SynthSeg model. Moreover, even more 

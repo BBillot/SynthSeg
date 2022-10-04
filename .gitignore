@@ -2,8 +2,6 @@ venv
 **/__pycache__/
 .idea
 
-ext/neuron/models_*
-
 models/synthseg_2.0.h5
 models/synthseg_parc_2.0.h5
 models/synthseg_qc_2.0.h5
