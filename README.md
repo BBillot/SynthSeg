@@ -27,7 +27,7 @@ Toolbox. They have a fully documented example on how to use it
 [here](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html). 
 But, to simplify things, we wrote our own Matlab wrapper, which you can call in one single line. Just download this zip
 file by clicking 
-[here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg?action=AttachFile&do=get&target=SynthSegMatlab.zip|SynthSegMatlab.zip),
+[here](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/ER6UNaiueapFsFh-0R23dK4BC-5b1oa81zY3B16xx-Wobw?e=VkR9rh),
 uncompress it, open Matlab, and type `help SynthSeg` for instructions.
 
 29/06/2022: **SynthSeg 2.0 is out !** :v: \
