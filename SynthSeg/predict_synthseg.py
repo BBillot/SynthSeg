@@ -424,7 +424,13 @@ def preprocess(path_image, target_res=1., n_levels=5, crop=None, min_pad=None, p
 
     # read image and corresponding info
     im, _, aff, n_dims, n_channels, h, im_res = utils.get_volume_info(path_image, True)
-    if n_dims < 3:
+    if n_dims == 2 and 1 < n_channels < 4:
+        raise Exception('either the input is 2D with several channels, or is 3D with at most 3 slices. '
+                        'Either way, results are going to be poor...')
+    elif n_dims == 2 and 3 < n_channels < 11:
+        print('warning: input with very few slices')
+        n_dims = 3
+    elif n_dims < 3:
         raise Exception('input should have 3 dimensions, had %s' % n_dims)
     elif n_dims == 4 and n_channels == 1:
         n_dims = 3
