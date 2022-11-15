@@ -106,6 +106,7 @@ def mask_volume(volume, mask=None, threshold=0.1, dilate=0, erode=0, fill_holes=
     :param fill_holes: (optional) whether to fill the holes in the provided or computed mask.
     :param masking_value: (optional) masking value
     :param return_mask: (optional) whether to return the applied mask
+    :param return_copy: (optional) whether to return the original volume or a copy. Default is copy.
     :return: the masked volume, and the applied mask if return_mask is True.
     """
 
@@ -358,6 +359,7 @@ def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None, return_copy=Tr
     cropping.
     :param n_dims: (optional) number of dimensions (excluding channels) of the volume. If not provided, n_dims will be
     inferred from the input volume.
+    :param return_copy: (optional) whether to return the original volume or a copy. Default is copy.
     :return: the cropped volume, and the updated affine matrix if aff is not None.
     """
 
@@ -385,7 +387,9 @@ def pad_volume(volume, padding_shape, padding_value=0, aff=None, return_pad_idx=
     :param volume: volume to be padded
     :param padding_shape: shape to pad volume to. Can be a number, a sequence or a 1d numpy array.
     :param padding_value: (optional) value used for padding
-    :param aff: (optional) affine matrix of the volume
+    :param aff: (optional) affine matrix of the volume\
+    :param return_pad_idx: (optional) the pad_idx corresponds to the indices where we should crop the resulting
+    padded image (ie the output of this function) to go back to the original volume (ie the input of this function).
     :return: padded volume, and updated affine matrix if aff is not None.
     """
 
@@ -434,6 +438,7 @@ def flip_volume(volume, axis=None, direction=None, aff=None, return_copy=True):
     :param direction: (optional) if axis is None, the volume can be flipped along an anatomical direction:
     'rl' (right/left), 'ap' anterior/posterior), 'si' (superior/inferior).
     :param aff: (optional) please provide an affine matrix if direction is not None
+    :param return_copy: (optional) whether to return the original volume or a copy. Default is copy.
     :return: flipped volume
     """
 
@@ -462,6 +467,7 @@ def resample_volume(volume, aff, new_vox_size, interpolation='linear'):
     :param volume: a numpy array
     :param aff: affine matrix of the volume
     :param new_vox_size: new voxel size (3 - element numpy vector) in mm
+    :param interpolation: (optional) type of interpolation. Can be 'linear' or 'nearest. Default is 'linear'.
     :return: new volume and affine matrix
     """
 
@@ -511,6 +517,7 @@ def resample_volume_like(vol_ref, aff_ref, vol_flo, aff_flo, interpolation='line
     :param aff_ref: affine matrix of the reference volume
     :param vol_flo: a numpy array with the floating volume
     :param aff_flo: affine matrix of the floating volume
+    :param interpolation: (optional) type of interpolation. Can be 'linear' or 'nearest. Default is 'linear'.
     :return: resliced volume
     """
 
@@ -566,6 +573,7 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     :param return_aff: (optional) whether to return the affine matrix of the aligned volume
     :param n_dims: (optional) number of dimensions (excluding channels) of the volume. If not provided, n_dims will be
     inferred from the input volume.
+    :param return_copy: (optional) whether to return the original volume or a copy. Default is copy.
     :return: aligned volume, with corresponding affine matrix if return_aff is True.
     """
 

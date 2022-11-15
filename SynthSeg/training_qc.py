@@ -412,6 +412,8 @@ class SimulatePartialFOV(KL.Layer):
         self.n_dims = None
         self.labels_list = labels_list
         self.n_labels = len(labels_list)
+        self.lut = None
+        self.meshgrid = None
 
         super(SimulatePartialFOV, self).__init__(**kwargs)
 

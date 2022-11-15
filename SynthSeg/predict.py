@@ -93,6 +93,7 @@ def predict(path_images,
     :param target_res: (optional) target resolution at which the network operates (and thus resolution of the output
     segmentations). This must match the resolution of the training data ! target_res is used to automatically resampled
     the images with resolutions outside [target_res-0.05, target_res+0.05].
+    :param gradients: (optional) whether to replace the image by the magnitude of its gradient as input to the network.
     Can be a sequence, a 1d numpy array. Set to None to disable the automatic resampling. Default is 1mm.
     :param flip: (optional) whether to perform test-time augmentation, where the input image is segmented along with
     a right/left flipped version on it. If set to True (default), be careful because this requires more memory.
@@ -561,7 +562,7 @@ def get_flip_indices(labels_segmentation, n_neutral_labels):
     neutral_labels = labels_segmentation[:n_neutral_labels]
     left = labels_segmentation[n_neutral_labels:n_neutral_labels + n_sided_labels]
 
-    # get correspondance between labels
+    # get correspondence between labels
     lr_corresp = np.stack([labels_segmentation[n_neutral_labels:n_neutral_labels + n_sided_labels],
                            labels_segmentation[n_neutral_labels + n_sided_labels:]])
     lr_corresp_unique, lr_corresp_indices = np.unique(lr_corresp[0, :], return_index=True)

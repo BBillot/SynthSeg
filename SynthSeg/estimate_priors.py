@@ -32,7 +32,7 @@ def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_
     :param labels_list: list of labels for which to evaluate mean and std intensity.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param classes_list: (optional) enables to regroup structures into classes of similar intensity statistics.
-    Intenstites associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
+    Intensities associated to regrouped labels will thus contribute to the same Gaussian during statistics estimation.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     It should have the same length as labels_list, and contain values between 0 and K-1, where K is the total number of
     classes. Default is all labels have different classes (K=len(labels_list)).

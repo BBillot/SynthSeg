@@ -212,7 +212,7 @@ def predict(path_images,
 
             except Exception as e:
                 list_errors.append(path_images[i])
-                print('\nthe following problem occured with image %s :' % path_images[i])
+                print('\nthe following problem occurred with image %s :' % path_images[i])
                 print(traceback.format_exc())
                 print('resuming program execution\n')
                 continue
@@ -250,7 +250,7 @@ def predict(path_images,
         print('B. Billot, D.N. Greeve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V. Dalca, J.E. Iglesias')
 
     if len(list_errors) > 0:
-        print('\nERROR: some problems occured for the following inputs (see corresponding errors above):')
+        print('\nERROR: some problems occurred for the following inputs (see corresponding errors above):')
         for path_error_image in list_errors:
             print(path_error_image)
         sys.exit(1)

@@ -43,6 +43,7 @@ def blurring_sigma_for_downsampling(current_res, downsample_res, mult_coef=None,
     :param downsample_res: resolution to downsample to. Can be a 1d numpy array or list, or a tensor.
     :param current_res: resolution of the volume before downsampling.
     Can be a 1d numpy array or list or tensor of the same length as downsample res.
+    :param mult_coef: (optional) multiplicative coefficient for the blurring kernel. Default is 0.75.
     :param thickness: (optional) slice thickness in each dimension. Must be the same type as downsample_res.
     :return: standard deviation of the blurring masks given as as the same type as downsample_res (list or tensor).
     """

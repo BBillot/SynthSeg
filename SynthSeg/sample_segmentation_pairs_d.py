@@ -126,7 +126,7 @@ def sample_segmentation_pairs(image_dir,
 
     # noise parameters
     :param noise_std: (optional) standard deviation of the white Gaussian noise added at high resolution to the image.
-    :param gamma_std: (optional) standard deviation of the gaussina transform to apply at high resolution to the image.
+    :param gamma_std: (optional) standard deviation of the gaussian transform to apply at high resolution to the image.
     """
 
     # prepare data files

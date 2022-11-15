@@ -1653,6 +1653,7 @@ class RandomDilationErosion(Layer):
         self.return_mask = return_mask
         self.n_dims = None
         self.inshape = None
+        self.n_channels = None
         self.convnd = None
         super(RandomDilationErosion, self).__init__(**kwargs)
 

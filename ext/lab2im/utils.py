@@ -165,6 +165,7 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None, max_channels
     :param return_volume: (optional) whether to return the volume along with the information.
     :param aff_ref: (optional) If not None, the loaded volume is aligned to this affine matrix.
     All info relative to the volume is then given in this new space. Must be a numpy array of dimension 4x4.
+    :param max_channels: maximum possible number of channels for the input volume.
     :return: volume (if return_volume is true), and corresponding info. If aff_ref is not None, the returned aff is
     the original one, i.e. the affine of the image before being aligned to aff_ref.
     """
@@ -587,6 +588,7 @@ def get_resample_shape(patch_shape, factor, n_channels=None):
 
 def add_axis(x, axis=0):
     """Add axis to a numpy array.
+    :param x: input array
     :param axis: index of the new axis to add. Can also be a list of indices to add several axes at the same time."""
     axis = reformat_to_list(axis)
     for ax in axis:
@@ -815,7 +817,7 @@ def create_shearing_transform(shearing, n_dims):
 
 
 def infer(x):
-    ''' Try to parse input to float. If it fails, tries boolean, and otherwise keep it as string '''
+    """ Try to parse input to float. If it fails, tries boolean, and otherwise keep it as string """
     try:
         x = float(x)
     except ValueError:
@@ -982,6 +984,9 @@ def draw_value_from_distribution(hyperparameter,
     :param centre: (optional) default centre to use if hyperparameter is None or a number.
     :param default_range: (optional) default range to use if hyperparameter is None.
     :param positive_only: (optional) wheter to reset all negative values to zero.
+    :param return_as_tensor: (optional) whether to return the result as a tensorflow tensor
+    :param batchsize: (optional) if return_as_tensor is true, then you can sample a tensor of a given batchsize. Give
+    this batchsize as a tensorflow tensor here.
     :return: a float, or a numpy 1d array if size > 1, or hyperparameter is itself a numpy array.
     Returns None if hyperparmeter is False.
     """
