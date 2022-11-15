@@ -112,10 +112,11 @@ corresponding values. This table also details the order in which the posteriors 
 
 1. Clone this repository
 
-2. Create a virtual environment, and install all the required packages (see [requirements](requirements.txt)). 
-Here we use Python 3.6, which is important to have access to the right keras (2.3.1) and tensorflow (2.0.1) versions.
-If you wish to run SynthSeg on the GPU, or to train your own model, you will also need the usual deep learning 
-libraries Cuda (10.0), and CUDNN (7.0).
+2. Create a virtual environment, and install all the required packages. We initially gave all the required packages to
+make it work with Python 3.6 (see [requirements_3.6](requirements_python3.6.txt)), but we now also give the list for 
+Python 3.8 (see [requirements_3.8](requirements_python3.8.txt)). Therefore, the choice is yours, but in each case, 
+please stick to the exact versions of the corresponding packages. If you wish to run SynthSeg on the GPU, or to train 
+your own model, you will also need the usual deep learning libraries Cuda (10.0), and CUDNN (7.0).
 
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
