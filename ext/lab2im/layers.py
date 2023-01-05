@@ -1669,6 +1669,7 @@ class RandomDilationErosion(Layer):
     def build(self, input_shape):
 
         # input shape
+        self.inshape = input_shape
         self.n_dims = len(self.inshape) - 2
         self.n_channels = self.inshape[-1]
 
