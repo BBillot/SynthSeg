@@ -11,7 +11,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -151,7 +151,7 @@ def training(image_dir,
     randomise_res is True. This triggers a blurring which mimics the acquisition resolution, but downsampling is
     optional (see param downsample). Default for data_res is None, where images are slightly blurred. If the generated
     images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d numpy array, or
-    the path to a 1d numpy array. In the multi-modal case, it should be given as a umpy array (or a path) of size
+    the path to a 1d numpy array. In the multi-modal case, it should be given as a numpy array (or a path) of size
     (n_mod, n_dims), where each row is the acquisition resolution of the corresponding channel.
     :param thickness: (optional) if data_res is provided, we can further specify the slice thickness of the low
     resolution images to mimic. Must be provided in the same format as data_res. Default thickness = data_res.

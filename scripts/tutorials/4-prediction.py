@@ -14,7 +14,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -94,10 +94,10 @@ feat_multiplier = 2
 # Finally, we can set up an evaluation step after all images have been segmented.
 # In this purpose, we need to provide the path to the ground truth corresponding to the input image(s).
 # This is done by using the "gt_folder" parameter, which must have the same type as path_images (i.e., the path to a
-# single image or to a folder). If provided as a folder, grount truths must be sorted in the same order as images in
+# single image or to a folder). If provided as a folder, ground truths must be sorted in the same order as images in
 # path_images.
 # Just set this to None if you do not want to run evaluation.
-gt_folder = '/the/path/to/the/grount_truth/gt.nii.gz'
+gt_folder = '/the/path/to/the/ground_truth/gt.nii.gz'
 # Dice scores will be computed and saved as a numpy array in the folder containing the segmentation(s).
 # This numpy array will be organised as follows: rows correspond to structures, and columns to subjects. Importantly,
 # rows are given in a sorted order.

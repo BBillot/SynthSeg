@@ -48,7 +48,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -78,7 +78,7 @@ def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=Non
     Load volume file.
     :param path_volume: path of the volume to load. Can either be a nii, nii.gz, mgz, or npz format.
     If npz format, 1) the variable name is assumed to be 'vol_data',
-    2) the volume is associated with a identity affine matrix and blank header.
+    2) the volume is associated with an identity affine matrix and blank header.
     :param im_only: (optional) if False, the function also returns the affine matrix and header of the volume.
     :param squeeze: (optional) whether to squeeze the volume when loading.
     :param dtype: (optional) if not None, convert the loaded volume to this numpy dtype.
@@ -318,12 +318,12 @@ def reformat_to_list(var, length=None, load_as_numpy=False, dtype=None):
     """This function takes a variable and reformat it into a list of desired
     length and type (int, float, bool, str).
     If variable is a string, and load_as_numpy is True, it will be loaded as a numpy array.
-    If variable is None, this funtion returns None.
+    If variable is None, this function returns None.
     :param var: a str, int, float, list, tuple, or numpy array
     :param length: (optional) if var is a single item, it will be replicated to a list of this length
     :param load_as_numpy: (optional) whether var is the path to a numpy array
     :param dtype: (optional) convert all item to this type. Can be 'int', 'float', 'bool', or 'str'
-    :return: reformated list
+    :return: reformatted list
     """
 
     # convert to list
@@ -399,7 +399,7 @@ def reformat_to_n_channels_array(var, n_dims=3, n_channels=1):
 
 
 def list_images_in_folder(path_dir, include_single_image=True, check_if_empty=True):
-    """List all files with extension nii, nii.gz, mgz, or npz whithin a folder."""
+    """List all files with extension nii, nii.gz, mgz, or npz within a folder."""
     basename = os.path.basename(path_dir)
     if include_single_image & \
             (('.nii.gz' in basename) | ('.nii' in basename) | ('.mgz' in basename) | ('.npz' in basename)):
@@ -419,7 +419,7 @@ def list_images_in_folder(path_dir, include_single_image=True, check_if_empty=Tr
 
 
 def list_files(path_dir, whole_path=True, expr=None, cond_type='or'):
-    """This function returns a list of files contained in a folder, whith possible regexp.
+    """This function returns a list of files contained in a folder, with possible regexp.
     :param path_dir: path of a folder
     :param whole_path: (optional) whether to return whole path or just the filenames.
     :param expr: (optional) regexp for files to list. Can be a str or a list of str.
@@ -677,7 +677,7 @@ def sample_affine_transform(batchsize,
                             shearing_bounds=False,
                             translation_bounds=False,
                             enable_90_rotations=False):
-    """build batchsizex4x4 tensor representing an affine transormation in homogeneous coordinates.
+    """build batchsize x 4 x 4 tensor representing an affine transformation in homogeneous coordinates.
     If return_inv is True, also returns the inverse of the created affine matrix."""
 
     if (rotation_bounds is not False) | (enable_90_rotations is not False):
@@ -897,7 +897,7 @@ def get_mapping_lut(source, dest=None):
     source = np.array(reformat_to_list(source), dtype='int32')
     n_labels = source.shape[0]
 
-    # build new label list if neccessary
+    # build new label list if necessary
     if dest is None:
         dest = np.arange(n_labels, dtype='int32')
     else:
@@ -964,15 +964,15 @@ def draw_value_from_distribution(hyperparameter,
                                  positive_only=False,
                                  return_as_tensor=False,
                                  batchsize=None):
-    """Sample values from a uniform, or normal distribution of given hyper-parameters.
-    These hyper-parameters are to the number of 2 in both uniform and normal cases.
-    :param hyperparameter: values of the hyper-parameters. Can either be:
-    1) None, in each case the two hyper-parameters are given by [center-default_range, center+default_range],
-    2) a number, where the two hyper-parameters are given by [centre-hyperparameter, centre+hyperparameter],
-    3) a sequence of length 2, directly defining the two hyper-parameters: [min, max] if the distribution is uniform,
+    """Sample values from a uniform, or normal distribution of given hyperparameters.
+    These hyperparameters are to the number of 2 in both uniform and normal cases.
+    :param hyperparameter: values of the hyperparameters. Can either be:
+    1) None, in each case the two hyperparameters are given by [center-default_range, center+default_range],
+    2) a number, where the two hyperparameters are given by [centre-hyperparameter, centre+hyperparameter],
+    3) a sequence of length 2, directly defining the two hyperparameters: [min, max] if the distribution is uniform,
     [mean, std] if the distribution is normal.
     4) a numpy array, with size (2, m). In this case, the function returns a 1d array of size m, where each value has
-    been sampled independently with the specified hyper-parameters. If the distribution is uniform, rows correspond to
+    been sampled independently with the specified hyperparameters. If the distribution is uniform, rows correspond to
     its lower and upper bounds, and if the distribution is normal, rows correspond to its mean and std deviation.
     5) a numpy array of size (2*n, m). Same as 4) but we first randomly select a block of two rows among the
     n possibilities.
@@ -983,12 +983,12 @@ def draw_value_from_distribution(hyperparameter,
     :param distribution: (optional) the distribution type. Can be 'uniform' or 'normal'. Default is 'uniform'.
     :param centre: (optional) default centre to use if hyperparameter is None or a number.
     :param default_range: (optional) default range to use if hyperparameter is None.
-    :param positive_only: (optional) wheter to reset all negative values to zero.
+    :param positive_only: (optional) whether to reset all negative values to zero.
     :param return_as_tensor: (optional) whether to return the result as a tensorflow tensor
     :param batchsize: (optional) if return_as_tensor is true, then you can sample a tensor of a given batchsize. Give
     this batchsize as a tensorflow tensor here.
     :return: a float, or a numpy 1d array if size > 1, or hyperparameter is itself a numpy array.
-    Returns None if hyperparmeter is False.
+    Returns None if hyperparameter is False.
     """
 
     # return False is hyperparameter is False
@@ -1006,7 +1006,7 @@ def draw_value_from_distribution(hyperparameter,
             assert len(hyperparameter) == 2, 'if list, parameter_range should be of length 2.'
             hyperparameter = np.transpose(np.tile(np.array(hyperparameter), (size, 1)))
         else:
-            raise ValueError('parameter_range should either be None, a nummber, a sequence, or a numpy array.')
+            raise ValueError('parameter_range should either be None, a number, a sequence, or a numpy array.')
     elif isinstance(hyperparameter, np.ndarray):
         assert hyperparameter.shape[0] % 2 == 0, 'number of rows of parameter_range should be divisible by 2'
         n_modalities = int(hyperparameter.shape[0] / 2)

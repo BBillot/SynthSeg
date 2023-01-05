@@ -1,7 +1,7 @@
 """
 This file contains functions to edit/preprocess volumes (i.e. not tensors!).
 These functions are sorted in five categories:
-1- volume editting: this can be applied to any volume (i.e. images or label maps). It contains:
+1- volume editing: this can be applied to any volume (i.e. images or label maps). It contains:
         -mask_volume
         -rescale_volume
         -crop_volume
@@ -14,7 +14,7 @@ These functions are sorted in five categories:
         -get_ras_axes
         -align_volume_to_ref
         -blur_volume
-2- label map editting: can be applied to label maps only. It contains:
+2- label map editing: can be applied to label maps only. It contains:
         -correct_label_map
         -mask_label_map
         -smooth_label_map
@@ -22,7 +22,7 @@ These functions are sorted in five categories:
         -get_largest_connected_component
         -compute_hard_volumes
         -compute_distance_map
-3- editting all volumes in a folder: functions are more or less the same as 1, but they now apply to all the volumes
+3- editing all volumes in a folder: functions are more or less the same as 1, but they now apply to all the volumes
 in a given folder. Thus we provide folder paths rather than numpy arrays as inputs. It contains:
         -mask_images_in_dir
         -rescale_images_in_dir
@@ -49,7 +49,7 @@ in a given folder. Thus we provide folder paths rather than numpy arrays as inpu
         -upsample_labels_in_dir
         -compute_hard_volumes_in_dir
         -build_atlas
-5- dataset editting: functions for editting datasets (i.e. images with corresponding label maps). It contains:
+5- dataset editing: functions for editing datasets (i.e. images with corresponding label maps). It contains:
         -check_images_and_labels
         -crop_dataset_to_minimum_size
         -subdivide_dataset_to_patches
@@ -62,7 +62,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -266,8 +266,8 @@ def crop_volume_around_region(volume,
     centre of the above-defined mask is they are too small for the given shape. Can be an integer or sequence.
     Cannot be given at the same time as margin or cropping_shape_div_by.
     :param cropping_shape_div_by: (optional) makes sure the shape of the cropped region is divisible by the provided
-    number. If it is not, then we enlarge the cropping area. If the enlarged area is too big fort he input volume, we
-    pad it with 0. Must be a integer. Cannot be given at the same time as margin or cropping_shape.
+    number. If it is not, then we enlarge the cropping area. If the enlarged area is too big for the input volume, we
+    pad it with 0. Must be an integer. Cannot be given at the same time as margin or cropping_shape.
     :param aff: (optional) if specified, this function returns an updated affine matrix of the volume after cropping.
     :return: the cropped volume, the cropping indices (in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...]),
     and the updated affine matrix if aff is not None.
@@ -353,7 +353,7 @@ def crop_volume_around_region(volume,
 def crop_volume_with_idx(volume, crop_idx, aff=None, n_dims=None, return_copy=True):
     """Crop a volume with given indices.
     :param volume: a 2d or 3d numpy array
-    :param crop_idx: croppping indices, in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...].
+    :param crop_idx: cropping indices, in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...].
     Can be a list or a 1d numpy array.
     :param aff: (optional) if aff is specified, this function returns an updated affine matrix of the volume after
     cropping.
@@ -551,7 +551,7 @@ def get_ras_axes(aff, n_dims=3):
     """This function finds the RAS axes corresponding to each dimension of a volume, based on its affine matrix.
     :param aff: affine matrix Can be a 2d numpy array of size n_dims*n_dims, n_dims+1*n_dims+1, or n_dims*n_dims+1.
     :param n_dims: number of dimensions (excluding channels) of the volume corresponding to the provided affine matrix.
-    :return: two numpy 1d arrays of lengtn n_dims, one with the axes corresponding to RAS orientations,
+    :return: two numpy 1d arrays of length n_dims, one with the axes corresponding to RAS orientations,
     and one with their corresponding direction.
     """
     aff_inverted = np.linalg.inv(aff)
@@ -618,7 +618,7 @@ def blur_volume(volume, sigma, mask=None):
     :param volume: 2d or 3d numpy array
     :param sigma: standard deviation of the gaussian kernels. Can be a number, a sequence or a 1d numpy array
     :param mask: (optional) numpy array of the same shape as volume to correct for edge blurring effects.
-    Mask can be a boolean or numerical array. In the later, the mask is computed by keeping all values above zero.
+    Mask can be a boolean or numerical array. In the latter, the mask is computed by keeping all values above zero.
     :return: blurred volume
     """
 
@@ -653,9 +653,9 @@ def correct_label_map(labels, list_incorrect_labels, list_correct_labels=None, u
     :param list_correct_labels: (optional) list of correct label values to replace the incorrect ones.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
-    each voxel to correct. In that case, the different correct values must be specified inside a list whithin
+    each voxel to correct. In that case, the different correct values must be specified inside a list within
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
-    :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
+    :param use_nearest_label: (optional) whether to correct the incorrect label values with the nearest labels.
     :param remove_zero: (optional) if use_nearest_label is True, set to True not to consider zero among the potential
     candidates for the nearest neighbour. -1 will be returned when no solution are possible.
     :param smooth: (optional) whether to smooth the corrected label map
@@ -793,7 +793,7 @@ def mask_label_map(labels, masking_values, masking_value=0, return_mask=False):
 
 
 def smooth_label_map(labels, kernel, labels_list=None, print_progress=0):
-    """This function smooth an input label map by replacing each voxel by the value of its most numerous neigbour.
+    """This function smooth an input label map by replacing each voxel by the value of its most numerous neighbour.
     :param labels: input label map
     :param kernel: kernel when counting neighbours. Must contain only zeros or ones.
     :param labels_list: list of label values to smooth. Defaults is None, where all labels are smoothed.
@@ -818,11 +818,11 @@ def smooth_label_map(labels, kernel, labels_list=None, print_progress=0):
         if print_progress:
             loop_info.update(la)
 
-        # count neigbours with same value
+        # count neighbours with same value
         mask = (labels == label) * 1
         n_neighbours = convolve(mask, kernel)
 
-        # update label map and maximum neigbour counts
+        # update label map and maximum neighbour counts
         idx = n_neighbours > count
         count[idx] = n_neighbours[idx]
         labels_smoothed[idx] = label
@@ -844,8 +844,8 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
     erosion applies. If float, we first 1) blur a mask of the corresponding label value, and 2) use the erosion factor
     as a threshold in the blurred mask.
     If erosion_factors is a single value, the same factor will be applied to all labels.
-    :param gpu: (optionnal) whether to use a fast gpu model for blurring (if erosion factors are floats)
-    :param model: (optionnal) gpu model for blurring masks (if erosion factors are floats)
+    :param gpu: (optional) whether to use a fast gpu model for blurring (if erosion factors are floats)
+    :param model: (optional) gpu model for blurring masks (if erosion factors are floats)
     :param return_model: (optional) whether to return the gpu blurring model
     :return: eroded label map, and gpu blurring model is return_model is True.
     """
@@ -884,21 +884,21 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
         # crop label map and mask around values to change
         mask = mask & np.logical_not(eroded_mask)
         cropped_lab_mask, cropping = crop_volume_around_region(mask, margin=3)
-        croppped_labels = crop_volume_with_idx(new_labels, cropping)
+        cropped_labels = crop_volume_with_idx(new_labels, cropping)
 
         # calculate distance maps for all labels in cropped_labels
-        labels_list = np.unique(croppped_labels)
+        labels_list = np.unique(cropped_labels)
         labels_list = labels_list[labels_list != label_to_erode]
-        list_dist_maps = [distance_transform_edt(np.logical_not(croppped_labels == la)) for la in labels_list]
+        list_dist_maps = [distance_transform_edt(np.logical_not(cropped_labels == la)) for la in labels_list]
         candidate_distances = np.stack([dist[cropped_lab_mask] for dist in list_dist_maps])
 
         # select nearest value and put cropped labels back to full label map
         idx_correct_lab = np.argmin(candidate_distances, axis=0)
-        croppped_labels[cropped_lab_mask] = np.array(labels_list)[idx_correct_lab]
+        cropped_labels[cropped_lab_mask] = np.array(labels_list)[idx_correct_lab]
         if n_dims == 2:
-            new_labels[cropping[0]:cropping[2], cropping[1]:cropping[3], ...] = croppped_labels
+            new_labels[cropping[0]:cropping[2], cropping[1]:cropping[3], ...] = cropped_labels
         elif n_dims == 3:
-            new_labels[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5], ...] = croppped_labels
+            new_labels[cropping[0]:cropping[3], cropping[1]:cropping[4], cropping[2]:cropping[5], ...] = cropped_labels
 
         if return_model:
             return new_labels, model
@@ -953,7 +953,7 @@ def compute_distance_map(labels, masking_labels=None, crop_margin=None):
     :param labels: a label map
     :param masking_labels: (optional) list of label values to mask the label map with. The distances will be computed
     for these labels only. Default is None, where all positive values are considered.
-    :param crop_margin: (optional) margin with which to crop the input label maps around the the labels for which we
+    :param crop_margin: (optional) margin with which to crop the input label maps around the labels for which we
     want to compute the distance maps.
     :return: a distance map with positive values inside the considered regions, and negative values outside."""
 
@@ -1171,7 +1171,7 @@ def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, re
     :param max_shape: (optional) shape to pad the volumes to. Can be an int, a sequence or a 1d numpy array.
     If None, volumes will be padded to the shape of the biggest volume in image_dir.
     :param padding_value: (optional) value to pad the volumes with.
-    :param recompute: (optional) whether to recompute result files even if they already exists
+    :param recompute: (optional) whether to recompute result files even if they already exist
     :return: shape of the padded volumes.
     """
 
@@ -1205,7 +1205,7 @@ def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, re
 
 
 def flip_images_in_dir(image_dir, result_dir, axis=None, direction=None, recompute=True):
-    """Flip all images in a diretory along a specified axis.
+    """Flip all images in a directory along a specified axis.
     If unknown, this axis can be replaced by an anatomical direction.
     :param image_dir: path of directory with images to flip
     :param result_dir: path of directory where flipped images will be writen
@@ -1239,7 +1239,7 @@ def align_images_in_dir(image_dir, result_dir, aff_ref=None, path_ref=None, reco
     :param result_dir: path of directory where flipped images will be writen
     :param aff_ref: (optional) reference affine matrix. Can be a numpy array, or the path to such array.
     :param path_ref: (optional) path of a volume to which all images will be aligned. Can also be the path to a folder
-    with as many images as in image_dir, in which case each image in image_dir is aligned to its couterpart in path_ref
+    with as many images as in image_dir, in which case each image in image_dir is aligned to its counterpart in path_ref
     (they are matched by sorting order).
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
@@ -1307,7 +1307,7 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
     :param image_dir: path of directory with images to blur
     :param result_dir: path of directory where blurred images will be writen
     :param sigma: standard deviation of the blurring gaussian kernels.
-    Can be a number (isotropic blurring), or a sequence witht the same length as the number of dimensions of images.
+    Can be a number (isotropic blurring), or a sequence with the same length as the number of dimensions of images.
     :param mask_dir: (optional) path of directory with masks of the region to blur.
     Images and masks are matched by sorting order.
     :param gpu: (optional) whether to use a fast gpu model for blurring
@@ -1587,13 +1587,13 @@ def niftyreg_images_in_dir(image_dir,
     reg_resample, or reg_f3d). Can also be the path to a single transformation that will be used for all images
     in image_dir (set same_transformation to True in that case).
     :param result_dir: path of directory where output images will be writen.
-    :param result_transformation_dir: path of directory where resulting trnaformations will be writen (for
+    :param result_transformation_dir: path of directory where resulting transformations will be writen (for
     reg_aladin and reg_f3d).
     :param interpolation: (optional) integer describing the order of the interpolation to apply (0 = nearest neighbours)
     :param same_floating: (optional) set to true if only one image is used as floating image.
     :param same_reference: (optional) whether to use a single image as reference for all input images.
     :param same_transformation: (optional) whether to apply the same transformation to all floating images.
-    :param path_nifty_reg: (optional) path of the folder containing nigty-reg funtions
+    :param path_nifty_reg: (optional) path of the folder containing nifty-reg functions
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
 
@@ -1784,7 +1784,7 @@ def simulate_upsampled_anisotropic_images(image_dir,
     :param downsample_labels_result_dir: (optional) path of directory where downsampled label maps will be writen
     :param slice_thickness: (optional) thickness of slices to simulate. Can be a number, a list or a numpy array.
     :param build_dist_map: (optional) whether to return the resampled images with an additional channel indicating the
-    distace of each voxel to the nearest acquired voxel. Default is False.
+    distance of each voxel to the nearest acquired voxel. Default is False.
     :param path_freesurfer: (optional) path freesurfer home, as this function uses mri_convert
     :param gpu: (optional) whether to use a fast gpu model for blurring
     :param recompute: (optional) whether to recompute result files even if they already exists
@@ -1946,9 +1946,9 @@ def correct_labels_in_dir(labels_dir, results_dir, incorrect_labels, correct_lab
     :param correct_labels: (optional) list of correct label values to replace the incorrect ones.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
     When several correct values are possible for the same incorrect value, the nearest correct value will be selected at
-    each voxel to correct. In that case, the different correct values must be specified inside a list whithin
+    each voxel to correct. In that case, the different correct values must be specified inside a list within
     list_correct_labels (e.g. [10, 20, 30, [40, 50]).
-    :param use_nearest_label: (optional) whether to correct the incorrect lavel values with the nearest labels.
+    :param use_nearest_label: (optional) whether to correct the incorrect label values with the nearest labels.
     :param remove_zero: (optional) if use_nearest_label is True, set to True not to consider zero among the potential
     candidates for the nearest neighbour.
     :param smooth: (optional) whether to smooth the corrected label maps
@@ -2016,11 +2016,11 @@ def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, 
 
 
 def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, connectivity=1, recompute=True):
-    """Smooth all label maps in a folder by replacing each voxel by the value of its most numerous neigbours.
+    """Smooth all label maps in a folder by replacing each voxel by the value of its most numerous neighbours.
     :param labels_dir: path of directory with input label maps
     :param result_dir: path of directory where smoothed label maps will be writen
     :param gpu: (optional) whether to use a gpu implementation for faster processing
-    :param labels_list: (optionnal) if gpu is True, path of numpy array with all label values.
+    :param labels_list: (optional) if gpu is True, path of numpy array with all label values.
     Automatically computed if not provided.
     :param connectivity: (optional) connectivity to use when smoothing the label maps
     :param recompute: (optional) whether to recompute result files even if they already exists
@@ -2084,7 +2084,7 @@ def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, co
 
 def smoothing_gpu_model(label_shape, label_list, connectivity=1):
     """This function builds a gpu model in keras with a tensorflow backend to smooth label maps.
-    This model replaces each voxel of the input by the value of its most numerous neigbour.
+    This model replaces each voxel of the input by the value of its most numerous neighbour.
     :param label_shape: shape of the label map
     :param label_list: list of all labels to consider
     :param connectivity: (optional) connectivity to use when smoothing the label maps
@@ -2122,7 +2122,7 @@ def erode_labels_in_dir(labels_dir, result_dir, labels_to_erode, erosion_factors
     normal erosion applies. If float, we first 1) blur a mask of the corresponding label value with a gpu model,
     and 2) use the erosion factor as a threshold in the blurred mask.
     If erosion_factors is a single value, the same factor will be applied to all labels.
-    :param gpu: (optionnal) whether to use a fast gpu model for blurring (if erosion factors are floats)
+    :param gpu: (optional) whether to use a fast gpu model for blurring (if erosion factors are floats)
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
     # create result dir
@@ -2149,8 +2149,8 @@ def upsample_labels_in_dir(labels_dir,
                            path_label_list=None,
                            path_freesurfer='/usr/local/freesurfer/',
                            recompute=True):
-    """This funtion upsamples all label maps within a folder. Importantly, each label map is converted into probability
-    maps for all label values, and all these maps are upsampled separetely. The upsampled label maps are recovered by
+    """This function upsamples all label maps within a folder. Importantly, each label map is converted into probability
+    maps for all label values, and all these maps are upsampled separately. The upsampled label maps are recovered by
     taking the argmax of the label values probability maps.
     :param labels_dir: path of directory with label maps to upsample
     :param target_res: resolution at which to upsample the label maps. can be a single number (isotropic), or a list.

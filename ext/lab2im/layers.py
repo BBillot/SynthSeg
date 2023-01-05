@@ -27,7 +27,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -75,7 +75,7 @@ class RandomSpatialDeformation(Layer):
     :param shearing_bounds: (optional) same as scaling bounds. Default is shearing_bounds = 0.012.
     :param translation_bounds: (optional) same as scaling bounds. Default is translation_bounds = False, but we
     encourage using it when cropping is deactivated (i.e. when output_shape=None in BrainGenerator).
-    :param enable_90_rotations: (optional) wheter to rotate the input by a random angle chosen in {0, 90, 180, 270}.
+    :param enable_90_rotations: (optional) whether to rotate the input by a random angle chosen in {0, 90, 180, 270}.
     This is done regardless of the value of rotation_bounds. If true, a different value is sampled for each dimension.
     :param nonlin_std: (optional) maximum value of the standard deviation of the normal distribution from which we
     sample the small-size SVF. Set to 0 if you wish to completely turn the elastic deformation off.
@@ -166,7 +166,7 @@ class RandomSpatialDeformation(Layer):
         inputs = [tf.cast(v, dtype='float32') for v in inputs]
         batchsize = tf.split(tf.shape(inputs[0]), [1, self.n_dims + 1])[0]
 
-        # initialise list of transfors to operate
+        # initialise list of transforms to operate
         list_trans = list()
 
         # add affine deformation to inputs list
@@ -276,12 +276,12 @@ class RandomFlip(Layer):
     """This function flips the input tensors along the specified axes with a probability of 0.5.
     The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
     If specified, this layer can also swap corresponding values, such that the flip tensors stay consistent with the
-    native spatial orientation (especially when flipping in the righ/left dimension).
+    native spatial orientation (especially when flipping in the right/left dimension).
     :param flip_axis: integer, or list of integers specifying the dimensions along which to flip. The values exclude the
     batch dimension (e.g. 0 will flip the tensor along the first axis after the batch dimension). Default is None, where
     the tensors can be flipped along any of the axes (except batch and channel axes).
-    :param swap_labels: list of booleans to specify wether to swap the values of each input. All the inputs for which
-    the values need to be swapped must have a int32 ot int64 dtype.
+    :param swap_labels: list of booleans to specify whether to swap the values of each input. All the inputs for which
+    the values need to be swapped must have an int32 ot int64 dtype.
     :param label_list: if swap_labels is True, list of all labels contained in labels. Must be ordered as follows, first
      the neutral labels (i.e. non-sided), then left labels and right labels.
     :param n_neutral_labels: if swap_labels is True, number of non-sided labels
@@ -332,7 +332,7 @@ class RandomFlip(Layer):
         # axis along which to flip
         self.flip_axis = utils.reformat_to_list(flip_axis)
 
-        # wether to swap labels, and corresponding label list
+        # whether to swap labels, and corresponding label list
         self.swap_labels = utils.reformat_to_list(swap_labels)
         self.label_list = label_list
         self.n_neutral_labels = n_neutral_labels
@@ -428,7 +428,7 @@ class SampleConditionalGMM(Layer):
 
     Layer inputs:
     label_map: input label map of shape [batchsize, shape_dim1, ..., shape_dimn, n_channel].
-    All the values of label_map must be contained in generation_labels, but the input label_map doesn't necesseraly have
+    All the values of label_map must be contained in generation_labels, but the input label_map doesn't necessarily have
     to contain all the values in generation_labels.
     means: tensor containing the mean values of all Gaussian distributions of the GMM.
            It must be of shape [batchsize, N, n_channel], and in the same order as generation label,
@@ -555,7 +555,7 @@ class SampleResolution(Layer):
 
         # check maximum resolutions
         assert ((self.max_res_iso_input is not None) | (self.max_res_aniso_input is not None)), \
-            'at least one of maximinum isotropic or anisotropic resolutions must be provided, received none'
+            'at least one of maximum isotropic or anisotropic resolutions must be provided, received none'
 
         # reformat resolutions as numpy arrays
         self.min_res = np.array(self.min_res)
@@ -569,7 +569,7 @@ class SampleResolution(Layer):
         if self.max_res_aniso_input is not None:
             self.max_res_aniso = np.array(self.max_res_aniso_input)
             assert len(self.min_res) == len(self.max_res_aniso), \
-                'min and anisotopic max resolution must have the same length, ' \
+                'min and anisotropic max resolution must have the same length, ' \
                 'had {} and {}'.format(self.min_res, self.max_res_aniso)
             if np.array_equal(self.min_res, self.max_res_aniso):
                 self.max_res_aniso = None
@@ -651,7 +651,7 @@ class GaussianBlur(Layer):
     :param random_blur_range: (optional) if not None, this introduces a randomness in the blurring kernels, where
     sigma is now multiplied by a coefficient dynamically sampled from a uniform distribution with bounds
     [1/random_blur_range, random_blur_range].
-    :param use_mask: (optional) whether a mask of the input will be provided as an additionnal layer input. This is used
+    :param use_mask: (optional) whether a mask of the input will be provided as an additional layer input. This is used
     to mask the blurred image, and to correct for edge blurring effects.
 
     example 1:
@@ -663,13 +663,13 @@ class GaussianBlur(Layer):
 
     example 3:
     output = GaussianBlur(sigma=0.5, random_blur_range=1.15)(input)
-    will blur the input a different gaussian kernel in each dimension, as each dimension will be associated with a
+    will blur the input a different gaussian kernel in each dimension, as each dimension will be associated with
     a kernel, whose standard deviation will be uniformly sampled from [0.5/1.15; 0.5*1.15].
 
     example 4:
     output = GaussianBlur(sigma=0.5, use_mask=True)([input, mask])
     will 1) blur the input a different gaussian kernel in each dimension, 2) mask the blurred image with the provided
-    mask, and 3) correct for edge blurring effects. If the provided mask is not of boolean type, it will thresholded
+    mask, and 3) correct for edge blurring effects. If the provided mask is not of boolean type, it will be thresholded
     above positive values.
     """
 
@@ -769,7 +769,7 @@ class DynamicGaussianBlur(Layer):
 
     example:
     blurred_image = DynamicGaussianBlur(max_sigma=[5.]*3, random_blurring_range=1.15)([image, sigma])
-    will return a blurred version of image, where the standard deviation of each dimension (given as an tensor, and with
+    will return a blurred version of image, where the standard deviation of each dimension (given as a tensor, and with
     values lower than 5 for each axis) is multiplied by a random coefficient uniformly sampled from [1/1.15; 1.15].
     """
 
@@ -833,7 +833,7 @@ class MimicAcquisition(Layer):
 
     :param volume_res: resolution of the provided inputs. Must be a 1-D numpy array with n_dims elements.
     :param min_subsample_res: lower bound of the acquisition resolutions to mimic (i.e. the input resolution must have
-    values higher than min-subseample_res).
+    values higher than min-subsample_res).
     :param resample_shape: shape of the output tensor
     :param build_dist_map: whether to return distance maps as outputs. These indicate the distance between each voxel
     and the nearest non-interpolated voxel (during the second resampling).
@@ -858,7 +858,7 @@ class MimicAcquisition(Layer):
     resample_shape = [128, 128, 128]
     output = MimicAcquisition(im_res, low_res, resample_shape)([image, res])
     output will be a tensor of shape (None, 128, 128, 128, 1), obtained by downsampling each examples of the batch to
-    the matching resolution in res, and resanpling them all to half the initial resolution.
+    the matching resolution in res, and resampling them all to half the initial resolution.
     Note that the provided res must have higher values than min_low_res.
     """
 
@@ -896,7 +896,7 @@ class MimicAcquisition(Layer):
 
     def build(self, input_shape):
 
-        # set up input shape and acquisistion shape
+        # set up input shape and acquisition shape
         self.inshape = input_shape[0][1:]
         self.n_channels = input_shape[0][-1]
         self.add_batchsize = False if (input_shape[1][0] is None) else True
@@ -985,7 +985,7 @@ class BiasFieldCorruption(Layer):
     1) we first sample a value for the standard deviation of a centred normal distribution
     2) a small-size SVF is sampled from this normal distribution
     3) the small SVF is then resized with trilinear interpolation to image size
-    4) it is rescaled to postive values by taking the voxel-wise exponential
+    4) it is rescaled to positive values by taking the voxel-wise exponential
     5) it is multiplied to the input tensor.
     The input tensor is expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
 
@@ -1080,7 +1080,7 @@ class IntensityAugmentation(Layer):
     from the range [0, noise_std]). Set to 0 to skip this step.
     :param clip: clip the input tensor between the given values. Can either be: a number (in which case we clip between
     0 and the given value), or a list or a numpy array with two elements. Default is 0, where no clipping occurs.
-    :param normalise: whether to apply min-max normalistion, to normalise between 0 and 1. Default is True.
+    :param normalise: whether to apply min-max normalisation, to normalise between 0 and 1. Default is True.
     :param norm_perc: percentiles of the sorted intensity values to take for robust normalisation. Can either be:
     a number (in which case the robust minimum is the provided percentile of sorted values, and the maximum is the
     1 - norm_perc percentile), or a list/numpy array of 2 elements (percentiles for the minimum and maximum values).
@@ -1440,7 +1440,7 @@ class MaskEdges(Layer):
     :param boundaries: numpy array of shape (len(axes), 4). Each row contains the two bounds of the uniform
     distributions from which we draw the width of the zero-bands on each side.
     Those bounds must be expressed in relative side (i.e. between 0 and 1).
-    :return: a tensor of the same shape as the input, with bands of zeros along the pecified axes.
+    :return: a tensor of the same shape as the input, with bands of zeros along the specified axes.
 
     example:
     tensor=tf.constant([[[[1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],

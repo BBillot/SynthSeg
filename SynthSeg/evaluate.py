@@ -6,7 +6,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -61,7 +61,7 @@ def dice(x, y):
 
 
 def surface_distances(x, y, hausdorff_percentile=None, return_coordinate_max_distance=False):
-    """Computes the maximum boundary distance (Haussdorff distance), and the average boundary distance of two masks.
+    """Computes the maximum boundary distance (Hausdorff distance), and the average boundary distance of two masks.
     :param x: numpy array (boolean or 0/1)
     :param y: numpy array (boolean or 0/1)
     :param hausdorff_percentile: (optional) percentile (from 0 to 100) for which to compute the Hausdorff distance.
@@ -157,7 +157,7 @@ def compute_non_parametric_paired_test(dice_ref, dice_compare, eval_indices=None
     :param dice_compare: numpy array of the same format as dice_ref.
     :param eval_indices: (optional) list or 1d array indicating the row indices of structures to run the tests for.
     Default is None, for which p-values are computed for all rows.
-    :param alternative: (optional) The alternative hypothesis to be tested, Cab be 'two-sided', 'greater', 'less'.
+    :param alternative: (optional) The alternative hypothesis to be tested, can be 'two-sided', 'greater', 'less'.
     :return: 1d numpy array, with p-values for all tests on evaluated structures, as well as an additional test for
     average scores (last value of the array). The average score is computed only on the evaluation structures.
     """

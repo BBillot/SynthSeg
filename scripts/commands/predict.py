@@ -6,7 +6,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -51,14 +51,14 @@ parser.add_argument("--topology_classes", type=str, dest="topology_classes", def
 parser.add_argument("--smoothing", type=float, dest="sigma_smoothing", default=0.5,
                     help="var for gaussian blurring of the posteriors")
 parser.add_argument("--biggest_component", action='store_true', dest="keep_biggest_component",
-                    help="only keep biggest component in segmentation (recommanded)")
+                    help="only keep biggest component in segmentation (recommended)")
 
 # Architecture parameters
-parser.add_argument("--conv_size", type=int, dest="conv_size", default=3, help="size of unet's convolution masks")
+parser.add_argument("--conv_size", type=int, dest="conv_size", default=3, help="size of unet convolution masks")
 parser.add_argument("--n_levels", type=int, dest="n_levels", default=5, help="number of levels for unet")
 parser.add_argument("--conv_per_level", type=int, dest="nb_conv_per_level", default=2, help="conv par level")
 parser.add_argument("--unet_feat", type=int, dest="unet_feat_count", default=24,
-                    help="number of features of Unet's first layer")
+                    help="number of features of unet first layer")
 parser.add_argument("--feat_mult", type=int, dest="feat_multiplier", default=2,
                     help="factor of new feature maps per level")
 parser.add_argument("--activation", type=str, dest="activation", default='elu', help="activation function")

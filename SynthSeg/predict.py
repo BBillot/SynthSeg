@@ -6,7 +6,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -523,7 +523,7 @@ def postprocess(post_patch, shape, pad_idx, crop_idx, n_dims,
                 post_patch[..., idx] *= tmp_mask
         post_patch = edit_volumes.crop_volume_with_idx(post_patch, pad_idx, n_dims=3, return_copy=False)
 
-    # renormalise posteriors and get hard segmentation
+    # normalise posteriors and get hard segmentation
     if keep_biggest_component | (topology_classes is not None):
         post_patch /= np.sum(post_patch, axis=-1)[..., np.newaxis]
     seg_patch = labels_segmentation[post_patch.argmax(-1).astype('int32')].astype('int32')

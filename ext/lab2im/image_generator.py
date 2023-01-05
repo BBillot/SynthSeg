@@ -6,7 +6,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -43,7 +43,7 @@ class ImageGenerator:
                  blur_range=1.15):
         """
         This class is wrapper around the lab2im_model model. It contains the GPU model that generates images from labels
-        maps, and a python generator that suplies the input data for this model.
+        maps, and a python generator that supplies the input data for this model.
         To generate pairs of image/labels you can just call the method generate_image() on an object of this class.
 
         :param labels_dir: path of folder with all input label maps, or to a single label map.
@@ -57,7 +57,7 @@ class ImageGenerator:
         Default is None, where the label values are directly gotten from the provided label maps.
         If not None, can be a sequence or a 1d numpy array, or the path to a 1d numpy array.
         :param output_labels: (optional) list of the same length as generation_labels to indicate which values to use in
-        the label maps returned by this function, i.e. all occurences of generation_labels[i] in the input label maps
+        the label maps returned by this function, i.e. all occurrences of generation_labels[i] in the input label maps
         will be converted to output_labels[i] in the returned label maps. Examples:
         Set output_labels[i] to zero if you wish to erase the value generation_labels[i] from the returned label maps.
         Set output_labels[i]=generation_labels[i] to keep the value generation_labels[i] in the returned maps.
@@ -77,7 +77,7 @@ class ImageGenerator:
 
         # GMM-sampling parameters
         :param generation_classes: (optional) Indices regrouping generation labels into classes of same intensity
-        distribution. Regouped labels will thus share the same Gaussian when samling a new image. Can be a sequence, a
+        distribution. Regrouped labels will thus share the same Gaussian when sampling a new image. Can be a sequence, a
         1d numpy array, or the path to a 1d numpy array.
         It should have the same length as generation_labels, and contain values between 0 and K-1, where K is the total
         number of classes. Default is all labels have different classes (K=len(generation_labels)).
@@ -107,7 +107,7 @@ class ImageGenerator:
         # blurring parameters
         :param blur_range: (optional) Randomise the standard deviation of the blurring kernels, (whether data_res is
         given or not). At each mini_batch, the standard deviation of the blurring kernels are multiplied by a c
-        oefficient sampled from a uniform distribution with bounds [1/blur_range, blur_range].
+        coefficient sampled from a uniform distribution with bounds [1/blur_range, blur_range].
         If None, no randomisation. Default is 1.15.
         """
 

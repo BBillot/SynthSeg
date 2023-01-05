@@ -14,7 +14,7 @@ Copyright 2020 Benjamin Billot
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
 compliance with the License. You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing permissions and limitations under the
@@ -45,7 +45,7 @@ def blurring_sigma_for_downsampling(current_res, downsample_res, mult_coef=None,
     Can be a 1d numpy array or list or tensor of the same length as downsample res.
     :param mult_coef: (optional) multiplicative coefficient for the blurring kernel. Default is 0.75.
     :param thickness: (optional) slice thickness in each dimension. Must be the same type as downsample_res.
-    :return: standard deviation of the blurring masks given as as the same type as downsample_res (list or tensor).
+    :return: standard deviation of the blurring masks given as the same type as downsample_res (list or tensor).
     """
 
     if not tf.is_tensor(downsample_res):
@@ -211,7 +211,7 @@ def unit_kernel(dist_threshold, n_dims, max_dist_threshold=None):
     (batch_size, 1), or a float.
     :param n_dims: dimension of the kernel to return (excluding batch and channel dimensions).
     :param max_dist_threshold: if distance_threshold is a tensor, max_dist_threshold must be given. It represents the
-    maximum value that will passed in dist_threshold. Must be a float.
+    maximum value that will be passed to dist_threshold. Must be a float.
     """
 
     # convert dist_threshold into a tensor
@@ -299,7 +299,7 @@ def resample_tensor(tensor,
             tensor = nrn_layers.Resize(size=downsample_shape, interp_method='nearest')(tensor)
 
     # resample image at target resolution
-    if resample_shape != downsample_shape:  # if we didn't dowmsample downsample_shape = tensor_shape
+    if resample_shape != downsample_shape:  # if we didn't downsample downsample_shape = tensor_shape
         tensor._keras_shape = tuple(tensor.get_shape().as_list())
         tensor = nrn_layers.Resize(size=resample_shape, interp_method=interp_method)(tensor)
 
