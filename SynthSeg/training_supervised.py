@@ -148,11 +148,11 @@ def training(image_dir,
     of the input label maps. Can be a number, a sequence, or a 1d numpy array. Set to None to deactivate it, but if
     randomise_res is True, at least one of max_res_iso or max_res_aniso must be given.
     :param data_res: (optional) specific acquisition resolution to mimic, as opposed to random resolution sampled when
-    randomis_res is True. This triggers a blurring which mimics the acquisition resolution, but downsampling is optional
-    (see param downsample). Default for data_res is None, where images are slightly blurred. If the generated images are
-    uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d numpy array, or the path
-    to a 1d numy array. In the multi-modal case, it should be given as a umpy array (or a path) of size (n_mod, n_dims),
-    where each row is the acquisition resolution of the corresponding channel.
+    randomise_res is True. This triggers a blurring which mimics the acquisition resolution, but downsampling is
+    optional (see param downsample). Default for data_res is None, where images are slightly blurred. If the generated
+    images are uni-modal, data_res can be a number (isotropic acquisition resolution), a sequence, a 1d numpy array, or
+    the path to a 1d numpy array. In the multi-modal case, it should be given as a umpy array (or a path) of size
+    (n_mod, n_dims), where each row is the acquisition resolution of the corresponding channel.
     :param thickness: (optional) if data_res is provided, we can further specify the slice thickness of the low
     resolution images to mimic. Must be provided in the same format as data_res. Default thickness = data_res.
 
