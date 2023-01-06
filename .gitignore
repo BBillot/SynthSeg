@@ -8,6 +8,7 @@ models/synthseg_qc_2.0.h5
 models/synthseg_robust_2.0.h5
 
 scripts/commands/training_group.py
+scripts/commands/SynthSeg_predict_claustrum.py
 scripts/Denoiser
 scripts/gradients
 scripts/heart
@@ -22,6 +23,7 @@ SynthSeg/brain_generator_*
 SynthSeg/check_*
 SynthSeg/predict_synthseg_*
 SynthSeg/predict_vae.py
+SynthSeg/qc.py
 SynthSeg/training_heart.py
 SynthSeg/training_vae.py
 SynthSeg/validate_vae.py
