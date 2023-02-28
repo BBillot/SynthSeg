@@ -70,8 +70,8 @@ list_input_labels = ['../../data/tutorial_7/noisy_segmentations_d/0001.nii.gz',
                      '../../data/tutorial_7/noisy_segmentations_d/0002.nii.gz',
                      '../../data/tutorial_7/noisy_segmentations_d/0003.nii.gz']
 list_target_labels = ['../../data/tutorial_7/target_segmentations_d/0001.nii.gz',
-                            '../../data/tutorial_7/target_segmentations_d/0002.nii.gz',
-                            '../../data/tutorial_7/target_segmentations_d/0003.nii.gz']
+                      '../../data/tutorial_7/target_segmentations_d/0002.nii.gz',
+                      '../../data/tutorial_7/target_segmentations_d/0003.nii.gz']
 
 # Moreover, we perform spatial augmentation on the sampled pairs, in order to further increase the morphological
 # variability seen by the network. Furthermore, the input "noisy" segmentations are further augmented with random

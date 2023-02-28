@@ -36,6 +36,7 @@ License.
 
 
 # python imports
+import keras
 import numpy as np
 import tensorflow as tf
 import keras.backend as K
@@ -51,10 +52,9 @@ import ext.neuron.layers as nrn_layers
 
 
 class RandomSpatialDeformation(Layer):
-
     """This layer spatially deforms one or several tensors with a combination of affine and elastic transformations.
     The input tensors are expected to have the same shape [batchsize, shape_dim1, ..., shape_dimn, channel].
-    The non linear deformation is obtained by:
+    The non-linear deformation is obtained by:
     1) a small-size SVF is sampled from a centred normal distribution of random standard deviation.
     2) it is resized with trilinear interpolation to half the shape of the input tensor
     3) it is integrated to obtain a diffeomorphic transformation
@@ -208,7 +208,6 @@ class RandomSpatialDeformation(Layer):
 
 
 class RandomCrop(Layer):
-
     """Randomly crop all input tensors to a given shape. This cropping is applied to all channels.
     The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
     :param crop_shape: list with cropping shape in each dimension (excluding batch and channel dimension)
@@ -272,7 +271,6 @@ class RandomCrop(Layer):
 
 
 class RandomFlip(Layer):
-
     """This function flips the input tensors along the specified axes with a probability of 0.5.
     The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
     If specified, this layer can also swap corresponding values, such that the flip tensors stay consistent with the
@@ -706,7 +704,7 @@ class GaussianBlur(Layer):
             self.n_channels = input_shape[-1]
 
         # prepare blurring kernel
-        self.stride = [1]*(self.n_dims+2)
+        self.stride = [1] * (self.n_dims + 2)
         self.sigma = utils.reformat_to_list(self.sigma, length=self.n_dims)
         self.separable = np.linalg.norm(np.array(self.sigma)) > 5
         if self.blur_range is None:  # fixed kernels
@@ -1081,7 +1079,7 @@ class IntensityAugmentation(Layer):
     :param clip: clip the input tensor between the given values. Can either be: a number (in which case we clip between
     0 and the given value), or a list or a numpy array with two elements. Default is 0, where no clipping occurs.
     :param normalise: whether to apply min-max normalisation, to normalise between 0 and 1. Default is True.
-    :param norm_perc: percentiles of the sorted intensity values to take for robust normalisation. Can either be:
+    :param norm_perc: percentiles (between 0 and 1) of the sorted intensity values for robust normalisation. Can be:
     a number (in which case the robust minimum is the provided percentile of sorted values, and the maximum is the
     1 - norm_perc percentile), or a list/numpy array of 2 elements (percentiles for the minimum and maximum values).
     The minimum and maximum values are computed separately for each channel if separate_channels is True.
@@ -1211,69 +1209,146 @@ class IntensityAugmentation(Layer):
 
         return inputs
 
-    def _single_invert(self, inputs):
+    @staticmethod
+    def _single_invert(inputs):
         return K.switch(tf.squeeze(inputs[1]), 1 - inputs[0], inputs[0])
 
 
 class DiceLoss(Layer):
-    """This layer computes the Dice loss between two tensors. These tensors are expected to 1) have the same shape, and
-    2) be probabilistic, i.e. they must have the same shape [batchsize, size_dim1, ..., size_dimN, n_labels] where
-    n_labels is the number of labels for which we compute the Dice loss."""
+    """This layer computes the soft Dice loss between two tensors.
+    These tensors are expected to have the same shape (one-hot encoding) [batch, size_dim1, ..., size_dimN, n_labels].
+    The first input tensor is the GT and the second is the prediction: dice_loss = DiceLoss()([gt, pred])
 
-    def __init__(self, enable_checks=True, **kwargs):
-        self.inshape = None
+    :param class_weights: (optional) if given, the loss is obtained by a weighted average of the Dice across labels.
+    Must be a sequence or 1d numpy array of length n_labels. Can also be -1, where the weights are dynamically set to
+    the inverse of the volume of each label in the ground truth.
+    :param boundary_weights: (optional) bonus weight that we apply to the voxels close to boundaries between structures
+    when computing the loss. Default is 0 where no boundary weighting is applied.
+    :param boundary_dist: (optional) if boundary_weight is not 0, the extra boundary weighting is applied to all voxels
+    within this distance to a region boundary. Default is 3.
+    :param skip_background: (optional) whether to skip boundary weighting for the background class, as this may be
+    redundant when we have several labels. This is only used if boundary_weight is not 0.
+    :param enable_checks: (optional) whether to make sure that the 2 input tensors are probabilistic (i.e. the label
+    probabilities sum to 1 at each voxel location). Default is True.
+    """
+
+    def __init__(self,
+                 class_weights=None,
+                 boundary_weights=0,
+                 boundary_dist=3,
+                 skip_background=True,
+                 enable_checks=True,
+                 **kwargs):
+
+        self.class_weights = class_weights
+        self.dynamic_weighting = False
+        self.class_weights_tens = None
+        self.boundary_weights = boundary_weights
+        self.boundary_dist = boundary_dist
+        self.skip_background = skip_background
         self.enable_checks = enable_checks
+        self.spatial_axes = None
+        self.avg_pooling_layer = None
         super(DiceLoss, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
+        config["class_weights"] = self.class_weights
+        config["boundary_weights"] = self.boundary_weights
+        config["boundary_dist"] = self.boundary_dist
+        config["skip_background"] = self.skip_background
         config["enable_checks"] = self.enable_checks
         return config
 
     def build(self, input_shape):
+
+        # get shape
         assert len(input_shape) == 2, 'DiceLoss expects 2 inputs to compute the Dice loss.'
         assert input_shape[0] == input_shape[1], 'the two inputs must have the same shape.'
-        self.inshape = input_shape[0][1:]
+        inshape = input_shape[0][1:]
+        n_dims = len(inshape[:-1])
+        n_labels = inshape[-1]
+        self.spatial_axes = list(range(1, n_dims + 1))
+        self.avg_pooling_layer = getattr(keras.layers, 'AvgPool%dD' % n_dims)
+        self.skip_background = False if n_labels == 1 else self.skip_background
+
+        # build tensor with class weights
+        if self.class_weights is not None:
+            if self.class_weights == -1:
+                self.dynamic_weighting = True
+            else:
+                class_weights_tens = utils.reformat_to_list(self.class_weights, n_labels)
+                class_weights_tens = tf.convert_to_tensor(class_weights_tens, 'float32')
+                self.class_weights_tens = l2i_et.expand_dims(class_weights_tens, 0)
+
         self.built = True
         super(DiceLoss, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
 
         # make sure tensors are probabilistic
-        x = inputs[0]
-        y = inputs[1]
+        gt = inputs[0]
+        pred = inputs[1]
         if self.enable_checks:  # disabling is useful to, e.g., use incomplete label maps
-            x = K.clip(x / (tf.math.reduce_sum(x, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
-            y = K.clip(y / (tf.math.reduce_sum(y, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
+            gt = K.clip(gt / (tf.math.reduce_sum(gt, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
+            pred = K.clip(pred / (tf.math.reduce_sum(pred, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
 
         # compute dice loss for each label
-        top = tf.math.reduce_sum(2 * x * y, axis=list(range(1, len(self.inshape))))
-        bottom = tf.math.square(x) + tf.math.square(y) + tf.keras.backend.epsilon()
-        bottom = tf.math.reduce_sum(bottom, axis=list(range(1, len(self.inshape))))
-        last_tensor = top / bottom
+        top = 2 * gt * pred
+        bottom = tf.math.square(gt) + tf.math.square(pred)
 
-        return K.mean(1 - last_tensor)
+        # apply boundary weighting (ie voxels close to region boundaries will be counted several times to compute Dice)
+        if self.boundary_weights:
+            avg = self.avg_pooling_layer(pool_size=2 * self.boundary_dist + 1, strides=1, padding='same')(gt)
+            boundaries = tf.cast(avg > 0., 'float32') * tf.cast(avg < (1 / len(self.spatial_axes) - 1e-4), 'float32')
+            if self.skip_background:
+                boundaries_channels = tf.unstack(boundaries, axis=-1)
+                boundaries = tf.stack([tf.zeros_like(boundaries_channels[0])] + boundaries_channels[1:], axis=-1)
+            boundary_weights_tensor = 1 + self.boundary_weights * boundaries
+            top *= boundary_weights_tensor
+            bottom *= boundary_weights_tensor
+        else:
+            boundary_weights_tensor = None
+
+        # compute loss
+        top = tf.math.reduce_sum(top, self.spatial_axes)
+        bottom = tf.math.reduce_sum(bottom, self.spatial_axes)
+        dice = (top + tf.keras.backend.epsilon()) / (bottom + tf.keras.backend.epsilon())
+        loss = 1 - dice
+
+        # apply class weighting across labels. In this case loss will have shape (batch), otherwise (batch, n_labels).
+        if self.dynamic_weighting:  # the weight of a class is the inverse of its volume in the gt
+            if boundary_weights_tensor is not None:  # we account for the boundary weighting to compute volume
+                self.class_weights_tens = 1 / tf.reduce_sum(gt * boundary_weights_tensor, self.spatial_axes)
+            else:
+                self.class_weights_tens = 1 / tf.reduce_sum(gt, self.spatial_axes)
+        if self.class_weights_tens is not None:
+            self. class_weights_tens /= tf.reduce_sum(self.class_weights_tens, -1)
+            loss = tf.reduce_sum(loss * self.class_weights_tens, -1)
+
+        return tf.math.reduce_mean(loss)
 
     def compute_output_shape(self, input_shape):
         return [[]]
 
 
 class WeightedL2Loss(Layer):
-    """This layer computes a L2 loss weighted by a specified factor between two tensors.
-    These tensors are expected to have the same shape [batchsize, size_dim1, ..., size_dimN, n_labels]
-    where n_labels is the number of labels for which we compute the loss.
-    Importantly, the first input tensor is the GT, whereas the second is the prediction."""
+    """This layer computes a L2 loss weighted by a specified factor (target_value) between two tensors.
+    This is designed to be used on the layer before the softmax.
+    The tensors are expected to have the same shape [batchsize, size_dim1, ..., size_dimN, n_labels].
+    The first input tensor is the GT and the second is the prediction: wl2_loss = WeightedL2Loss()([gt, pred])
 
-    def __init__(self, target_value, background_weight=1e-4, **kwargs):
+    :param target_value: target value for the layer before softmax: target_value when gt = 1, -target_value when gt = 0.
+    """
+
+    def __init__(self, target_value=5, **kwargs):
         self.target_value = target_value
-        self.background_weight = background_weight
         self.n_labels = None
         super(WeightedL2Loss, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
         config["target_value"] = self.target_value
-        config["background_weight"] = self.background_weight
         return config
 
     def build(self, input_shape):
@@ -1286,8 +1361,209 @@ class WeightedL2Loss(Layer):
     def call(self, inputs, **kwargs):
         gt = inputs[0]
         pred = inputs[1]
-        weights = tf.expand_dims(1 - gt[..., 0] + self.background_weight, -1)
+        weights = tf.expand_dims(1 - gt[..., 0] + 1e-8, -1)
         return K.sum(weights * K.square(pred - self.target_value * (2 * gt - 1))) / (K.sum(weights) * self.n_labels)
+
+    def compute_output_shape(self, input_shape):
+        return [[]]
+
+
+class CrossEntropyLoss(Layer):
+    """This layer computes the cross-entropy loss between two tensors.
+    These tensors are expected to have the same shape (one-hot encoding) [batch, size_dim1, ..., size_dimN, n_labels].
+    The first input tensor is the GT and the second is the prediction: ce_loss = CrossEntropyLoss()([gt, pred])
+
+    :param class_weights: (optional) if given, the loss is obtained by a weighted average of the Dice across labels.
+    Must be a sequence or 1d numpy array of length n_labels. Can also be -1, where the weights are dynamically set to
+    the inverse of the volume of each label in the ground truth.
+    :param boundary_weights: (optional) bonus weight that we apply to the voxels close to boundaries between structures
+    when computing the loss. Default is 0 where no boundary weighting is applied.
+    :param boundary_dist: (optional) if boundary_weight is not 0, the extra boundary weighting is applied to all voxels
+    within this distance to a region boundary. Default is 3.
+    :param skip_background: (optional) whether to skip boundary weighting for the background class, as this may be
+    redundant when we have several labels. This is only used if boundary_weight is not 0.
+    :param enable_checks: (optional) whether to make sure that the 2 input tensors are probabilistic (i.e. the label
+    probabilities sum to 1 at each voxel location). Default is True.
+    """
+
+    def __init__(self,
+                 class_weights=None,
+                 boundary_weights=0,
+                 boundary_dist=3,
+                 skip_background=True,
+                 enable_checks=True,
+                 **kwargs):
+
+        self.class_weights = class_weights
+        self.dynamic_weighting = False
+        self.class_weights_tens = None
+        self.boundary_weights = boundary_weights
+        self.boundary_dist = boundary_dist
+        self.skip_background = skip_background
+        self.enable_checks = enable_checks
+        self.spatial_axes = None
+        self.avg_pooling_layer = None
+        super(CrossEntropyLoss, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["class_weights"] = self.class_weights
+        config["boundary_weights"] = self.boundary_weights
+        config["boundary_dist"] = self.boundary_dist
+        config["skip_background"] = self.skip_background
+        config["enable_checks"] = self.enable_checks
+        return config
+
+    def build(self, input_shape):
+
+        # get shape
+        assert len(input_shape) == 2, 'CrossEntropy expects 2 inputs to compute the Dice loss.'
+        assert input_shape[0] == input_shape[1], 'the two inputs must have the same shape.'
+        inshape = input_shape[0][1:]
+        n_dims = len(inshape[:-1])
+        n_labels = inshape[-1]
+        self.spatial_axes = list(range(1, n_dims + 1))
+        self.avg_pooling_layer = getattr(keras.layers, 'AvgPool%dD' % n_dims)
+        self.skip_background = False if n_labels == 1 else self.skip_background
+
+        # build tensor with class weights
+        if self.class_weights is not None:
+            if self.class_weights == -1:
+                self.dynamic_weighting = True
+            else:
+                class_weights_tens = utils.reformat_to_list(self.class_weights, n_labels)
+                class_weights_tens = tf.convert_to_tensor(class_weights_tens, 'float32')
+                self.class_weights_tens = l2i_et.expand_dims(class_weights_tens, [0] * (1 + n_dims))
+
+        self.built = True
+        super(CrossEntropyLoss, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+
+        # make sure tensors are probabilistic
+        gt = inputs[0]
+        pred = inputs[1]
+        if self.enable_checks:  # disabling is useful to, e.g., use incomplete label maps
+            gt = K.clip(gt / (tf.math.reduce_sum(gt, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
+            pred = pred / (tf.math.reduce_sum(pred, axis=-1, keepdims=True) + tf.keras.backend.epsilon())
+            pred = K.clip(pred, tf.keras.backend.epsilon(), 1 - tf.keras.backend.epsilon())  # to avoid log(0)
+
+        # compare prediction/target, ce has the same shape has the input tensors
+        ce = -gt * tf.math.log(pred)
+
+        # apply boundary weighting (ie voxels close to region boundaries will be counted several times to compute Dice)
+        if self.boundary_weights:
+            avg = self.avg_pooling_layer(pool_size=2 * self.boundary_dist + 1, strides=1, padding='same')(gt)
+            boundaries = tf.cast(avg > 0., 'float32') * tf.cast(avg < (1 / len(self.spatial_axes) - 1e-4), 'float32')
+            if self.skip_background:
+                boundaries_channels = tf.unstack(boundaries, axis=-1)
+                boundaries = tf.stack([tf.zeros_like(boundaries_channels[0])] + boundaries_channels[1:], axis=-1)
+            boundary_weights_tensor = 1 + self.boundary_weights * boundaries
+            ce *= boundary_weights_tensor
+        else:
+            boundary_weights_tensor = None
+
+        # apply class weighting across labels. By the end of this, ce still has the same shape has the input tensors.
+        if self.dynamic_weighting:  # the weight of a class is the inverse of its volume in the gt
+            if boundary_weights_tensor is not None:  # we account for the boundary weighting to compute volume
+                self.class_weights_tens = 1 / tf.reduce_sum(gt * boundary_weights_tensor, self.spatial_axes, True)
+            else:
+                self.class_weights_tens = 1 / tf.reduce_sum(gt, self.spatial_axes)
+        if self.class_weights_tens is not None:
+            self.class_weights_tens /= tf.reduce_sum(self.class_weights_tens, -1)
+            ce = tf.reduce_sum(ce * self.class_weights_tens, -1)
+
+        # sum along label axis, and take the mean along spatial dimensions
+        ce = tf.math.reduce_mean(tf.math.reduce_sum(ce, axis=-1))
+
+        return ce
+
+    def compute_output_shape(self, input_shape):
+        return [[]]
+
+
+class MomentLoss(Layer):
+    """This layer computes a moment loss between two tensors. Specifically, it computes the distance between the centres
+    of gravity for all the channels of the two tensors, and then returns a value averaged across all channels.
+    These tensors are expected to have the same shape [batch, size_dim1, ..., size_dimN, n_channels].
+    The first input tensor is the GT and the second is the prediction: moment_loss = MomentLoss()([gt, pred])
+
+    :param class_weights: (optional) if given, the loss is obtained by a weighted average of the Dice across labels.
+    Must be a sequence or 1d numpy array of length n_labels. Can also be -1, where the weights are dynamically set to
+    the inverse of the volume of each label in the ground truth.
+    :param enable_checks: (optional) whether to make sure that the 2 input tensors are probabilistic (i.e. the label
+    probabilities sum to 1 at each voxel location). Default is True.
+    """
+
+    def __init__(self, class_weights=None, enable_checks=False, **kwargs):
+        self.class_weights = class_weights
+        self.dynamic_weighting = False
+        self.class_weights_tens = None
+        self.enable_checks = enable_checks
+        self.spatial_axes = None
+        self.coordinates = None
+        super(MomentLoss, self).__init__(**kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        config["class_weights"] = self.class_weights
+        config["enable_checks"] = self.enable_checks
+        return config
+
+    def build(self, input_shape):
+
+        # get shape
+        assert len(input_shape) == 2, 'MomentLoss expects 2 inputs to compute the Dice loss.'
+        assert input_shape[0] == input_shape[1], 'the two inputs must have the same shape.'
+        inshape = input_shape[0][1:]
+        n_dims = len(inshape[:-1])
+        n_labels = inshape[-1]
+        self.spatial_axes = list(range(1, n_dims + 1))
+
+        # build coordinate meshgrid of size (1, dim1, dim2, ..., dimN, ndim, nchan)
+        self.coordinates = tf.stack(nrn_utils.volshape_to_ndgrid(inshape[:-1]), -1)
+        self.coordinates = tf.cast(l2i_et.expand_dims(tf.stack([self.coordinates] * n_labels, -1), 0), 'float32')
+
+        # build tensor with class weights
+        if self.class_weights is not None:
+            if self.class_weights == -1:
+                self.dynamic_weighting = True
+            else:
+                class_weights_tens = utils.reformat_to_list(self.class_weights, n_labels)
+                class_weights_tens = tf.convert_to_tensor(class_weights_tens, 'float32')
+                self.class_weights_tens = l2i_et.expand_dims(class_weights_tens, 0)
+
+        self.built = True
+        super(MomentLoss, self).build(input_shape)
+
+    def call(self, inputs, **kwargs):
+
+        # make sure tensors are probabilistic
+        gt = inputs[0]  # (B, dim1, dim2, ..., dimN, nchan)
+        pred = inputs[1]
+        if self.enable_checks:  # disabling is useful to, e.g., use incomplete label maps
+            gt = gt / (tf.math.reduce_sum(gt, axis=-1, keepdims=True) + tf.keras.backend.epsilon())
+            pred = pred / (tf.math.reduce_sum(pred, axis=-1, keepdims=True) + tf.keras.backend.epsilon())
+
+        # compute loss
+        gt_mean_coordinates = self._mean_coordinates(gt)  # (B, ndim, nchan)
+        pred_mean_coordinates = self._mean_coordinates(pred)
+        loss = tf.math.sqrt(tf.reduce_sum(tf.square(pred_mean_coordinates - gt_mean_coordinates), axis=1))  # (B, nchan)
+
+        # apply class weighting across labels. In this case loss will have shape (batch), otherwise (batch, n_labels).
+        if self.dynamic_weighting:  # the weight of a class is the inverse of its volume in the gt
+            self.class_weights_tens = 1 / tf.reduce_sum(gt, self.spatial_axes)
+        if self.class_weights_tens is not None:
+            self.class_weights_tens /= tf.reduce_sum(self.class_weights_tens, -1)
+            loss = tf.reduce_sum(loss * self.class_weights_tens, -1)
+
+        return tf.math.reduce_mean(loss)
+
+    def _mean_coordinates(self, tensor):
+        tensor = l2i_et.expand_dims(tensor, axis=-2)  # (B, dim1, dim2, ..., dimN, 1, nchan)
+        numerator = tf.reduce_sum(tensor * self.coordinates, axis=self.spatial_axes)  # (B, ndim, nchan)
+        denominator = tf.reduce_sum(tensor, axis=self.spatial_axes) + tf.keras.backend.epsilon()
+        return numerator / denominator
 
     def compute_output_shape(self, input_shape):
         return [[]]
