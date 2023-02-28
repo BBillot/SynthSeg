@@ -1,48 +1,63 @@
 # SynthSeg
 
 
-In this repository, we present SynthSeg, the first convolutional neural network for segmentation of brain scans of
-any contrast and resolution that works out-of-the-box, without retraining or fine-tuning. SynthSeg relies on a single 
-model, which is robust to:
-- a wide array of subject populations: from young and healthy to ageing and diseased subjects,
-- white matter lesions,
-- scans with or without preprocessing, including bias field corruption, skull stripping, intensity normalisation, 
-template registration, etc.
- 
-Here, we distribute the open-source model along with the corresponding code to enable researchers to run SynthSeg on 
-their own data. We emphasise that predictions are given at 1mm isotropic resolution (regardless of the resolution of the
-input images), and can be obtained either by running on the GPU (6s per scan) or on the CPU (1min). 
+In this repository, we present SynthSeg, the first deep learning tool for segmentation of brain scans of
+any contrast and resolution. SynthSeg works out-of-the-box without any retraining, and is also robust to:
+- a wide array of populations: from young and healthy to ageing and diseased,
+- scans with or without preprocessing: bias field correction, skull stripping, normalisation, etc.
+- white matter lesions.
 \
 \
 ![Generation examples](data/README_figures/segmentations.png)
+
+
+\
+SynthSeg was first presented for the automated segmentation of brain scans of any contrast and resolution.
+
+**SynthSeg: Segmentation of brain MRI scans of any contrast and resolution without retraining** \
+B. Billot, D.N. Greve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V. Dalca, J.E. Iglesias \
+Medical Image Analysis (2023) \
+[ [article](https://www.sciencedirect.com/science/article/pii/S1361841523000506) | [arxiv](https://arxiv.org/abs/2107.09559) | [bibtex](bibtex.bib) ]
+\
+\
+Then, we extended it to work on heterogeneous clinical scans, and to perform cortical parcellation and automated 
+quality control.
+
+**Robust machine learning segmentation for large-scale analysisof heterogeneous clinical brain MRI datasets** \
+B. Billot, M. Colin, Y. Cheng, S.E. Arnold, S. Das, J.E. Iglesias \
+PNAS (2023) \
+[ [article](https://www.pnas.org/doi/full/10.1073/pnas.2216399120#bibliography) | [arxiv](https://arxiv.org/abs/2203.01969) | [bibtex](bibtex.bib) ]
+
+\
+\
+Here, we distribute our model to enable users to run SynthSeg on their own data. We emphasise that 
+predictions are always given at 1mm isotropic resolution (regardless of the input resolution). The code can be run on
+the GPU (~15s per scan) or on the CPU (~1min).
 
 
 ----------------
 
 ### New features and updates
 
+\
 04/10/2022: **SynthSeg is available with Matlab!** :star: \
-We are delighted, as much as surprised, that Matlab 2022b (and onwards) now includes SynthSeg in its Medical Image
-Toolbox. They have a fully documented example on how to use it 
-[here](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html). 
-But, to simplify things, we wrote our own Matlab wrapper, which you can call in one single line. Just download this zip
-file by clicking 
-[here](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/ER6UNaiueapFsFh-0R23dK4BC-5b1oa81zY3B16xx-Wobw?e=VkR9rh),
+We are delighted that Matlab 2022b (and onwards) now includes SynthSeg in its Medical Image
+Toolbox. They have a [documented example](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html)
+on how to use it. But, to simplify things, we wrote our own Matlab wrapper, which you can call in one single line. 
+Just download [this zip file](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/ER6UNaiueapFsFh-0R23dK4BC-5b1oa81zY3B16xx-Wobw?e=VkR9rh),
 uncompress it, open Matlab, and type `help SynthSeg` for instructions.
 
+\
 29/06/2022: **SynthSeg 2.0 is out !** :v: \
 In addition to whole-brain segmentation, it now also performs **Cortical parcellation, automated QC, and intracranial 
-volume (ICV) estimation** (see figure below).
+volume (ICV) estimation** (see figure below). Also, most of these features are compatible with SynthSeg 1.0. (see table).
 \
 \
 ![new features](data/README_figures/new_features.png)
 
-For practical reasons, most of these features are compatible with SynthSeg 1.0. Here is a table with a summary of the 
-functionalities supported by each version.
-\
-\
 ![table versions](data/README_figures/table_versions.png)
 
+\
 01/03/2022: **Robust version** :hammer: \
 SynthSeg sometimes falters on scans with low signal-to-noise ratio, or with very low tissue contrast. For this reason, 
 we developed a new model for increased robustness, named "SynthSeg-robust". You can use this mode when SynthSeg gives 
@@ -51,6 +66,7 @@ results like in the figure below:
 \
 ![Robust](data/README_figures/robust.png)
 
+\
 29/10/2021: **SynthSeg is now available on the dev version of
 [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall) !!** :tada: \
 See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
@@ -223,18 +239,23 @@ detailed information is provided in the docstrings of all functions, so don't he
 
 ### Citation/Contact
 
-This code is under [Apache 2.0](LICENSE.txt) licensing. If you use it, please cite the following paper:
+This code is under [Apache 2.0](LICENSE.txt) licensing. 
 
-**SynthSeg: Domain Randomisation for Segmentation of Brain MRI Scans of any Contrast and Resolution** \
+- If you use the **cortical parcellation**, **automated QC**, or **robust version**, please cite the following paper:
+
+**Robust machine learning segmentation for large-scale analysisof heterogeneous clinical brain MRI datasets** \
+B. Billot, M. Colin, Y. Cheng, S.E. Arnold, S. Das, J.E. Iglesias \
+PNAS (2023) \
+[ [article](https://www.pnas.org/doi/full/10.1073/pnas.2216399120#bibliography) | [arxiv](https://arxiv.org/abs/2203.01969) | [bibtex](bibtex.bib) ]
+
+
+- Otherwise, please cite:
+
+**SynthSeg: Segmentation of brain MRI scans of any contrast and resolution without retraining** \
 B. Billot, D.N. Greve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V. Dalca, J.E. Iglesias \
-[[arxiv](https://arxiv.org/abs/2107.09559) | [bibtex](bibtex.bib)]
+Medical Image Analysis (2023) \
+[ [article](https://www.sciencedirect.com/science/article/pii/S1361841523000506) | [arxiv](https://arxiv.org/abs/2107.09559) | [bibtex](bibtex.bib) ]
 
-Instead, if you use the cortical parcellation, automated QC, or robust version, please cite the following paper:
-
-**Robust Segmentation of Brain MRI in the Wild with Hierarchical CNNs and no Retraining** \
-B. Billot, M. Colin, S.E. Arnold, S. Das, J.E. Iglesias \
-MICCAI 2022 \
-[[arxiv](https://arxiv.org/abs/2203.01969) | [bibtex](bibtex.bib)]
-
-If you have any question regarding the usage of this code, or any suggestions to improve it, you can contact us at: \
-benjamin.billot.18@ucl.ac.uk
+If you have any question regarding the usage of this code, or any suggestions to improve it, please riase an issue or 
+contact us at: \
+bbillot@mit.edu
