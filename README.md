@@ -40,6 +40,11 @@ the GPU (~15s per scan) or on the CPU (~1min).
 ### New features and updates
 
 \
+01/03/2023: **The papers for SynthSeg and SynthSeg 2.0 are out! :open_book: :open_book:** \
+After a long review process for SynthSeg (Medical Image Analysis), and a much faster one for SynthSeg 2.0 (PNAS), both
+papers have been accepted nearly at the same time ! See the references above, or in the citation section.
+
+\
 04/10/2022: **SynthSeg is available with Matlab!** :star: \
 We are delighted that Matlab 2022b (and onwards) now includes SynthSeg in its Medical Image
 Toolbox. They have a [documented example](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html)
@@ -132,7 +137,8 @@ corresponding values. This table also details the order in which the posteriors 
 make it work with Python 3.6 (see [requirements_3.6](requirements_python3.6.txt)), but we now also give the list for 
 Python 3.8 (see [requirements_3.8](requirements_python3.8.txt)). Therefore, the choice is yours, but in each case, 
 please stick to the exact versions of the corresponding packages. If you wish to run SynthSeg on the GPU, or to train 
-your own model, you will also need the usual deep learning libraries Cuda (10.0), and CUDNN (7.0).
+your own model, you will also need the usual deep learning libraries Cuda (10.0 for python 3.6, 11.6 for python 3.8), 
+and CUDNN (7.0 for python 3.6, 8.4 for python 3.8).
 
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
@@ -256,6 +262,5 @@ B. Billot, D.N. Greve, O. Puonti, A. Thielscher, K. Van Leemput, B. Fischl, A.V.
 Medical Image Analysis (2023) \
 [ [article](https://www.sciencedirect.com/science/article/pii/S1361841523000506) | [arxiv](https://arxiv.org/abs/2107.09559) | [bibtex](bibtex.bib) ]
 
-If you have any question regarding the usage of this code, or any suggestions to improve it, please riase an issue or 
-contact us at: \
-bbillot@mit.edu
+If you have any question regarding the usage of this code, or any suggestions to improve it, please raise an issue or 
+contact us at: bbillot@mit.edu
