@@ -82,6 +82,7 @@ class RandomSpatialDeformation(Layer):
     :param nonlin_scale: (optional) if nonlin_std is not False, factor between the shapes of the input tensor
     and the shape of the input non-linear tensor.
     :param inter_method: (optional) interpolation method when deforming the input tensor. Can be 'linear', or 'nearest'
+    :param prob: (optional) probability to apply spatial deformation
     """
 
     def __init__(self,
@@ -93,7 +94,7 @@ class RandomSpatialDeformation(Layer):
                  nonlin_std=4.,
                  nonlin_scale=.0625,
                  inter_method='linear',
-                 prob_deform=1,
+                 prob=1,
                  **kwargs):
 
         # shape attributes
@@ -116,7 +117,7 @@ class RandomSpatialDeformation(Layer):
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
                                   self.enable_90_rotations
         self.apply_elastic_trans = self.nonlin_std > 0
-        self.prob_deform = prob_deform
+        self.prob = prob
 
         # interpolation methods
         self.inter_method = inter_method
@@ -133,7 +134,7 @@ class RandomSpatialDeformation(Layer):
         config["nonlin_std"] = self.nonlin_std
         config["nonlin_scale"] = self.nonlin_scale
         config["inter_method"] = self.inter_method
-        config["prob_deform"] = self.prob_deform
+        config["prob"] = self.prob
         return config
 
     def build(self, input_shape):
@@ -197,11 +198,11 @@ class RandomSpatialDeformation(Layer):
 
         # apply deformations and return tensors with correct dtype
         if self.apply_affine_trans | self.apply_elastic_trans:
-            if self.prob_deform == 1:
+            if self.prob == 1:
                 inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in
                           zip(self.inter_method, inputs)]
             else:
-                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_deform))
+                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
                 inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
                           for (m, v) in zip(self.inter_method, inputs)]
         return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
@@ -835,6 +836,7 @@ class MimicAcquisition(Layer):
     :param resample_shape: shape of the output tensor
     :param build_dist_map: whether to return distance maps as outputs. These indicate the distance between each voxel
     and the nearest non-interpolated voxel (during the second resampling).
+    :param prob_noise: proability to apply noise injection
 
     example 1:
     im_res = [1., 1., 1.]
@@ -860,15 +862,19 @@ class MimicAcquisition(Layer):
     Note that the provided res must have higher values than min_low_res.
     """
 
-    def __init__(self, volume_res, min_subsample_res, resample_shape, build_dist_map=False, noise_std=0, **kwargs):
+    def __init__(self, volume_res, min_subsample_res, resample_shape, build_dist_map=False,
+                 noise_std=0, prob_noise=0.95, **kwargs):
 
         # resolutions and dimensions
         self.volume_res = volume_res
         self.min_subsample_res = min_subsample_res
-        self.noise_std = noise_std
         self.n_dims = len(self.volume_res)
         self.n_channels = None
         self.add_batchsize = None
+
+        # noise
+        self.noise_std = noise_std
+        self.prob_noise = prob_noise
 
         # input and output shapes
         self.inshape = None
@@ -887,9 +893,10 @@ class MimicAcquisition(Layer):
         config = super().get_config()
         config["volume_res"] = self.volume_res
         config["min_subsample_res"] = self.min_subsample_res
-        config["noise_std"] = self.noise_std
         config["resample_shape"] = self.resample_shape
         config["build_dist_map"] = self.build_dist_map
+        config["noise_std"] = self.noise_std
+        config["prob_noise"] = self.prob_noise
         return config
 
     def build(self, input_shape):
@@ -933,11 +940,15 @@ class MimicAcquisition(Layer):
         down_loc = K.clip(down_loc, 0., tf.cast(inshape_tens, 'float32'))
         vol = tf.map_fn(self._single_down_interpn, [vol, down_loc], tf.float32)
 
-        # add noise
+        # add noise with predefined probability
         if self.noise_std > 0:
             sample_shape = tf.concat([batchsize, tf.ones([self.n_dims], dtype='int32'),
                                       self.n_channels * tf.ones([1], dtype='int32')], 0)
-            vol += tf.random.normal(tf.shape(vol), stddev=tf.random.uniform(sample_shape, maxval=self.noise_std))
+            noise = tf.random.normal(tf.shape(vol), stddev=tf.random.uniform(sample_shape, maxval=self.noise_std))
+            if self.prob_noise == 1:
+                vol += noise
+            else:
+                vol = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_noise)), vol + noise, vol)
 
         # upsample
         up_loc = tf.tile(self.up_grid, tf.concat([batchsize, tf.ones([self.n_dims + 1], dtype='int32')], axis=0))
@@ -991,9 +1002,10 @@ class BiasFieldCorruption(Layer):
     [0, bias_field_std])
     :param bias_scale: ratio between the shape of the input tensor and the shape of the sampled SVF.
     :param same_bias_for_all_channels: whether to apply the same bias field to all the channels of the input tensor.
+    :param prob: probability to apply this bias field corruption.
     """
 
-    def __init__(self, bias_field_std=.5, bias_scale=.025, same_bias_for_all_channels=False, **kwargs):
+    def __init__(self, bias_field_std=.5, bias_scale=.025, same_bias_for_all_channels=False, prob=0.95, **kwargs):
 
         # input shape
         self.several_inputs = False
@@ -1009,6 +1021,7 @@ class BiasFieldCorruption(Layer):
         self.bias_field_std = bias_field_std
         self.bias_scale = bias_scale
         self.same_bias_for_all_channels = same_bias_for_all_channels
+        self.prob = prob
 
         super(BiasFieldCorruption, self).__init__(**kwargs)
 
@@ -1017,6 +1030,7 @@ class BiasFieldCorruption(Layer):
         config["bias_field_std"] = self.bias_field_std
         config["bias_scale"] = self.bias_scale
         config["same_bias_for_all_channels"] = self.same_bias_for_all_channels
+        config["prob"] = self.prob
         return config
 
     def build(self, input_shape):
@@ -1059,7 +1073,12 @@ class BiasFieldCorruption(Layer):
             bias_field = nrn_layers.Resize(size=self.inshape[0][1:self.n_dims + 1], interp_method='linear')(bias_field)
             bias_field = tf.math.exp(bias_field)
 
-            return [tf.math.multiply(bias_field, v) for v in inputs]
+            # apply bias field with predefined probability
+            if self.prob == 1:
+                return [tf.math.multiply(bias_field, v) for v in inputs]
+            else:
+                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
+                return [K.switch(rand_trans, tf.math.multiply(bias_field, v), v) for v in inputs]
 
         else:
             return inputs
@@ -1089,10 +1108,12 @@ class IntensityAugmentation(Layer):
     :param contrast_inversion: whether to perform contrast inversion (i.e. 1 - x). If True, this is performed randomly
     for each element of the batch, as well as for each channel.
     :param separate_channels: whether to augment all channels separately. Default is True.
+    :param prob_noise: probability to apply noise injection
+    :param prob_gamma: probability to apply gamma augmentation
     """
 
     def __init__(self, noise_std=0, clip=0, normalise=True, norm_perc=0, gamma_std=0, contrast_inversion=False,
-                 separate_channels=True, **kwargs):
+                 separate_channels=True, prob_noise=0.95, prob_gamma=1, **kwargs):
 
         # shape attributes
         self.n_dims = None
@@ -1111,6 +1132,8 @@ class IntensityAugmentation(Layer):
         self.gamma_std = gamma_std
         self.separate_channels = separate_channels
         self.contrast_inversion = contrast_inversion
+        self.prob_noise = prob_noise
+        self.prob_gamma = prob_gamma
 
         super(IntensityAugmentation, self).__init__(**kwargs)
 
@@ -1122,6 +1145,8 @@ class IntensityAugmentation(Layer):
         config["norm_perc"] = self.norm_perc
         config["gamma_std"] = self.gamma_std
         config["separate_channels"] = self.separate_channels
+        config["prob_noise"] = self.prob_noise
+        config["prob_gamma"] = self.prob_gamma
         return config
 
     def build(self, input_shape):
@@ -1158,7 +1183,7 @@ class IntensityAugmentation(Layer):
         else:
             sample_shape = None
 
-        # add noise
+        # add noise with predefined probability
         if self.noise_std > 0:
             noise_stddev = tf.random.uniform(sample_shape, maxval=self.noise_std)
             if self.separate_channels:
@@ -1166,7 +1191,11 @@ class IntensityAugmentation(Layer):
             else:
                 noise = tf.random.normal(tf.shape(tf.split(inputs, [1, -1], -1)[0]), stddev=noise_stddev)
                 noise = tf.tile(noise, tf.convert_to_tensor([1] * (self.n_dims + 1) + [self.n_channels]))
-            inputs = inputs + noise
+            if self.prob_noise == 1:
+                inputs = inputs + noise
+            else:
+                inputs = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_noise)),
+                                  inputs + noise, inputs)
 
         # clip images to given values
         if self.clip_values is not None:
@@ -1193,9 +1222,14 @@ class IntensityAugmentation(Layer):
             inputs = tf.clip_by_value(inputs, m, M)
             inputs = (inputs - m) / (M - m + K.epsilon())
 
-        # apply voxel-wise exponentiation
+        # apply voxel-wise exponentiation with predefined probability
         if self.gamma_std > 0:
-            inputs = tf.math.pow(inputs, tf.math.exp(tf.random.normal(sample_shape, stddev=self.gamma_std)))
+            gamma = tf.random.normal(sample_shape, stddev=self.gamma_std)
+            if self.prob_gamma == 1:
+                inputs = tf.math.pow(inputs, tf.math.exp(gamma))
+            else:
+                inputs = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_gamma)),
+                                  tf.math.pow(inputs, tf.math.exp(gamma)), inputs)
 
         # apply random contrast inversion
         if self.contrast_inversion:
