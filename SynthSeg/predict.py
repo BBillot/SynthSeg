@@ -478,11 +478,11 @@ def build_model(path_model,
         # segment flipped image
         input_image = net.inputs[0]
         seg = net.output
-        image_flipped = layers.RandomFlip(flip_axis=0, prob=1)(input_image)
+        image_flipped = layers.RandomFlip(axis=0, prob=1)(input_image)
         last_tensor = net(image_flipped)
 
         # flip back and re-order channels
-        last_tensor = layers.RandomFlip(flip_axis=0, prob=1)(last_tensor)
+        last_tensor = layers.RandomFlip(axis=0, prob=1)(last_tensor)
         last_tensor = KL.Lambda(lambda x: tf.split(x, [1] * n_labels_seg, axis=-1), name='split')(last_tensor)
         reordered_channels = [last_tensor[flip_indices[i]] for i in range(n_labels_seg)]
         last_tensor = KL.Lambda(lambda x: tf.concat(x, -1), name='concat')(reordered_channels)

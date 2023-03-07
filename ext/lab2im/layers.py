@@ -272,18 +272,23 @@ class RandomCrop(Layer):
 
 
 class RandomFlip(Layer):
-    """This function flips the input tensors along the specified axes with a probability of 0.5.
-    The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
-    If specified, this layer can also swap corresponding values, such that the flip tensors stay consistent with the
-    native spatial orientation (especially when flipping in the right/left dimension).
-    :param flip_axis: integer, or list of integers specifying the dimensions along which to flip. The values exclude the
-    batch dimension (e.g. 0 will flip the tensor along the first axis after the batch dimension). Default is None, where
-    the tensors can be flipped along any of the axes (except batch and channel axes).
-    :param swap_labels: list of booleans to specify whether to swap the values of each input. All the inputs for which
-    the values need to be swapped must have an int32 ot int64 dtype.
+    """This layer randomly flips the input tensor along the specified axes with a specified probability.
+    It can also take multiple tensors as inputs (if they have the same shape). The same flips will be applied to all
+    input tensors. These are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
+    If specified, this layer can also swap corresponding values. This is especially useful when flipping label maps
+    with different labels for right/left structures, such that the flipped label maps keep a consistent labelling.
+    :param axis: integer, or list of integers specifying the dimensions along which to flip.
+    If a list, the input tensors can be flipped simultaneously in several directions. The values in flip_axis exclude
+    the batch dimension (e.g. 0 will flip the tensor along the first axis after the batch dimension).
+    Default is None, where the tensors can be flipped along all axes (except batch and channel axes).
+    :param swap_labels: boolean to specify whether to swap the values of each input. Values are only swapped if an odd
+    number of flips is applied.
+    Can also be a list if several tensors are given as input.
+    All the inputs for which the values need to be swapped must be int32 or int64.
     :param label_list: if swap_labels is True, list of all labels contained in labels. Must be ordered as follows, first
      the neutral labels (i.e. non-sided), then left labels and right labels.
     :param n_neutral_labels: if swap_labels is True, number of non-sided labels
+    :param prob: probability to flip along each specifed axis
 
     example 1:
     if input is a tensor of shape (batchsize, 10, 100, 200, 3)
@@ -321,7 +326,7 @@ class RandomFlip(Layer):
     This doesn't concern the image input, as its values are not swapped.
     """
 
-    def __init__(self, flip_axis=None, swap_labels=False, label_list=None, n_neutral_labels=None, prob=0.5, **kwargs):
+    def __init__(self, axis=None, swap_labels=False, label_list=None, n_neutral_labels=None, prob=0.5, **kwargs):
 
         # shape attributes
         self.several_inputs = True
@@ -329,7 +334,8 @@ class RandomFlip(Layer):
         self.list_n_channels = None
 
         # axis along which to flip
-        self.flip_axis = utils.reformat_to_list(flip_axis)
+        self.axis = utils.reformat_to_list(axis)
+        self.flip_axes = None
 
         # whether to swap labels, and corresponding label list
         self.swap_labels = utils.reformat_to_list(swap_labels)
@@ -343,7 +349,7 @@ class RandomFlip(Layer):
 
     def get_config(self):
         config = super().get_config()
-        config["flip_axis"] = self.flip_axis
+        config["axis"] = self.axis
         config["swap_labels"] = self.swap_labels
         config["label_list"] = self.label_list
         config["n_neutral_labels"] = self.n_neutral_labels
@@ -360,6 +366,7 @@ class RandomFlip(Layer):
         self.n_dims = len(inputshape[0][1:-1])
         self.list_n_channels = [i[-1] for i in inputshape]
         self.swap_labels = utils.reformat_to_list(self.swap_labels, length=len(inputshape))
+        self.flip_axes = np.arange(self.n_dims).tolist() if self.axis is None else self.axis
 
         # create label list with swapped labels
         if any(self.swap_labels):
@@ -381,20 +388,20 @@ class RandomFlip(Layer):
     def call(self, inputs, **kwargs):
 
         # convert inputs to list, and get each input type
-        if not self.several_inputs:
-            inputs = [inputs]
+        inputs = [inputs] if not self.several_inputs else inputs
         types = [v.dtype for v in inputs]
 
-        # sample boolean for each element of the batch
+        # store whether to flip along each specified dimension
         batchsize = tf.split(tf.shape(inputs[0]), [1, self.n_dims + 1])[0]
-        rand_flip = K.less(tf.random.uniform(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0), 0, 1),
-                           self.prob)
+        size = tf.concat([batchsize, len(self.flip_axes) * tf.ones(1, dtype='int32')], axis=0)
+        rand_flip = K.less(tf.random.uniform(size, 0, 1), self.prob)
 
-        # swap r/l labels if necessary
+        # swap right/left labels if we apply an odd number of flips
+        odd = tf.math.floormod(tf.reduce_sum(tf.cast(rand_flip, 'int32'), -1, keepdims=True), 2) != 0
         swapped_inputs = list()
         for i in range(len(inputs)):
             if self.swap_labels[i]:
-                swapped_inputs.append(tf.map_fn(self._single_swap, [inputs[i], rand_flip], dtype=types[i]))
+                swapped_inputs.append(tf.map_fn(self._single_swap, [inputs[i], odd], dtype=types[i]))
             else:
                 swapped_inputs.append(inputs[i])
 
@@ -408,13 +415,10 @@ class RandomFlip(Layer):
     def _single_swap(self, inputs):
         return K.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
 
-    def _single_flip(self, inputs):
-        if self.flip_axis is None:
-            flip_axis = tf.random.uniform([1], 0, self.n_dims, dtype='int32')
-        else:
-            idx = tf.squeeze(tf.random.uniform([1], 0, len(self.flip_axis), dtype='int32'))
-            flip_axis = tf.expand_dims(tf.convert_to_tensor(self.flip_axis, dtype='int32')[idx], axis=0)
-        return K.switch(inputs[1], K.reverse(inputs[0], axes=flip_axis), inputs[0])
+    @staticmethod
+    def _single_flip(inputs):
+        flip_axis = tf.where(inputs[1])
+        return K.switch(tf.equal(tf.size(flip_axis), 0), inputs[0], tf.reverse(inputs[0], axis=flip_axis[..., 0]))
 
 
 class SampleConditionalGMM(Layer):
