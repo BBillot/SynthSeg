@@ -255,7 +255,7 @@ def build_augmentation_model(im_shape,
                                                     shearing_bounds=shearing_bounds,
                                                     translation_bounds=translation_bounds,
                                                     nonlin_std=nonlin_std,
-                                                    nonlin_shape_factor=nonlin_shape_factor,
+                                                    nonlin_scale=nonlin_shape_factor,
                                                     inter_method=['nearest', 'linear'])([labels_input, image_input])
 
     # flipping
