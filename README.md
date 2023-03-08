@@ -29,7 +29,6 @@ PNAS (2023) \
 [ [article](https://www.pnas.org/doi/full/10.1073/pnas.2216399120#bibliography) | [arxiv](https://arxiv.org/abs/2203.01969) | [bibtex](bibtex.bib) ]
 
 \
-\
 Here, we distribute our model to enable users to run SynthSeg on their own data. We emphasise that 
 predictions are always given at 1mm isotropic resolution (regardless of the input resolution). The code can be run on
 the GPU (~15s per scan) or on the CPU (~1min).
@@ -49,7 +48,7 @@ papers have been accepted nearly at the same time ! See the references above, or
 We are delighted that Matlab 2022b (and onwards) now includes SynthSeg in its Medical Image
 Toolbox. They have a [documented example](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html)
 on how to use it. But, to simplify things, we wrote our own Matlab wrapper, which you can call in one single line. 
-Just download [this zip file](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/ER6UNaiueapFsFh-0R23dK4BC-5b1oa81zY3B16xx-Wobw?e=VkR9rh),
+Just download [this zip file](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/ER6UNaiueapFsFh-0R23dK4BC-5b1oa81zY3B16xx-Wobw?e=baOlhb),
 uncompress it, open Matlab, and type `help SynthSeg` for instructions.
 
 \
