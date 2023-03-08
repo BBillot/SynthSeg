@@ -142,7 +142,7 @@ def sample_segmentation_pairs(image_dir,
 
     # get label lists
     segmentation_labels, _ = utils.get_list_labels(label_list=segmentation_labels, labels_dir=labels_dir)
-    n_labels = np.size(segmentation_labels)
+    n_labels = np.size(np.unique(segmentation_labels))
 
     # create augmentation model
     im_shape, _, n_dims, n_channels, _, atlas_res = utils.get_volume_info(path_images[0], aff_ref=np.eye(4))
@@ -199,11 +199,6 @@ def sample_segmentation_pairs(image_dir,
 
         # predict new segmentation
         outputs = generation_model.predict(next(train_example_gen))
-
-        # don't save completely messed up segmentations
-        nn = np.sum(np.squeeze(outputs[1]).argmax(-1) > 0)
-        if (nn > 500000) | (nn < 10000):
-            continue
 
         # save results
         for (output, name, res_dir) in zip(outputs,
