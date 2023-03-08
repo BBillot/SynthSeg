@@ -54,6 +54,7 @@ def predict(path_images,
             path_model_qc,
             labels_qc,
             cropping,
+            ct=False,
             names_segmentation=None,
             names_parcellation=None,
             names_qc=None,
@@ -162,6 +163,7 @@ def predict(path_images,
 
                 # preprocessing
                 image, aff, h, im_res, shape, pad_idx, crop_idx = preprocess(path_image=path_images[i],
+                                                                             ct=ct,
                                                                              crop=cropping,
                                                                              min_pad=min_pad,
                                                                              path_resample=path_resampled[i])
@@ -420,7 +422,7 @@ def prepare_output_files(path_images, out_seg, out_posteriors, out_resampled, ou
            out_qc, unique_qc_file, recompute_list
 
 
-def preprocess(path_image, target_res=1., n_levels=5, crop=None, min_pad=None, path_resample=None):
+def preprocess(path_image, ct, target_res=1., n_levels=5, crop=None, min_pad=None, path_resample=None):
 
     # read image and corresponding info
     im, _, aff, n_dims, n_channels, h, im_res = utils.get_volume_info(path_image, True)
@@ -462,6 +464,8 @@ def preprocess(path_image, target_res=1., n_levels=5, crop=None, min_pad=None, p
         crop_idx = None
 
     # normalise image
+    if ct:
+        im = np.clip(im, 0, 80)
     im = edit_volumes.rescale_volume(im, new_min=0., new_max=1., min_percentile=0.5, max_percentile=99.5)
 
     # pad image

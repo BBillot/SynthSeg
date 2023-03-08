@@ -81,7 +81,7 @@ See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
 
 Once all the python packages are installed (see below), you can simply test SynthSeg on your own data with:
 ```
-python ./scripts/commands/SynthSeg_predict.py --i <input> --o <output> [--parc --robust --vol <vol> --qc <qc> --post <post> --resample <resample>]
+python ./scripts/commands/SynthSeg_predict.py --i <input> --o <output> [--parc --robust --ct --vol <vol> --qc <qc> --post <post> --resample <resample>]
 ```
 
 
@@ -93,6 +93,7 @@ to a file, a folder, or a text file where each line is the path to an output seg
 - `--parc` (optional) to perform cortical parcellation in addition to whole-brain segmentation.
 - `--robust` (optional) to use the variant for increased robustness (e.g., when analysing clinical data with large space
 spacing). This can be slower than the other model.
+- `--ct` (optional) use on CT scans in Hounsfield scale. It clips intensities to [0, 80].
 - `<vol>` (optional) path to a CSV file where the volumes of all segmented regions will be saved for all scans 
 (e.g. /path/to/volumes.csv). If `<input> ` is a text file, so must be `<vol>`, for which each line is the path to a 
 different CSV file corresponding to one subject only.
