@@ -48,7 +48,7 @@ papers have been accepted nearly at the same time ! See the references above, or
 We are delighted that Matlab 2022b (and onwards) now includes SynthSeg in its Medical Image
 Toolbox. They have a [documented example](https://www.mathworks.com/help/medical-imaging/ug/Brain-MRI-Segmentation-Using-Trained-3-D-U-Net.html)
 on how to use it. But, to simplify things, we wrote our own Matlab wrapper, which you can call in one single line. 
-Just download [this zip file](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/ER6UNaiueapFsFh-0R23dK4BC-5b1oa81zY3B16xx-Wobw?e=baOlhb),
+Just download [this zip file](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmappmb_ucl_ac_uk/EWyV_S8KiFpAjTYLg2Xy1aYBkH-TW1S70wMxJst5IeTjMQ?e=uyGuL4),
 uncompress it, open Matlab, and type `help SynthSeg` for instructions.
 
 \
