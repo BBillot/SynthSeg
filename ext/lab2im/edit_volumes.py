@@ -310,6 +310,8 @@ def crop_volume_around_region(volume,
         max_idx = np.array([np.max(idx) for idx in indices])
         intermediate_vol_shape = max_idx - min_idx
 
+        if (margin == 0) & (cropping_shape is None) & (cropping_shape_div_by is None):
+            cropping_shape = intermediate_vol_shape
         if margin:
             cropping_shape = intermediate_vol_shape + 2 * margin
         elif cropping_shape is not None:
