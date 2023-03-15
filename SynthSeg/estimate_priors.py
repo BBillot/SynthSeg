@@ -17,7 +17,11 @@ License.
 # python imports
 import os
 import numpy as np
-from scipy.stats import median_absolute_deviation
+try:
+    from scipy.stats import median_absolute_deviation
+except:
+    from scipy.stats import median_abs_deviation as median_absolute_deviation
+
 
 # third-party imports
 from ext.lab2im import utils

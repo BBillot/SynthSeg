@@ -21,49 +21,6 @@ import keras
 import keras.layers as KL
 from keras.models import Model
 import keras.backend as K
-from keras.constraints import maxnorm
-
-
-def dilation_net(nb_features,
-                 input_shape,  # input layer shape, vector of size ndims + 1(nb_channels)
-                 nb_levels,
-                 conv_size,
-                 nb_labels,
-                 name='dilation_net',
-                 prefix=None,
-                 feat_mult=1,
-                 pool_size=2,
-                 use_logp=True,
-                 padding='same',
-                 dilation_rate_mult=1,
-                 activation='elu',
-                 use_residuals=False,
-                 final_pred_activation='softmax',
-                 nb_conv_per_level=1,
-                 add_prior_layer=False,
-                 add_prior_layer_reg=0,
-                 layer_nb_feats=None,
-                 batch_norm=None):
-    return unet(nb_features,
-                input_shape,  # input layer shape, vector of size ndims + 1(nb_channels)
-                nb_levels,
-                conv_size,
-                nb_labels,
-                name='unet',
-                prefix=None,
-                feat_mult=1,
-                pool_size=2,
-                use_logp=True,
-                padding='same',
-                activation='elu',
-                use_residuals=False,
-                dilation_rate_mult=dilation_rate_mult,
-                final_pred_activation='softmax',
-                nb_conv_per_level=1,
-                add_prior_layer=False,
-                add_prior_layer_reg=0,
-                layer_nb_feats=None,
-                batch_norm=None)
 
 
 def unet(nb_features,
@@ -84,7 +41,6 @@ def unet(nb_features,
          final_pred_activation='softmax',
          nb_conv_per_level=1,
          add_prior_layer=False,
-         add_prior_layer_reg=0,
          layer_nb_feats=None,
          conv_dropout=0,
          batch_norm=None,
@@ -97,7 +53,6 @@ def unet(nb_features,
     for U-net like architecture, we need to use Deconvolution3D.
     However, this is not yet available (maybe soon, it's on a dev branch in github I believe)
     Until then, we'll upsample and convolve.
-    TODO: Need to check that UpSampling3D actually does NN-upsampling!
 
     Parameters:
         nb_features: the number of features at each convolutional level
@@ -123,7 +78,7 @@ def unet(nb_features,
         final_pred_activation:
         nb_conv_per_level:
         add_prior_layer:
-        add_prior_layer_reg:
+        skip_n_concatenations:
         layer_nb_feats: list of the number of features for each layer. Automatically used if specified
         conv_dropout: dropout probability
         batch_norm:
@@ -164,7 +119,7 @@ def unet(nb_features,
     # use_skip_connections=True makes it a u-net
     lnf = layer_nb_feats[(nb_levels * nb_conv_per_level):] if layer_nb_feats is not None else None
     dec_model = conv_dec(nb_features,
-                         None,
+                         [],
                          nb_levels,
                          conv_size,
                          nb_labels,
@@ -191,8 +146,7 @@ def unet(nb_features,
                                 [*input_shape[:-1], nb_labels],
                                 name=model_name + '_prior',
                                 use_logp=use_logp,
-                                final_pred_activation=final_pred_activation,
-                                add_prior_layer_reg=add_prior_layer_reg)
+                                final_pred_activation=final_pred_activation)
 
     return final_model
 
@@ -204,7 +158,6 @@ def ae(nb_features,
        nb_labels,
        enc_size,
        name='ae',
-       prefix=None,
        feat_mult=1,
        pool_size=2,
        padding='same',
@@ -216,7 +169,6 @@ def ae(nb_features,
        ae_type='conv',  # 'dense', or 'conv'
        enc_lambda_layers=None,
        add_prior_layer=False,
-       add_prior_layer_reg=0,
        use_logp=True,
        conv_dropout=0,
        include_mu_shift_layer=False,
@@ -224,22 +176,7 @@ def ae(nb_features,
        final_pred_activation='softmax',
        do_vae=False,
        input_model=None):
-    """
-    Convolutional Auto-Encoder.
-    Optionally Variational.
-    Optionally Dense middle layer
-
-    "Mostly" in that the inner encoding can be (optionally) constructed via dense features.
-
-    Parameters:
-        do_vae (bool): whether to do a variational auto-encoder or not.
-
-    enc_lambda_layers functions to try:
-        K.softsign
-
-        a = 1
-        longtanh = lambda x: K.tanh(x) *  K.log(2 + a * abs(x))
-    """
+    """Convolutional Auto-Encoder. Optionally Variational (if do_vae is set to True)."""
 
     # naming
     model_name = name
@@ -314,13 +251,12 @@ def ae(nb_features,
                               name=model_name,
                               prefix=model_name + '_prior',
                               use_logp=use_logp,
-                              final_pred_activation=final_pred_activation,
-                              add_prior_layer_reg=add_prior_layer_reg)
+                              final_pred_activation=final_pred_activation)
 
     if single_model:
         return dec_model
     else:
-        return (dec_model, mid_ae_model, enc_model)
+        return dec_model, mid_ae_model, enc_model
 
 
 def conv_enc(nb_features,
@@ -340,9 +276,7 @@ def conv_enc(nb_features,
              conv_dropout=0,
              batch_norm=None,
              input_model=None):
-    """
-    Fully Convolutional Encoder
-    """
+    """Fully Convolutional Encoder"""
 
     # naming
     model_name = name
@@ -362,7 +296,6 @@ def conv_enc(nb_features,
 
     # volume size data
     ndims = len(input_shape) - 1
-    input_shape = tuple(input_shape)
     if isinstance(pool_size, int):
         pool_size = (pool_size,) * ndims
 
@@ -394,7 +327,7 @@ def conv_enc(nb_features,
                 # conv dropout along feature space only
                 name = '%s_dropout_downarm_%d_%d' % (prefix, level, conv)
                 noise_shape = [None, *[1] * ndims, nb_lvl_feats]
-                last_tensor = KL.Dropout(conv_dropout, noise_shape=noise_shape)(last_tensor)
+                last_tensor = KL.Dropout(conv_dropout, noise_shape=noise_shape, name=name)(last_tensor)
 
         if use_residuals:
             convarm_layer = last_tensor
@@ -410,9 +343,8 @@ def conv_enc(nb_features,
                 add_layer = last_tensor
 
                 if conv_dropout > 0:
-                    name = '%s_dropout_down_merge_%d_%d' % (prefix, level, conv)
                     noise_shape = [None, *[1] * ndims, nb_lvl_feats]
-                    last_tensor = KL.Dropout(conv_dropout, noise_shape=noise_shape)(last_tensor)
+                    convarm_layer = KL.Dropout(conv_dropout, noise_shape=noise_shape)(last_tensor)
 
             name = '%s_res_down_merge_%d' % (prefix, level)
             last_tensor = KL.add([add_layer, convarm_layer], name=name)
@@ -455,15 +387,7 @@ def conv_dec(nb_features,
              batch_norm=None,
              conv_dropout=0,
              input_model=None):
-    """
-    Fully Convolutional Decoder
-
-    Parameters:
-        ...
-        use_skip_connections (bool): if true, turns an Enc-Dec to a U-Net.
-            If true, input_tensor and tensors are required.
-            It assumes a particular naming of layers. conv_enc...
-    """
+    """Fully Convolutional Decoder"""
 
     # naming
     model_name = name
@@ -486,7 +410,6 @@ def conv_dec(nb_features,
 
     # vol size info
     ndims = len(input_shape) - 1
-    input_shape = tuple(input_shape)
     if isinstance(pool_size, int):
         if ndims > 1:
             pool_size = (pool_size,) * ndims
@@ -531,7 +454,7 @@ def conv_dec(nb_features,
             if conv_dropout > 0:
                 name = '%s_dropout_uparm_%d_%d' % (prefix, level, conv)
                 noise_shape = [None, *[1] * ndims, nb_lvl_feats]
-                last_tensor = KL.Dropout(conv_dropout, noise_shape=noise_shape)(last_tensor)
+                last_tensor = KL.Dropout(conv_dropout, noise_shape=noise_shape, name=name)(last_tensor)
 
         # residual block
         if use_residuals:
@@ -546,7 +469,6 @@ def conv_dec(nb_features,
                 add_layer = convL(nb_lvl_feats, conv_size, **conv_kwargs, name=name)(add_layer)
 
                 if conv_dropout > 0:
-                    name = '%s_dropout_up_merge_%d_%d' % (prefix, level, conv)
                     noise_shape = [None, *[1] * ndims, nb_lvl_feats]
                     last_tensor = KL.Dropout(conv_dropout, noise_shape=noise_shape)(last_tensor)
 
@@ -587,8 +509,7 @@ def add_prior(input_model,
               name='prior_model',
               prefix=None,
               use_logp=True,
-              final_pred_activation='softmax',
-              add_prior_layer_reg=0):
+              final_pred_activation='softmax'):
     """
     Append post-prior layer to a given model
     """
@@ -606,8 +527,6 @@ def add_prior(input_model,
 
     # operation varies depending on whether we log() prior or not.
     if use_logp:
-        # name = '%s-log' % prefix
-        # prior_tensor = KL.Lambda(_log_layer_wrap(add_prior_layer_reg), name=name)(prior_tensor)
         print("Breaking change: use_logp option now requires log input!", file=sys.stderr)
         merge_op = KL.add
 
@@ -678,32 +597,35 @@ def single_ae(enc_size,
     input_nb_feats = last_tensor.shape.as_list()[-1]
 
     # prepare conv type based on input
+    ndims = len(input_shape) - 1
     if ae_type == 'conv':
-        ndims = len(input_shape) - 1
         convL = getattr(KL, 'Conv%dD' % ndims)
         assert conv_size is not None, 'with conv ae, need conv_size'
-    conv_kwargs = {'padding': padding, 'activation': activation}
+        conv_kwargs = {'padding': padding, 'activation': activation}
+        enc_size_str = None
 
     # if want to go through a dense layer in the middle of the U, need to:
     # - flatten last layer if not flat
     # - do dense encoding and decoding
     # - unflatten (reshape spatially) at end
-    if ae_type == 'dense' and len(input_shape) > 1:
-        name = '%s_ae_%s_down_flat' % (prefix, ae_type)
-        last_tensor = KL.Flatten(name=name)(last_tensor)
+    else:  # ae_type == 'dense'
+        if len(input_shape) > 1:
+            name = '%s_ae_%s_down_flat' % (prefix, ae_type)
+            last_tensor = KL.Flatten(name=name)(last_tensor)
+        convL = conv_kwargs = None
+        assert len(enc_size) == 1, "enc_size should be of length 1 for dense layer"
+        enc_size_str = ''.join(['%d_' % d for d in enc_size])[:-1]
 
     # recall this layer
     pre_enc_layer = last_tensor
 
     # encoding layer
     if ae_type == 'dense':
-        assert len(enc_size) == 1, "enc_size should be of length 1 for dense layer"
-
-        enc_size_str = ''.join(['%d_' % d for d in enc_size])[:-1]
         name = '%s_ae_mu_enc_dense_%s' % (prefix, enc_size_str)
         last_tensor = KL.Dense(enc_size[0], name=name)(pre_enc_layer)
 
     else:  # convolution
+
         # convolve then resize. enc_size should be [nb_dim1, nb_dim2, ..., nb_feats]
         assert len(enc_size) == len(input_shape), \
             "encoding size does not match input shape %d %d" % (len(enc_size), len(input_shape))
@@ -712,27 +634,26 @@ def single_ae(enc_size,
                 all([f is not None for f in input_shape[:-1]]) and \
                 all([f is not None for f in enc_size[:-1]]):
 
-            # assert len(enc_size) - 1 == 2, "Sorry, I have not yet implemented non-2D resizing -- need to check out interpn!"
-            name = '%s_ae_mu_enc_conv' % (prefix)
+            name = '%s_ae_mu_enc_conv' % prefix
             last_tensor = convL(enc_size[-1], conv_size, name=name, **conv_kwargs)(pre_enc_layer)
 
-            name = '%s_ae_mu_enc' % (prefix)
+            name = '%s_ae_mu_enc' % prefix
             zf = [enc_size[:-1][f] / last_tensor.shape.as_list()[1:-1][f] for f in range(len(enc_size) - 1)]
             last_tensor = layers.Resize(zoom_factor=zf, name=name)(last_tensor)
             # resize_fn = lambda x: tf.image.resize_bilinear(x, enc_size[:-1])
             # last_tensor = KL.Lambda(resize_fn, name=name)(last_tensor)
 
         elif enc_size[-1] is None:  # convolutional, but won't tell us bottleneck
-            name = '%s_ae_mu_enc' % (prefix)
+            name = '%s_ae_mu_enc' % prefix
             last_tensor = KL.Lambda(lambda x: x, name=name)(pre_enc_layer)
 
         else:
-            name = '%s_ae_mu_enc' % (prefix)
+            name = '%s_ae_mu_enc' % prefix
             last_tensor = convL(enc_size[-1], conv_size, name=name, **conv_kwargs)(pre_enc_layer)
 
     if include_mu_shift_layer:
         # shift
-        name = '%s_ae_mu_shift' % (prefix)
+        name = '%s_ae_mu_shift' % prefix
         last_tensor = layers.LocalBias(name=name)(last_tensor)
 
     # encoding clean-up layers
@@ -742,11 +663,11 @@ def single_ae(enc_size,
         last_tensor = KL.Lambda(layer_fcn, name=name)(last_tensor)
 
     if batch_norm is not None:
-        name = '%s_ae_mu_bn' % (prefix)
+        name = '%s_ae_mu_bn' % prefix
         last_tensor = KL.BatchNormalization(axis=batch_norm, name=name)(last_tensor)
 
     # have a simple layer that does nothing to have a clear name before sampling
-    name = '%s_ae_mu' % (prefix)
+    name = '%s_ae_mu' % prefix
     last_tensor = KL.Lambda(lambda x: x, name=name)(last_tensor)
 
     # if doing variational AE, will need the sigma layer as well.
@@ -756,10 +677,7 @@ def single_ae(enc_size,
         # encoding layer
         if ae_type == 'dense':
             name = '%s_ae_sigma_enc_dense_%s' % (prefix, enc_size_str)
-            last_tensor = KL.Dense(enc_size[0], name=name,
-                                   #    kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=1e-5),
-                                   #    bias_initializer=keras.initializers.RandomNormal(mean=-5.0, stddev=1e-5)
-                                   )(pre_enc_layer)
+            last_tensor = KL.Dense(enc_size[0], name=name)(pre_enc_layer)
 
         else:
             if list(enc_size)[:-1] != list(input_shape)[:-1] and \
@@ -767,22 +685,22 @@ def single_ae(enc_size,
                     all([f is not None for f in enc_size[:-1]]):
 
                 assert len(enc_size) - 1 == 2, "Sorry, I have not yet implemented non-2D resizing..."
-                name = '%s_ae_sigma_enc_conv' % (prefix)
+                name = '%s_ae_sigma_enc_conv' % prefix
                 last_tensor = convL(enc_size[-1], conv_size, name=name, **conv_kwargs)(pre_enc_layer)
 
-                name = '%s_ae_sigma_enc' % (prefix)
+                name = '%s_ae_sigma_enc' % prefix
                 resize_fn = lambda x: tf.image.resize_bilinear(x, enc_size[:-1])
                 last_tensor = KL.Lambda(resize_fn, name=name)(last_tensor)
 
             elif enc_size[-1] is None:  # convolutional, but won't tell us bottleneck
-                name = '%s_ae_sigma_enc' % (prefix)
+                name = '%s_ae_sigma_enc' % prefix
                 last_tensor = convL(pre_enc_layer.shape.as_list()[-1], conv_size, name=name, **conv_kwargs)(
                     pre_enc_layer)
                 # cannot use lambda, then mu and sigma will be same layer.
                 # last_tensor = KL.Lambda(lambda x: x, name=name)(pre_enc_layer)
 
             else:
-                name = '%s_ae_sigma_enc' % (prefix)
+                name = '%s_ae_sigma_enc' % prefix
                 last_tensor = convL(enc_size[-1], conv_size, name=name, **conv_kwargs)(pre_enc_layer)
 
         # encoding clean-up layers
@@ -792,11 +710,11 @@ def single_ae(enc_size,
             last_tensor = KL.Lambda(layer_fcn, name=name)(last_tensor)
 
         if batch_norm is not None:
-            name = '%s_ae_sigma_bn' % (prefix)
+            name = '%s_ae_sigma_bn' % prefix
             last_tensor = KL.BatchNormalization(axis=batch_norm, name=name)(last_tensor)
 
         # have a simple layer that does nothing to have a clear name before sampling
-        name = '%s_ae_sigma' % (prefix)
+        name = '%s_ae_sigma' % prefix
         last_tensor = KL.Lambda(lambda x: x, name=name)(last_tensor)
 
         logvar_tensor = last_tensor
@@ -804,12 +722,12 @@ def single_ae(enc_size,
         # VAE sampling
         sampler = _VAESample().sample_z
 
-        name = '%s_ae_sample' % (prefix)
+        name = '%s_ae_sample' % prefix
         last_tensor = KL.Lambda(sampler, name=name)([mu_tensor, logvar_tensor])
 
     if include_mu_shift_layer:
         # shift
-        name = '%s_ae_sample_shift' % (prefix)
+        name = '%s_ae_sample_shift' % prefix
         last_tensor = layers.LocalBias(name=name)(last_tensor)
 
     # decoding layer
@@ -827,11 +745,9 @@ def single_ae(enc_size,
         if list(enc_size)[:-1] != list(input_shape)[:-1] and \
                 all([f is not None for f in input_shape[:-1]]) and \
                 all([f is not None for f in enc_size[:-1]]):
-            name = '%s_ae_mu_dec' % (prefix)
+            name = '%s_ae_mu_dec' % prefix
             zf = [last_tensor.shape.as_list()[1:-1][f] / enc_size[:-1][f] for f in range(len(enc_size) - 1)]
             last_tensor = layers.Resize(zoom_factor=zf, name=name)(last_tensor)
-            # resize_fn = lambda x: tf.image.resize_bilinear(x, input_shape[:-1])
-            # last_tensor = KL.Lambda(resize_fn, name=name)(last_tensor)
 
         name = '%s_ae_%s_dec' % (prefix, ae_type)
         last_tensor = convL(input_nb_feats, conv_size, name=name, **conv_kwargs)(last_tensor)
@@ -845,209 +761,16 @@ def single_ae(enc_size,
     return model
 
 
-def design_dnn(nb_features, input_shape, nb_levels, conv_size, nb_labels,
-               feat_mult=1,
-               pool_size=2,
-               padding='same',
-               activation='elu',
-               final_layer='dense-sigmoid',
-               conv_dropout=0,
-               conv_maxnorm=0,
-               nb_input_features=1,
-               batch_norm=False,
-               name=None,
-               prefix=None,
-               use_strided_convolution_maxpool=True,
-               nb_conv_per_level=2):
-    """
-    "deep" cnn with dense or global max pooling layer @ end...
-
-    Could use sequential...
-    """
-
-    model_name = name
-    if model_name is None:
-        model_name = 'model_1'
-    if prefix is None:
-        prefix = model_name
-
-    ndims = len(input_shape)
-    input_shape = tuple(input_shape)
-
-    convL = getattr(KL, 'Conv%dD' % ndims)
-    maxpool = KL.MaxPooling3D if len(input_shape) == 3 else KL.MaxPooling2D
-    if isinstance(pool_size, int):
-        pool_size = (pool_size,) * ndims
-
-    # kwargs for the convolution layer
-    conv_kwargs = {'padding': padding, 'activation': activation}
-    if conv_maxnorm > 0:
-        conv_kwargs['kernel_constraint'] = maxnorm(conv_maxnorm)
-
-    # initialize a dictionary
-    enc_tensors = {}
-
-    # first layer: input
-    name = '%s_input' % prefix
-    enc_tensors[name] = KL.Input(shape=input_shape + (nb_input_features,), name=name)
-    last_tensor = enc_tensors[name]
-
-    # down arm:
-    # add nb_levels of conv + ReLu + conv + ReLu. Pool after each of first nb_levels - 1 layers
-    for level in range(nb_levels):
-        for conv in range(nb_conv_per_level):
-            if conv_dropout > 0:
-                name = '%s_dropout_%d_%d' % (prefix, level, conv)
-                enc_tensors[name] = KL.Dropout(conv_dropout)(last_tensor)
-                last_tensor = enc_tensors[name]
-
-            name = '%s_conv_%d_%d' % (prefix, level, conv)
-            nb_lvl_feats = np.round(nb_features * feat_mult ** level).astype(int)
-            enc_tensors[name] = convL(nb_lvl_feats, conv_size, **conv_kwargs, name=name)(last_tensor)
-            last_tensor = enc_tensors[name]
-
-        # max pool
-        if use_strided_convolution_maxpool:
-            name = '%s_strided_conv_%d' % (prefix, level)
-            enc_tensors[name] = convL(nb_lvl_feats, pool_size, **conv_kwargs, name=name)(last_tensor)
-            last_tensor = enc_tensors[name]
-        else:
-            name = '%s_maxpool_%d' % (prefix, level)
-            enc_tensors[name] = maxpool(pool_size=pool_size, name=name, padding=padding)(last_tensor)
-            last_tensor = enc_tensors[name]
-
-    # dense layer
-    if final_layer == 'dense-sigmoid':
-
-        name = "%s_flatten" % prefix
-        enc_tensors[name] = KL.Flatten(name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        name = '%s_dense' % prefix
-        enc_tensors[name] = KL.Dense(1, name=name, activation="sigmoid")(last_tensor)
-
-    elif final_layer == 'dense-tanh':
-
-        name = "%s_flatten" % prefix
-        enc_tensors[name] = KL.Flatten(name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        name = '%s_dense' % prefix
-        enc_tensors[name] = KL.Dense(1, name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        # Omittting BatchNorm for now, it seems to have a cpu vs gpu problem
-        # https://github.com/tensorflow/tensorflow/pull/8906
-        # https://github.com/fchollet/keras/issues/5802
-        # name = '%s_%s_bn' % prefix
-        # enc_tensors[name] = KL.BatchNormalization(axis=batch_norm, name=name)(last_tensor)
-        # last_tensor = enc_tensors[name]
-
-        name = '%s_%s_tanh' % prefix
-        enc_tensors[name] = KL.Activation(activation="tanh", name=name)(last_tensor)
-
-    elif final_layer == 'dense-softmax':
-
-        name = "%s_flatten" % prefix
-        enc_tensors[name] = KL.Flatten(name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        name = '%s_dense' % prefix
-        enc_tensors[name] = KL.Dense(nb_labels, name=name, activation="softmax")(last_tensor)
-
-    # global max pooling layer
-    elif final_layer == 'myglobalmaxpooling':
-
-        name = '%s_batch_norm' % prefix
-        enc_tensors[name] = KL.BatchNormalization(axis=batch_norm, name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        name = '%s_global_max_pool' % prefix
-        enc_tensors[name] = KL.Lambda(_global_max_nd, name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        name = '%s_global_max_pool_reshape' % prefix
-        enc_tensors[name] = KL.Reshape((1, 1), name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        # cannot do activation in lambda layer. Could code inside, but will do extra lyaer
-        name = '%s_global_max_pool_sigmoid' % prefix
-        enc_tensors[name] = KL.Conv1D(1, 1, name=name, activation="sigmoid", use_bias=True)(last_tensor)
-
-    elif final_layer == 'globalmaxpooling':
-
-        name = '%s_conv_to_featmaps' % prefix
-        enc_tensors[name] = KL.Conv3D(2, 1, name=name, activation="relu")(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        name = '%s_global_max_pool' % prefix
-        enc_tensors[name] = KL.GlobalMaxPooling3D(name=name)(last_tensor)
-        last_tensor = enc_tensors[name]
-
-        # cannot do activation in lambda layer. Could code inside, but will do extra lyaer
-        name = '%s_global_max_pool_softmax' % prefix
-        enc_tensors[name] = KL.Activation('softmax', name=name)(last_tensor)
-
-    last_tensor = enc_tensors[name]
-
-    # create the model
-    model = Model(inputs=[enc_tensors['%s_input' % prefix]], outputs=[last_tensor], name=model_name)
-    return model
-
-
 ###############################################################################
 # Helper function
 ###############################################################################
 
-def _global_max_nd(xtens):
-    ytens = K.batch_flatten(xtens)
-    return K.max(ytens, 1, keepdims=True)
-
-
-def _log_layer_wrap(reg=K.epsilon()):
-    def _log_layer(tens):
-        return K.log(tens + reg)
-
-    return _log_layer
-
-
-# def _global_max_nd(x):
-# return K.exp(x)
-
-class _VAESample():
-    def __init__(self):  # , nb_z):
-        # self.nb_z = nb_z
+class _VAESample:
+    def __init__(self):
         pass
 
     def sample_z(self, args):
         mu, log_var = args
-        # shape = (K.shape(mu)[0], self.nb_z)
         shape = K.shape(mu)
         eps = K.random_normal(shape=shape, mean=0., stddev=1.)
         return mu + K.exp(log_var / 2) * eps
-
-
-def _softmax(x, axis=-1, alpha=1):
-    """
-    building on keras implementation, allow alpha parameter
-
-    Softmax activation function.
-    # Arguments
-        x : Tensor.
-        axis: Integer, axis along which the softmax normalization is applied.
-        alpha: a value to multiply all x
-    # Returns
-        Tensor, output of softmax transformation.
-    # Raises
-        ValueError: In case `dim(x) == 1`.
-    """
-    x = alpha * x
-    ndim = K.ndim(x)
-    if ndim == 2:
-        return K.softmax(x)
-    elif ndim > 2:
-        e = K.exp(x - K.max(x, axis=axis, keepdims=True))
-        s = K.sum(e, axis=axis, keepdims=True)
-        return e / s
-    else:
-        raise ValueError('Cannot apply softmax to a tensor that is 1D')
