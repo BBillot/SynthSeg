@@ -27,3 +27,5 @@ SynthSeg/qc.py
 SynthSeg/training_heart.py
 SynthSeg/training_vae.py
 SynthSeg/validate_vae.py
+
+SynthSeg.egg-info/*
