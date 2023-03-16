@@ -343,11 +343,10 @@ def train_model(model,
     # WandB callback
     if wandb:
         import wandb
-        # from wandb.integration.keras import WandbMetricsLogger
-        from wandb.integration.keras import WandbCallback
+        from wandb.integration.keras import WandbMetricsLogger
 
         wandb.init()
-        callbacks.append(WandbCallback())
+        callbacks.append(WandbMetricsLogger())
 
     compile_model = True
     init_epoch = 0
