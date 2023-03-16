@@ -43,8 +43,8 @@ feat_multiplier = 2    # if feat_multiplier is set to 1, we will keep the number
 # training parameters
 lr = 1e-4               # learning rate
 wl2_epochs = 1          # number of pre-training epochs with wl2 metric w.r.t. the layer before the softmax
-dice_epochs = 100       # number of training epochs
-steps_per_epoch = 5000  # number of iteration per epoch
+dice_epochs = 1  # 100       # number of training epochs
+steps_per_epoch = 1  # 5000  # number of iteration per epoch
 
 
 # ---------- Generation parameters ----------
@@ -57,7 +57,7 @@ path_segmentation_labels = '../../data/labels_classes_priors/synthseg_segmentati
 
 # shape and resolution of the outputs
 target_res = None
-output_shape = 160
+output_shape = 32
 n_channels = 1
 
 # GMM sampling
