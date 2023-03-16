@@ -17,7 +17,7 @@ License.
 # python imports
 import os
 import numpy as np
-from scipy.stats import median_absolute_deviation
+from scipy.stats import median_abs_deviation
 
 # third-party imports
 from ext.lab2im import utils
@@ -76,7 +76,7 @@ def sample_intensity_stats_from_image(image, segmentation, labels_list, classes_
         # compute stats for class and put them to the location of corresponding label values
         if len(intensities) != 0:
             means[idx] = np.nanmedian(intensities)
-            stds[idx] = median_absolute_deviation(intensities, nan_policy='omit')
+            stds[idx] = median_abs_deviation(intensities, nan_policy='omit')
 
     return np.stack([means, stds])
 
