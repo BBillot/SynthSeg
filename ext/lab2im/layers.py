@@ -204,7 +204,8 @@ class RandomSpatialDeformation(Layer):
                 rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_deform))
                 inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
                           for (m, v) in zip(self.inter_method, inputs)]
-        return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+
+        return unpack_singleton([tf.cast(v, t) for (t, v) in zip(types, inputs)])
 
 
 class RandomCrop(Layer):
@@ -258,7 +259,7 @@ class RandomCrop(Layer):
             inputs = tf.concat([tf.cast(v, 'float32') for v in inputs], axis=-1)
             inputs = tf.map_fn(self._single_slice, inputs, dtype=tf.float32)
             inputs = tf.split(inputs, self.list_n_channels, axis=-1)
-            return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+            return unpack_singleton([tf.cast(v, t) for (t, v) in zip(types, inputs)])
 
     def _single_slice(self, vol):
         crop_idx = tf.cast(tf.random.uniform([self.n_dims], 0, np.array(self.crop_max_val), 'float32'), dtype='int32')
@@ -404,7 +405,7 @@ class RandomFlip(Layer):
         inputs = tf.map_fn(self._single_flip, [inputs, rand_flip], dtype=tf.float32)
         inputs = tf.split(inputs, self.list_n_channels, axis=-1)
 
-        return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        return unpack_singleton([tf.cast(v, t) for (t, v) in zip(types, inputs)])
 
     def _single_swap(self, inputs):
         return K.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
@@ -1061,7 +1062,7 @@ class BiasFieldCorruption(Layer):
             bias_field = nrn_layers.Resize(size=self.inshape[0][1:self.n_dims + 1], interp_method='linear')(bias_field)
             bias_field = tf.math.exp(bias_field)
 
-            return [tf.math.multiply(bias_field, v) for v in inputs]
+            return unpack_singleton([tf.math.multiply(bias_field, v) for v in inputs])
 
         else:
             return inputs
@@ -1735,3 +1736,19 @@ class RandomDilationErosion(Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape
+
+
+def unpack_singleton(x):
+    """Gets the first element if the iterable has only one value.
+
+    Otherwise return the iterable.
+
+    # Argument
+        x: A list or tuple.
+
+    # Returns
+        The same iterable or the first element.
+    """
+    if len(x) == 1:
+        return x[0]
+    return x
