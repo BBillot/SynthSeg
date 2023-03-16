@@ -31,8 +31,10 @@ interfaces = namedtuple(
 )()
 
 from keras.layers import Layer
-from keras.engine.topology import Node
+from keras.engine.node import Node
 from copy import deepcopy
+from keras.utils import conv_utils
+from tensorflow import TensorShape
 
 # local
 from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
@@ -365,7 +367,7 @@ class Resize(Layer):
             self.size0 = [self.size] * self.ndims
         elif self.size is None:
             self.size0 = [0] * self.ndims
-        elif isinstance(self.size, (list, tuple)):
+        elif isinstance(self.size, (list, tuple, TensorShape)):
             self.size0 = deepcopy(self.size)
             assert len(self.size0) == self.ndims, \
                 'size length {} does not match number of dimensions {}'.format(len(self.size0), self.ndims)
