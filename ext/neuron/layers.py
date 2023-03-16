@@ -20,7 +20,16 @@ License: GPLv3
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
-from keras.legacy import interfaces
+
+# TODO: figure out the equivalent for a newer keras version
+#from keras.legacy import interfaces
+from collections import namedtuple
+interfaces = namedtuple(
+    "keras_legacy_interfaces",
+    "legacy_conv3d_support",
+    defaults=[lambda x: x]
+)()
+
 from keras.layers import Layer
 from keras.engine.topology import Node
 from copy import deepcopy
