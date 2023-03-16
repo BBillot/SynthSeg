@@ -33,7 +33,6 @@ interfaces = namedtuple(
 from keras.layers import Layer
 from keras.engine.node import Node
 from copy import deepcopy
-from keras.utils import conv_utils
 from tensorflow import TensorShape
 
 # local
