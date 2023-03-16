@@ -131,14 +131,29 @@ corresponding values. This table also details the order in which the posteriors 
 
 ### Installation
 
-1. Clone this repository
+1. Clone this repository.
 
-2. Create a virtual environment, and install all the required packages. We initially gave all the required packages to
-make it work with Python 3.6 (see [requirements_3.6](requirements_python3.6.txt)), but we now also give the list for 
-Python 3.8 (see [requirements_3.8](requirements_python3.8.txt)). Therefore, the choice is yours, but in each case, 
-please stick to the exact versions of the corresponding packages. If you wish to run SynthSeg on the GPU, or to train 
-your own model, you will also need the usual deep learning libraries Cuda (10.0 for python 3.6, 11.6 for python 3.8), 
-and CUDNN (7.0 for python 3.6, 8.4 for python 3.8).
+2. Create a virtual environment, and install all the required packages. \
+These of course depend on your python version, and here we list the requirements for Python 3.6 
+([requirements_3.6](requirements_python3.6.txt)) and Python 3.8 (see [requirements_3.8](requirements_python3.8.txt)).
+The choice is yours, but in each case, please stick to the exact package versions. If you wish to run on the GPU, you 
+will also need to install Cuda (10.0 for Python 3.6, 10.1 for Python 3.8), and CUDNN (7.6.5 for both). Note that if 
+you use conda, these will be automatically installed.\
+We here provide the minimal commands to install the required packages using pip/conda for Python 3.6/3.8.
+
+```
+# Conda, Python 3.6:
+conda create -n synthseg_36 python=3.6 tensorflow-gpu=2.0.0 keras=2.3.1 h5py==2.10.0 nibabel matplotlib -c anaconda -c conda-forge
+
+# Conda, Python 3.8:
+conda create -n synthseg_38 python=3.8 tensorflow-gpu=2.2.0 keras=2.3.1 nibabel matplotlib -c anaconda -c conda-forge
+
+# Pip, Python 3.6:
+pip install tensorflow-gpu==2.0.0 keras==2.3.1 nibabel==3.2.2 matplotlib==3.3.4
+
+# Pip, Python 3.8:
+pip install tensorflow-gpu==2.2.0 keras==2.3.1 protobuf==3.20.3 numpy==1.23.5 nibabel==5.0.1 matplotlib==3.6.2
+```
 
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
