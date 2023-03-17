@@ -18,7 +18,7 @@ License.
 import os
 
 # project imports
-from .predict_group import predict
+from SynthSeg.predict_group import predict
 
 # third-party imports
 from ext.lab2im import utils

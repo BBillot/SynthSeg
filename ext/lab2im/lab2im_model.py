@@ -20,9 +20,9 @@ import keras.layers as KL
 from keras.models import Model
 
 # project imports
-from . import utils
-from . import layers
-from .edit_tensors import resample_tensor, blurring_sigma_for_downsampling
+from ext.lab2im import utils
+from ext.lab2im import layers
+from ext.lab2im.edit_tensors import resample_tensor, blurring_sigma_for_downsampling
 
 
 def lab2im_model(labels_shape,

@@ -22,8 +22,8 @@ import keras.layers as KL
 from keras.models import Model
 
 # project imports
-from . import evaluate
-from .predict import write_csv, postprocess
+from SynthSeg import evaluate
+from SynthSeg.predict import write_csv, postprocess
 
 # third-party imports
 from ext.lab2im import edit_volumes

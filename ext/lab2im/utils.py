@@ -109,7 +109,7 @@ def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=Non
 
     # align image to reference affine matrix
     if aff_ref is not None:
-        from . import edit_volumes  # the import is done here to avoid import loops
+        from ext.lab2im import edit_volumes  # the import is done here to avoid import loops
         n_dims, _ = get_dims(list(volume.shape), max_channels=10)
         volume, aff = edit_volumes.align_volume_to_ref(volume, aff, aff_ref=aff_ref, return_aff=True, n_dims=n_dims)
 
@@ -187,7 +187,7 @@ def get_volume_info(path_volume, return_volume=False, aff_ref=None, max_channels
 
     # align to given affine matrix
     if aff_ref is not None:
-        from . import edit_volumes  # the import is done here to avoid import loops
+        from ext.lab2im import edit_volumes  # the import is done here to avoid import loops
         ras_axes = edit_volumes.get_ras_axes(aff, n_dims=n_dims)
         ras_axes_ref = edit_volumes.get_ras_axes(aff_ref, n_dims=n_dims)
         im = edit_volumes.align_volume_to_ref(im, aff, aff_ref=aff_ref, n_dims=n_dims)

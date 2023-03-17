@@ -29,8 +29,8 @@ from keras.optimizers import Adam
 from inspect import getmembers, isclass
 
 # project imports
-from . import metrics_model as metrics
-from .brain_generator import BrainGenerator
+from SynthSeg import metrics_model as metrics
+from SynthSeg.brain_generator import BrainGenerator
 
 # third-party imports
 from ext.lab2im import utils, layers

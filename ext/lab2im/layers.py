@@ -43,8 +43,8 @@ import keras.backend as K
 from keras.layers import Layer
 
 # project imports
-from . import utils
-from . import edit_tensors as l2i_et
+from ext.lab2im import utils
+from ext.lab2im import edit_tensors as l2i_et
 
 # third-party imports
 from ext.neuron import utils as nrn_utils

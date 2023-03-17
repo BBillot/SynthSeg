@@ -18,8 +18,8 @@ License.
 import numpy as np
 
 # project imports
-from .model_inputs import build_model_inputs
-from .labels_to_image_model import labels_to_image_model
+from SynthSeg.model_inputs import build_model_inputs
+from SynthSeg.labels_to_image_model import labels_to_image_model
 
 # third-party imports
 from ext.lab2im import utils, edit_volumes

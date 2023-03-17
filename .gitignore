@@ -1,3 +1,6 @@
+build
+dist
+SynthSeg.egg-info
 venv
 **/__pycache__/
 .idea

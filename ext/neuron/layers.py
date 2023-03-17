@@ -23,7 +23,7 @@ from keras.layers import Layer
 from copy import deepcopy
 
 # local
-from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
+from ext.neuron.utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
 
 
 class SpatialTransformer(Layer):

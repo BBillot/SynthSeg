@@ -18,7 +18,7 @@ License.
 import os
 
 # project imports
-from .predict_denoiser import predict
+from SynthSeg.predict_denoiser import predict
 
 # third-party imports
 from ext.lab2im import utils

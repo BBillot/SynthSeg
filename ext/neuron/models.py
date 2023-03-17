@@ -12,7 +12,7 @@ License: GPLv3
 
 import sys
 
-from . import layers
+from ext.neuron import layers
 
 # third party
 import numpy as np

@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from tensorflow.python.summary.summary_iterator import summary_iterator
 
 # project imports
-from .predict_qc import predict
+from SynthSeg.predict_qc import predict
 
 # third-party imports
 from ext.lab2im import utils

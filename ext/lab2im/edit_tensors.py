@@ -31,7 +31,7 @@ import keras.backend as K
 from itertools import combinations
 
 # project imports
-from . import utils
+from ext.lab2im import utils
 
 # third-party imports
 import ext.neuron.layers as nrn_layers
