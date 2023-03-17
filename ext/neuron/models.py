@@ -48,12 +48,6 @@ def unet(nb_features,
     """
     unet-style keras model with an overdose of parametrization.
 
-    downsampling: 
-
-    for U-net like architecture, we need to use Deconvolution3D.
-    However, this is not yet available (maybe soon, it's on a dev branch in github I believe)
-    Until then, we'll upsample and convolve.
-
     Parameters:
         nb_features: the number of features at each convolutional level
             see below for `feat_mult` and `layer_nb_feats` for modifiers to this number
@@ -66,7 +60,7 @@ def unet(nb_features,
         prefix (default: `name` value): prefix to be added to layer names
         feat_mult (default: 1) multiple for `nb_features` as we go down the encoder levels.
             e.g. feat_mult of 2 and nb_features of 16 would yield 32 features in the 
-            second layer, 64 features in the third layer, etc
+            second layer, 64 features in the third layer, etc.
         pool_size (default: 2): max pooling size (integer or list if specifying per dimension)
         skip_n_concatenations=0: enabled to skip concatenation links between contracting and expanding paths for the n
             top levels.
@@ -482,7 +476,7 @@ def conv_dec(nb_features,
             name = '%s_bn_up_%d' % (prefix, level)
             last_tensor = KL.BatchNormalization(axis=batch_norm, name=name)(last_tensor)
 
-    # Compute likelyhood prediction (no activation yet)
+    # Compute likelihood prediction (no activation yet)
     name = '%s_likelihood' % prefix
     last_tensor = convL(nb_labels, 1, activation=None, name=name)(last_tensor)
     like_tensor = last_tensor
@@ -499,7 +493,7 @@ def conv_dec(nb_features,
         name = '%s_prediction' % prefix
         pred_tensor = KL.Activation('linear', name=name)(like_tensor)
 
-    # create the model and retun
+    # create the model and return
     model = Model(inputs=input_tensor, outputs=pred_tensor, name=model_name)
     return model
 
@@ -640,8 +634,6 @@ def single_ae(enc_size,
             name = '%s_ae_mu_enc' % prefix
             zf = [enc_size[:-1][f] / last_tensor.shape.as_list()[1:-1][f] for f in range(len(enc_size) - 1)]
             last_tensor = layers.Resize(zoom_factor=zf, name=name)(last_tensor)
-            # resize_fn = lambda x: tf.image.resize_bilinear(x, enc_size[:-1])
-            # last_tensor = KL.Lambda(resize_fn, name=name)(last_tensor)
 
         elif enc_size[-1] is None:  # convolutional, but won't tell us bottleneck
             name = '%s_ae_mu_enc' % prefix
@@ -756,7 +748,7 @@ def single_ae(enc_size,
         name = '%s_bn_ae_%s_dec' % (prefix, ae_type)
         last_tensor = KL.BatchNormalization(axis=batch_norm, name=name)(last_tensor)
 
-    # create the model and retun
+    # create the model and return
     model = Model(inputs=input_tensor, outputs=[last_tensor], name=model_name)
     return model
 

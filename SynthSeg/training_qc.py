@@ -74,7 +74,7 @@ def training(list_paths_input_labels,
     # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
     # these values refer to the RAS axes.
 
-    :param: list_paths_input_labels: list of all the paths of the input label maps. These typically correspond to the
+    :param list_paths_input_labels: list of all the paths of the input label maps. These typically correspond to the
     outputs given by a segmentation algorithm, for which the network will try to predict quality scores.
     :param list_paths_target_labels: list of all the paths of the ground truths for the input label maps. These are used
     to compute Dice scores with their corresponding input label maps, that will serve as target for the regression

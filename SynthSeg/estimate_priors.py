@@ -19,7 +19,7 @@ import os
 import numpy as np
 try:
     from scipy.stats import median_absolute_deviation
-except:
+except ImportError:
     from scipy.stats import median_abs_deviation as median_absolute_deviation
 
 

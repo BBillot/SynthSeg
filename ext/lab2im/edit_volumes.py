@@ -262,9 +262,9 @@ def crop_volume_around_region(volume,
     image (e.g. because the center of the mask is close to the edge), we can either:
     1) stick to the valid image space (the size of the modified cropping region won't be respected)
     2) shift the cropping region so that it lies on the valid image space, and if it still overflows, then we restrict
-    to the valia image space.
+    to the valid image space.
     3) pad the image with zeros, such that the cropping region is not ill-defined anymore.
-    3) shift the cropping region tot he valida image space, and if it still overflows, then we pad with zeros.
+    3) shift the cropping region to the valida image space, and if it still overflows, then we pad with zeros.
     :param volume: a 2d or 3d numpy array
     :param mask: (optional) mask of region to crop around. Must be same size as volume. Can either be boolean or 0/1.
     If no mask is given, it will be computed by either thresholding the input volume or using masking_labels.
@@ -279,7 +279,7 @@ def crop_volume_around_region(volume,
     number. If it is not, then we enlarge the cropping area. If the enlarged area is too big for the input volume, we
     pad it with 0. Must be an integer. Cannot be given at the same time as margin or cropping_shape.
     :param aff: (optional) if specified, this function returns an updated affine matrix of the volume after cropping.
-    :param overflow: (optional) how to proceed when the cropping region overflows outside of the initial image space.
+    :param overflow: (optional) how to proceed when the cropping region overflows outside the initial image space.
     Can either be 'strict' (default), 'shift-strict', 'padding', 'shift-padding.
     :return: the cropped volume, the cropping indices (in the order [lower_bound_dim_1, ..., upper_bound_dim_1, ...]),
     and the updated affine matrix if aff is not None.
@@ -507,7 +507,7 @@ def resample_volume(volume, aff, new_vox_size, interpolation='linear', blur=True
     :param aff: affine matrix of the volume
     :param new_vox_size: new voxel size (3 - element numpy vector) in mm
     :param interpolation: (optional) type of interpolation. Can be 'linear' or 'nearest'. Default is 'linear'.
-    :param blur: (optional) whether to blur before resampling to avoid alliasing effects.
+    :param blur: (optional) whether to blur before resampling to avoid aliasing effects.
     Only used if the input volume is downsampled. Default is True.
     :return: new volume and affine matrix
     """
@@ -558,7 +558,7 @@ def resample_volume_like(vol_ref, aff_ref, vol_flo, aff_flo, interpolation='line
     :param aff_ref: affine matrix of the reference volume
     :param vol_flo: a numpy array with the floating volume
     :param aff_flo: affine matrix of the floating volume
-    :param interpolation: (optional) type of interpolation. Can be 'linear' or 'nearest. Default is 'linear'.
+    :param interpolation: (optional) type of interpolation. Can be 'linear' or 'nearest'. Default is 'linear'.
     :return: resliced volume
     """
 

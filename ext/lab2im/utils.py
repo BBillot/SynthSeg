@@ -925,7 +925,7 @@ def build_training_generator(gen, batchsize):
 
 def find_closest_number_divisible_by_m(n, m, answer_type='lower'):
     """Return the closest integer to n that is divisible by m. answer_type can either be 'closer', 'lower' (only returns
-    values lower than n), or 'higher (only returns values higher than m)."""
+    values lower than n), or 'higher' (only returns values higher than m)."""
     if n % m == 0:
         return n
     else:

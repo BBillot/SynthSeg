@@ -107,6 +107,7 @@ def sample_segmentation_pairs(image_dir,
     tensor for synthesising the elastic deformation field.
 
     # blurring/resampling parameters
+    :param min_res: (optional) resolution of the input pairs of images/segmentations
     :param max_res_iso: (optional) This enables to control the upper bound of the uniform distribution from which we
     sample the random resolution U(min_res, max_res_iso), where min_res is the resolution of the input label maps.
     Must be a number, and default is 4.
@@ -114,6 +115,7 @@ def sample_segmentation_pairs(image_dir,
     is done by randomly selecting a direction i in the range [0, n_dims-1], and sampling a value in the corresponding
     uniform distribution U(min_res[i], max_res_aniso[i]), where min_res is the resolution of the input label maps. Can
     be a number, a sequence, or a 1d numpy array.
+    :param blur_range: (optional) coef to randomise the blurring kernel
 
     # bias field parameters
     :param bias_field_std: (optional) If strictly positive, this triggers the corruption of images with a bias field.
@@ -126,6 +128,7 @@ def sample_segmentation_pairs(image_dir,
 
     # noise parameters
     :param noise_std: (optional) standard deviation of the white Gaussian noise added at high resolution to the image.
+    :param noise_std_lr: (optional) sta dev of the white Gaussian noise added at low resolution to the image.
     :param gamma_std: (optional) standard deviation of the gaussian transform to apply at high resolution to the image.
     """
 

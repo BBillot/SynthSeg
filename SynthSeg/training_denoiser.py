@@ -69,7 +69,7 @@ def training(list_paths_input_labels,
     # Each time we provide a parameter with separate values for each axis (e.g. with a numpy array or a sequence),
     # these values refer to the RAS axes.
 
-    :param: list_paths_input_labels: list of all the paths of the input label maps. These correspond to "noisy"
+    :param list_paths_input_labels: list of all the paths of the input label maps. These correspond to "noisy"
     segmentations that the denoiser will be trained to correct.
     :param list_paths_target_labels: list of all the paths of the output label maps. Must have the same order as
     list_paths_input_labels. These are the target label maps that the network will learn to produce given the "noisy"

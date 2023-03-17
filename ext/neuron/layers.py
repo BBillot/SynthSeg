@@ -86,8 +86,8 @@ class SpatialTransformer(Layer):
         input1: image.
         input2: list of transform Tensors
             if affine:
-                should be a N+1 x N+1 matrix
-                *or* a N+1*N+1 tensor (which will be reshape to N x (N+1) and an identity row added)
+                should be an N+1 x N+1 matrix
+                *or* a N+1*N+1 tensor (which will be reshaped to N x (N+1) and an identity row added)
             if not affine:
                 should be a *vol_shape x N
         """
@@ -138,7 +138,7 @@ class SpatialTransformer(Layer):
         for i in range(len(trf)):
             trf[i] = K.reshape(trf[i], [-1, *self.inshape[i+1][1:]])
 
-        # reorder transforms, non linear first and affine second
+        # reorder transforms, non-linear first and affine second
         ind_nonlinear_linear = [i[0] for i in sorted(enumerate(self.is_affine), key=lambda x:x[1])]
         self.is_affine = [self.is_affine[i] for i in ind_nonlinear_linear]
         self.inshape = [self.inshape[i] for i in ind_nonlinear_linear]
@@ -149,7 +149,7 @@ class SpatialTransformer(Layer):
             trf = trf[0]
             if self.is_affine[0]:
                 trf = tf.map_fn(lambda x: self._single_aff_to_shift(x, vol.shape[1:-1]), trf, dtype=tf.float32)
-        # combine non linear and affine to obtain a single deformation field
+        # combine non-linear and affine to obtain a single deformation field
         elif len(trf) == 2:
             trf = tf.map_fn(lambda x: self._non_linear_and_aff_to_shift(x, vol.shape[1:-1]), trf, dtype=tf.float32)
 
@@ -351,7 +351,7 @@ class Resize(Layer):
             assert len(self.size0) == self.ndims, \
                 'size length {} does not match number of dimensions {}'.format(len(self.size0), self.ndims)
         else:
-            raise Exception('size should be an int or a list/tuple of int (or None if zoom_factor is not set to None), had {}'.format(self.size))
+            raise Exception('size should be an int or a list/tuple of int (or None if zoom_factor is not set to None)')
 
         # confirm built
         self.built = True

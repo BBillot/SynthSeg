@@ -288,7 +288,7 @@ class RandomFlip(Layer):
     :param label_list: if swap_labels is True, list of all labels contained in labels. Must be ordered as follows, first
      the neutral labels (i.e. non-sided), then left labels and right labels.
     :param n_neutral_labels: if swap_labels is True, number of non-sided labels
-    :param prob: probability to flip along each specifed axis
+    :param prob: probability to flip along each specified axis
 
     example 1:
     if input is a tensor of shape (batchsize, 10, 100, 200, 3)
@@ -840,7 +840,7 @@ class MimicAcquisition(Layer):
     :param resample_shape: shape of the output tensor
     :param build_dist_map: whether to return distance maps as outputs. These indicate the distance between each voxel
     and the nearest non-interpolated voxel (during the second resampling).
-    :param prob_noise: proability to apply noise injection
+    :param prob_noise: probability to apply noise injection
 
     example 1:
     im_res = [1., 1., 1.]

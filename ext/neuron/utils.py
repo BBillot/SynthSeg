@@ -31,7 +31,7 @@ def interpn(vol, loc, interp_method='linear'):
 
     Parameters:
         vol: volume with size vol_shape or [*vol_shape, nb_features]
-        loc: a N-long list of N-D Tensors (the interpolation locations) for the new grid
+        loc: an N-long list of N-D Tensors (the interpolation locations) for the new grid
             each tensor has to have the same size (but not nec. same size as vol)
             or a tensor of size [*new_vol_shape, D]
         interp_method: interpolation type 'linear' (default) or 'nearest'
@@ -229,7 +229,7 @@ def combine_non_linear_and_aff_to_shift(transform_list, volshape, shift_center=T
         - subtract grid
 
     Parameters:
-        transform_list: list of non linear tensor (size of volshape) and affine ND+1 x ND+1 or ND x ND+1 tensor
+        transform_list: list of non-linear tensor (size of volshape) and affine ND+1 x ND+1 or ND x ND+1 tensor
         volshape: 1xN Nd Tensor of the size of the volume.
         shift_center (optional)
         indexing
@@ -288,7 +288,7 @@ def combine_non_linear_and_aff_to_shift(transform_list, volshape, shift_center=T
 
 def transform(vol, loc_shift, interp_method='linear', indexing='ij'):
     """
-    transform (interpolation N-D volumes (features) given shifts at each location in tensorflow
+    transform interpolation N-D volumes (features) given shifts at each location in tensorflow
 
     Essentially interpolates volume vol at locations determined by loc_shift. 
     This is a spatial transform in the sense that at location [x] we now have the data from, 
@@ -303,9 +303,6 @@ def transform(vol, loc_shift, interp_method='linear', indexing='ij'):
     
     Return:
         new interpolated volumes in the same size as loc_shift[0]
-    
-    Keyworks:
-        interpolation, sampler, resampler, linear, bilinear
     """
 
     # parse shapes
@@ -315,7 +312,7 @@ def transform(vol, loc_shift, interp_method='linear', indexing='ij'):
         volshape = loc_shift.shape[:-1]
     nb_dims = len(volshape)
 
-    # location should be mesh and delta
+    # location should be meshed and delta
     mesh = volshape_to_meshgrid(volshape, indexing=indexing)  # volume mesh
     loc = [tf.cast(mesh[d], 'float32') + loc_shift[..., d] for d in range(nb_dims)]
 
