@@ -133,13 +133,13 @@ corresponding values. This table also details the order in which the posteriors 
 
 1. Clone this repository.
 
-2. Create a virtual environment, and install all the required packages. \
-These of course depend on your python version, and here we list the requirements for Python 3.6 
+2. Create a virtual environment (i.e., with pip or conda) and install all the required packages. \
+These depend on your python version, and here we list the requirements for Python 3.6 
 ([requirements_3.6](requirements_python3.6.txt)) and Python 3.8 (see [requirements_3.8](requirements_python3.8.txt)).
-The choice is yours, but in each case, please stick to the exact package versions. If you wish to run on the GPU, you 
-will also need to install Cuda (10.0 for Python 3.6, 10.1 for Python 3.8), and CUDNN (7.6.5 for both). Note that if 
-you use conda, these will be automatically installed.\
-We here provide the minimal commands to install the required packages using pip/conda for Python 3.6/3.8.
+The choice is yours, but in each case, please stick to the exact package versions.\
+A first solution to install the dependencies, if you use pip, is to run setup.py (with and activated virtual 
+environment): `python setup.py install`. Otherwise, we also give here the minimal commands to install the required 
+packages using pip/conda for Python 3.6/3.8.
 
 ```
 # Conda, Python 3.6:
@@ -157,8 +157,10 @@ pip install tensorflow-gpu==2.2.0 keras==2.3.1 protobuf==3.20.3 numpy==1.23.5 ni
 
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
 
+4. If you wish to run on the GPU, you will also need to install Cuda (10.0 for Python 3.6, 10.1 for Python 3.8), and 
+CUDNN (7.6.5 for both). Note that if you used conda, these were already automatically installed.
 
-That's it ! You're now ready to use this tool ! :tada:
+That's it ! You're now ready to use SynthSeg ! :tada:
 
 
 ----------------
