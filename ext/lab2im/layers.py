@@ -33,7 +33,7 @@ distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, e
 implied. See the License for the specific language governing permissions and limitations under the
 License.
 """
-
+from typing import Union, List, Tuple, Any
 
 # python imports
 import numpy as np
@@ -1738,7 +1738,7 @@ class RandomDilationErosion(Layer):
         return input_shape
 
 
-def unpack_singleton(x):
+def unpack_singleton(x: Union[List, Tuple]) -> Any:
     """Gets the first element if the iterable has only one value.
 
     Otherwise return the iterable.
