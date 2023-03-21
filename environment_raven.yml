@@ -1,29 +1,21 @@
-name: synth_seg_py39
+name: synthseg_raven
 channels:
   - conda-forge
 dependencies:
+  # trying to emulate following env on raven:
+  # >module load anaconda/3/2021.11 tensorflow/gpu-cuda-11.6/2.11.0 scikit-learn/1.1.1
   - python=3.9.7
   - cudatoolkit=11.6.0
   - cudnn=8.4.1
+  - tensorflow=2.11.0
+  - scikit-learn=1.1.1
+  - tqdm=4.62.3
+  - matplotlib=3.4.3
+  - ipython=7.29.0
+  - pip=21.2.4
+  # on raven you should install the requirements in an "venv" after loading the modules
+  # >python -m venv --system-site-packages ~/venvs/synthseg
+  # >source ~/venvs/synthseg/bin/activate
+  # >pip install -r requirements_raven.txt
   - pip:
-      - tensorflow-gpu==2.11.0
-      - nibabel==4.0.2
-      - scikit-learn==1.1.1
-      - Pillow==9.3.0
-      - matplotlib==3.7.1
-      - tqdm==4.64
-      - ipython==8.7.0
-#  - h5py=2.10.0
-#  - imageio=2.22.4
-#  - Keras=2.3.1
-#  - Keras-Applications=1.0.8
-#  - Keras-Preprocessing=1.1.2
-#  - matplotlib=3.2.1
-#  - nibabel=4.0.2
-#  - numpy=1.18.5
-#  - pandas=1.0.3
-#  - Pillow=9.3.0
-#  - scikit-learn=0.22.2.post1
-#  - tensorflow-gpu=2.2.0
-#  - tqdm=4.64
-#  - ipython=8.7.0
+      - -r requirements_raven.txt

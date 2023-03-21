@@ -1,0 +1,11 @@
+nibabel==4.0.2
+Pillow==9.3.0
+# h5py=2.10.0
+# imageio=2.22.4
+# Keras=2.3.1
+# Keras-Applications=1.0.8
+# Keras-Preprocessing=1.1.2
+# nibabel=4.0.2
+# numpy=1.18.5
+# pandas=1.0.3
+# ipython=8.7.0
