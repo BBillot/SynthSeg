@@ -24,7 +24,7 @@ if [ -f "$MAMBA_INIT" ]; then
 else
   echo "Couldn't find mamba. Installing it now..."
   wget -O Mambaforge.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"
-  bash Miniforge3.sh -b -p "${HOME}/mambaforge"
+  bash Mambaforge.sh -b -p "${HOME}/mambaforge"
 fi
 
 source "${CONDA_INIT}"
