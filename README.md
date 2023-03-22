@@ -94,7 +94,7 @@ to a file, a folder, or a text file where each line is the path to an output seg
 - `--robust` (optional) to use the variant for increased robustness (e.g., when analysing clinical data with large space
 spacing). This can be slower than the other model.
 - `--ct` (optional) use on CT scans in Hounsfield scale. It clips intensities to [0, 80].
-- `<vol>` (optional) path to a CSV file where the volumes of all segmented regions will be saved for all scans 
+- `<vol>` (optional) path to a CSV file where the volumes (in mm<sup>3</sup>) of all segmented regions will be saved for all scans 
 (e.g. /path/to/volumes.csv). If `<input> ` is a text file, so must be `<vol>`, for which each line is the path to a 
 different CSV file corresponding to one subject only.
 - `<qc>` (optional) path to a CSV file where QC scores will be saved. The same formatting requirements apply as for

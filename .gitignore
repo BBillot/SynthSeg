@@ -7,6 +7,9 @@ venv
 
 ext/pynd
 
+data/labels_classes_priors/generation_classes_2.0.npy
+data/labels_classes_priors/generation_labels_2.0.npy
+
 models/synthseg_2.0.h5
 models/synthseg_parc_2.0.h5
 models/synthseg_qc_2.0.h5

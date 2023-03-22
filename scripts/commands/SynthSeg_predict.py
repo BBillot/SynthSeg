@@ -38,7 +38,7 @@ parser.add_argument("--parc", action="store_true", help="(optional) Whether to p
 parser.add_argument("--robust", action="store_true", help="(optional) Whether to use robust predictions (slower).")
 parser.add_argument("--fast", action="store_true", help="(optional) Bypass some postprocessing for faster predictions.")
 parser.add_argument("--ct", action="store_true", help="(optional) Clip intensities to [0,80] for CT scans.")
-parser.add_argument("--vol", help="(optional) Path to output CSV file with volumes for all structures and subjects.")
+parser.add_argument("--vol", help="(optional) Path to output CSV file with volumes (mm3) for all regions and subjects.")
 parser.add_argument("--qc", help="(optional) Path to output CSV file with qc scores for all subjects.")
 parser.add_argument("--post", help="(optional) Posteriors output(s). Must be a folder if --i designates a folder.")
 parser.add_argument("--resample", help="(optional) Resampled image(s). Must be a folder if --i designates a folder.")
