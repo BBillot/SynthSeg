@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This is to prevent conda/mamba to run into situations
+# where it can't solve the environment because TF has a weird
+# way of specifying it's CUDA dependency.
+export CONDA_OVERRIDE_CUDA="11.8"
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 CONDA_INIT="${HOME}/mambaforge/etc/profile.d/conda.sh"
 MAMBA_INIT="${HOME}/mambaforge/etc/profile.d/mamba.sh"
