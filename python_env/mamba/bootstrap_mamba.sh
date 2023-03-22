@@ -19,6 +19,7 @@ fi
 # Extract the name of the environment
 ENV_NAME=$(sed -n '1s/name: //p' "${ENV_FILE}")
 
+# Check if we already have mamba. If not, we install it into $HOME/mambaforge
 if [ -f "$MAMBA_INIT" ]; then
   echo "Mamba seems to be already installed."
 else
@@ -27,9 +28,16 @@ else
   bash Mambaforge.sh -b -p "${HOME}/mambaforge"
 fi
 
-source "${CONDA_INIT}"
-source "${MAMBA_INIT}"
+# Now the conda.sh and mamba.sh must exist or we're screwed
+if [ -f "$MAMBA_INIT" ]; then
+  source "${CONDA_INIT}"
+  source "${MAMBA_INIT}"
+else
+  echo "Something went wrong during the installation. Can't find ${MAMBA_INIT}"
+  exit 1
+fi
 
+# Check if the conda environment already exist. If yes, we update it. If not, we create it from the environment.yml
 if mamba env list | grep -q "^${ENV_NAME}"; then
   echo "Environment ${ENV_NAME} already exists. Running an update according to ${ENV_FILE}"
   mamba env update -f "${SCRIPT_DIR}/environment.yml"
