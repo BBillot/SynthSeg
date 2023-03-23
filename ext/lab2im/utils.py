@@ -73,7 +73,7 @@ from scipy.ndimage.morphology import distance_transform_edt
 # ---------------------------------------------- loading/saving functions ----------------------------------------------
 
 
-def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=None):
+def load_volume(path_volume: str, im_only: bool = True, squeeze: bool = True, dtype=None, aff_ref=None):
     """
     Load volume file.
     :param path_volume: path of the volume to load. Can either be a nii, nii.gz, mgz, or npz format.
@@ -91,9 +91,9 @@ def load_volume(path_volume, im_only=True, squeeze=True, dtype=None, aff_ref=Non
     if path_volume.endswith(('.nii', '.nii.gz', '.mgz')):
         x = nib.load(path_volume)
         if squeeze:
-            volume = np.squeeze(x.get_data())
+            volume = np.squeeze(x.get_fdata())
         else:
-            volume = x.get_data()
+            volume = x.get_fdata()
         aff = x.affine
         header = x.header
     else:  # npz
