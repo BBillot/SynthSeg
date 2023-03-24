@@ -23,11 +23,6 @@ import os
 import keras
 import numpy as np
 import tensorflow as tf
-from keras import models
-import keras.layers as KL
-import keras.backend as K
-import keras.callbacks as KC
-from keras.optimizers import Adam
 from inspect import getmembers, isclass
 
 # project imports
@@ -194,8 +189,8 @@ def build_augmentation_model(labels_shape,
     output_shape = get_shapes(labels_shape, output_shape, output_div_by_n, n_dims)
 
     # define model inputs
-    net_input = KL.Input(shape=labels_shape + [1], name='noisy_labels_input', dtype='int32')
-    target_input = KL.Input(shape=labels_shape + [1], name='target_input', dtype='int32')
+    net_input = tf.keras.layers.Input(shape=labels_shape + [1], name='noisy_labels_input', dtype='int32')
+    target_input = tf.keras.layers.Input(shape=labels_shape + [1], name='target_input', dtype='int32')
 
     # convert labels if necessary
     if labels_list_to_convert is not None:
@@ -221,11 +216,11 @@ def build_augmentation_model(labels_shape,
                                               prob_mask=0.3, name='partial_fov')([noisy_labels, target])
 
     # dummy layers
-    scores = KL.Lambda(lambda x: x, name='dice_gt')(scores)
-    noisy_labels = KL.Lambda(lambda x: x[0], name='labels_out')([noisy_labels, scores])
+    scores = tf.keras.layers.Lambda(lambda x: x, name='dice_gt')(scores)
+    noisy_labels = tf.keras.layers.Lambda(lambda x: x[0], name='labels_out')([noisy_labels, scores])
 
     # build model and return
-    brain_model = models.Model(inputs=[net_input, target_input], outputs=noisy_labels)
+    brain_model = tf.keras.models.Model(inputs=[net_input, target_input], outputs=noisy_labels)
     return brain_model
 
 
@@ -258,12 +253,12 @@ def build_qc_model(input_model,
     last = model.outputs[0]
 
     conv_kwargs = {'padding': 'same', 'activation': 'relu', 'data_format': 'channels_last'}
-    last = KL.MaxPool3D(pool_size=(2, 2, 2), name='qc_maxpool_%s' % (n_levels - 1), padding='same')(last)
-    last = KL.Conv3D(n_labels, kernel_size=5, **conv_kwargs, name='qc_final_conv_0')(last)
-    last = KL.Conv3D(n_labels, kernel_size=5, **conv_kwargs, name='qc_final_conv_1')(last)
-    last = KL.Lambda(lambda x: tf.reduce_mean(x, axis=[1, 2, 3]), name='qc_final_pred')(last)
+    last = tf.keras.layers.MaxPool3D(pool_size=(2, 2, 2), name='qc_maxpool_%s' % (n_levels - 1), padding='same')(last)
+    last = tf.keras.layers.Conv3D(n_labels, kernel_size=5, **conv_kwargs, name='qc_final_conv_0')(last)
+    last = tf.keras.layers.Conv3D(n_labels, kernel_size=5, **conv_kwargs, name='qc_final_conv_1')(last)
+    last = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, axis=[1, 2, 3]), name='qc_final_pred')(last)
 
-    return models.Model(input_model.inputs, last)
+    return tf.keras.models.Model(input_model.inputs, last)
 
 
 def build_qc_loss(input_model):
@@ -273,10 +268,10 @@ def build_qc_loss(input_model):
     dice_pred = input_model.outputs[0]
 
     # get loss
-    loss = KL.Lambda(lambda x: K.sum(K.mean(K.square(x[0] - x[1]), axis=0)), name='qc_loss')([dice_gt, dice_pred])
+    loss = tf.keras.layers.Lambda(lambda x: tf.keras.backend.sum(tf.keras.backend.mean(tf.keras.backend.square(x[0] - x[1]), axis=0)), name='qc_loss')([dice_gt, dice_pred])
     loss._keras_shape = tuple(loss.get_shape().as_list())
 
-    return models.Model(inputs=input_model.inputs, outputs=loss)
+    return tf.keras.models.Model(inputs=input_model.inputs, outputs=loss)
 
 
 def build_model_inputs(path_input_label_maps,
@@ -367,8 +362,8 @@ def train_model(model,
 
     # model saving callback
     save_file_name = os.path.join(model_dir, 'qc_{epoch:03d}.h5')
-    callbacks = [KC.ModelCheckpoint(save_file_name, verbose=1),
-                 KC.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)]
+    callbacks = [tf.keras.callbacks.ModelCheckpoint(save_file_name, verbose=1),
+                 tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False)]
 
     compile_model = True
     init_epoch = 0
@@ -377,14 +372,14 @@ def train_model(model,
         custom_l2i = {key: value for (key, value) in getmembers(l2i_layers, isclass) if key != 'Layer'}
         custom_nrn = {key: value for (key, value) in getmembers(nrn_layers, isclass) if key != 'Layer'}
         custom_objects = {**custom_l2i, **custom_nrn, 'tf': tf, 'keras': keras, 'loss': metrics.IdentityLoss().loss}
-        model = models.load_model(path_checkpoint, custom_objects=custom_objects)
+        model = tf.keras.models.load_model(path_checkpoint, custom_objects=custom_objects)
         compile_model = False
     elif path_checkpoint is not None:
         model.load_weights(path_checkpoint, by_name=True)
 
     # compile
     if compile_model:
-        model.compile(optimizer=Adam(lr=learning_rate), loss=metrics.IdentityLoss().loss)
+        model.compile(optimizer=tf.keras.optimizers.Adam(lr=learning_rate), loss=metrics.IdentityLoss().loss)
 
     # fit
     model.fit_generator(generator,
@@ -394,7 +389,7 @@ def train_model(model,
                         initial_epoch=init_epoch)
 
 
-class SimulatePartialFOV(KL.Layer):
+class SimulatePartialFOV(tf.keras.layers.Layer):
     """Expects hard segmentations for the two input label maps, input first, gt second."""
 
     def __init__(self, crop_shape, labels_list, min_fov_shape, prob_mask, **kwargs):
@@ -469,7 +464,7 @@ class SimulatePartialFOV(KL.Layer):
 
         # mask input labels
         mask = tf.map_fn(self._single_build_mask, [x, mask_idx_inf, mask_idx_sup], tf.int32)
-        x = K.switch(tf.squeeze(K.greater(tf.random.uniform([1], 0, 1), 1 - self.prob_mask)), x * mask, x)
+        x = tf.keras.backend.switch(tf.squeeze(tf.keras.backend.greater(tf.random.uniform([1], 0, 1), 1 - self.prob_mask)), x * mask, x)
 
         # compute dice score for each label value
         x = tf.one_hot(tf.gather(self.lut, x), depth=self.n_labels, axis=-1)

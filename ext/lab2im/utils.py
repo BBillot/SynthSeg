@@ -64,8 +64,6 @@ import pickle
 import numpy as np
 import nibabel as nib
 import tensorflow as tf
-import keras.layers as KL
-import keras.backend as K
 from datetime import timedelta
 from scipy.ndimage.morphology import distance_transform_edt
 
@@ -1015,22 +1013,22 @@ def draw_value_from_distribution(hyperparameter,
 
     # draw values as tensor
     if return_as_tensor:
-        shape = KL.Lambda(lambda x: tf.convert_to_tensor(hyperparameter.shape[1], 'int32'))([])
+        shape = tf.keras.layers.Lambda(lambda x: tf.convert_to_tensor(hyperparameter.shape[1], 'int32'))([])
         if batchsize is not None:
-            shape = KL.Lambda(lambda x: tf.concat([x[0], tf.expand_dims(x[1], axis=0)], axis=0))([batchsize, shape])
+            shape = tf.keras.layers.Lambda(lambda x: tf.concat([x[0], tf.expand_dims(x[1], axis=0)], axis=0))([batchsize, shape])
         if distribution == 'uniform':
-            parameter_value = KL.Lambda(lambda x: tf.random.uniform(shape=x,
+            parameter_value = tf.keras.layers.Lambda(lambda x: tf.random.uniform(shape=x,
                                                                     minval=hyperparameter[0, :],
                                                                     maxval=hyperparameter[1, :]))(shape)
         elif distribution == 'normal':
-            parameter_value = KL.Lambda(lambda x: tf.random.normal(shape=x,
+            parameter_value = tf.keras.layers.Lambda(lambda x: tf.random.normal(shape=x,
                                                                    mean=hyperparameter[0, :],
                                                                    stddev=hyperparameter[1, :]))(shape)
         else:
             raise ValueError("Distribution not supported, should be 'uniform' or 'normal'.")
 
         if positive_only:
-            parameter_value = KL.Lambda(lambda x: K.clip(x, 0, None))(parameter_value)
+            parameter_value = tf.keras.layers.Lambda(lambda x: tf.keras.backend.clip(x, 0, None))(parameter_value)
 
     # draw values as numpy array
     else:

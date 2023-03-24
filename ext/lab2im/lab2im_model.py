@@ -16,8 +16,7 @@ License.
 
 # python imports
 import numpy as np
-import keras.layers as KL
-from keras.models import Model
+import tensorflow as tf
 
 # project imports
 from . import utils
@@ -80,9 +79,9 @@ def lab2im_model(labels_shape,
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
     # define model inputs
-    labels_input = KL.Input(shape=labels_shape+[1], name='labels_input', dtype='int32')
-    means_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
-    stds_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='stds_input')
+    labels_input = tf.keras.layers.Input(shape=labels_shape+[1], name='labels_input', dtype='int32')
+    means_input = tf.keras.layers.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
+    stds_input = tf.keras.layers.Input(shape=list(generation_labels.shape) + [n_channels], name='stds_input')
 
     # deform labels
     labels = layers.RandomSpatialDeformation(inter_method='nearest')(labels_input)
@@ -118,8 +117,8 @@ def lab2im_model(labels_shape,
     labels = layers.ConvertLabels(generation_labels, dest_values=output_labels, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
-    image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = Model(inputs=[labels_input, means_input, stds_input], outputs=[image, labels])
+    image = tf.keras.layers.Lambda(lambda x: x[0], name='image_out')([image, labels])
+    brain_model = tf.keras.models.Model(inputs=[labels_input, means_input, stds_input], outputs=[image, labels])
 
     return brain_model
 

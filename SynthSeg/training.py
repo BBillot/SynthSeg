@@ -20,12 +20,8 @@ License.
 
 # python imports
 import os
-import keras
 import numpy as np
 import tensorflow as tf
-from keras import models
-import keras.callbacks as KC
-from keras.optimizers import Adam
 from inspect import getmembers, isclass
 
 # project imports
@@ -293,7 +289,7 @@ def training(labels_dir,
 
     # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
     if wl2_epochs > 0:
-        wl2_model = models.Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
+        wl2_model = tf.keras.models.Model(unet_model.inputs, [unet_model.get_layer('unet_likelihood').output])
         wl2_model = metrics.metrics_model(wl2_model, segmentation_labels, 'wl2')
         train_model(wl2_model, input_generator, lr, wl2_epochs, steps_per_epoch, model_dir, 'wl2', checkpoint)
         checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
@@ -320,11 +316,11 @@ def train_model(model,
 
     # model saving callback
     save_file_name = os.path.join(model_dir, '%s_{epoch:03d}.h5' % metric_type)
-    callbacks = [KC.ModelCheckpoint(save_file_name, verbose=1)]
+    callbacks = [tf.keras.callbacks.ModelCheckpoint(save_file_name, verbose=1)]
 
     # TensorBoard callback
     if metric_type == 'dice':
-        callbacks.append(KC.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False))
+        callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False))
 
     compile_model = True
     init_epoch = 0
@@ -334,15 +330,15 @@ def train_model(model,
         if (not reinitialise_momentum) & (metric_type in path_checkpoint):
             custom_l2i = {key: value for (key, value) in getmembers(layers, isclass) if key != 'Layer'}
             custom_nrn = {key: value for (key, value) in getmembers(nrn_layers, isclass) if key != 'Layer'}
-            custom_objects = {**custom_l2i, **custom_nrn, 'tf': tf, 'keras': keras, 'loss': metrics.IdentityLoss().loss}
-            model = models.load_model(path_checkpoint, custom_objects=custom_objects)
+            custom_objects = {**custom_l2i, **custom_nrn, 'tf': tf, 'keras': tf.keras, 'loss': metrics.IdentityLoss().loss}
+            model = tf.keras.models.load_model(path_checkpoint, custom_objects=custom_objects)
             compile_model = False
         else:
             model.load_weights(path_checkpoint, by_name=True)
 
     # compile
     if compile_model:
-        model.compile(optimizer=Adam(lr=learning_rate), loss=metrics.IdentityLoss().loss)
+        model.compile(optimizer=tf.keras.optimizers.Adam(lr=learning_rate), loss=metrics.IdentityLoss().loss)
 
     # fit
     model.fit_generator(generator,

@@ -12,8 +12,6 @@ License: GPLv3
 
 # third party
 import numpy as np
-import keras.backend as K
-from keras import losses
 import tensorflow as tf
 
 # local
@@ -66,16 +64,16 @@ class CategoricalCrossentropy(object):
             y_pred = utils.batch_gather(y_pred, self.crop_indices)
 
         if self.use_float16:
-            y_true = K.cast(y_true, 'float16')
-            y_pred = K.cast(y_pred, 'float16')
+            y_true = tf.keras.backend.cast(y_true, 'float16')
+            y_pred = tf.keras.backend.cast(y_pred, 'float16')
 
         # scale and clip probabilities
         # this should not be necessary for softmax output.
-        y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
-        y_pred = K.clip(y_pred, K.epsilon(), 1)
+        y_pred /= tf.keras.backend.sum(y_pred, axis=-1, keepdims=True)
+        y_pred = tf.keras.backend.clip(y_pred, tf.keras.backend.epsilon(), 1)
 
         # compute log probability
-        log_post = K.log(y_pred)  # likelihood
+        log_post = tf.keras.backend.log(y_pred)  # likelihood
 
         # loss
         loss = - y_true * log_post
@@ -88,8 +86,8 @@ class CategoricalCrossentropy(object):
             loss *= self.vox_weights
 
         # take the total loss
-        # loss = K.batch_flatten(loss)
-        mloss = K.mean(K.sum(K.cast(loss, 'float32'), -1))
+        # loss = tf.keras.backend.batch_flatten(loss)
+        mloss = tf.keras.backend.mean(tf.keras.backend.sum(tf.keras.backend.cast(loss, 'float32'), -1))
         tf.verify_tensor_all_finite(mloss, 'Loss not finite')
         return mloss
 
@@ -118,7 +116,7 @@ class Dice(object):
         model.compile(diceloss, ...)
 
     Test:
-        import keras.utils as nd_utils
+        import tensorflow.keras.utils as nd_utils
         reload(nrn_metrics)
         weights = [0.1, 0.2, 0.3, 0.4, 0.5]
         nb_labels = len(weights)
@@ -175,8 +173,8 @@ class Dice(object):
         """
 
         self.nb_labels = nb_labels
-        self.weights = None if weights is None else K.variable(weights)
-        self.vox_weights = None if vox_weights is None else K.variable(vox_weights)
+        self.weights = None if weights is None else tf.keras.backend.variable(weights)
+        self.vox_weights = None if vox_weights is None else tf.keras.backend.variable(vox_weights)
         self.input_type = input_type
         self.dice_type = dice_type
         self.approx_hard_max = approx_hard_max
@@ -197,11 +195,11 @@ class Dice(object):
 
         if self.input_type == 'prob':
             # We assume that y_true is probabilistic, but just in case:
-            y_true /= K.sum(y_true, axis=-1, keepdims=True)
-            y_true = K.clip(y_true, K.epsilon(), 1)
+            y_true /= tf.keras.backend.sum(y_true, axis=-1, keepdims=True)
+            y_true = tf.keras.backend.clip(y_true, tf.keras.backend.epsilon(), 1)
             # make sure pred is a probability
-            y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
-            y_pred = K.clip(y_pred, K.epsilon(), 1)
+            y_pred /= tf.keras.backend.sum(y_pred, axis=-1, keepdims=True)
+            y_pred = tf.keras.backend.clip(y_pred, tf.keras.backend.epsilon(), 1)
 
         # Prepare the volumes to operate on
         # If we're doing 'hard' Dice, then we will prepare one-hot-based matrices of size
@@ -215,8 +213,8 @@ class Dice(object):
                     y_pred_op = _hard_max(y_pred, axis=-1)
                     y_true_op = _hard_max(y_true, axis=-1)
                 else:
-                    y_pred_op = _label_to_one_hot(K.argmax(y_pred, axis=-1), self.nb_labels)
-                    y_true_op = _label_to_one_hot(K.argmax(y_true, axis=-1), self.nb_labels)
+                    y_pred_op = _label_to_one_hot(tf.keras.backend.argmax(y_pred, axis=-1), self.nb_labels)
+                    y_true_op = _label_to_one_hot(tf.keras.backend.argmax(y_true, axis=-1), self.nb_labels)
 
             # if given predicted label, transform to one hot notation
             else:
@@ -236,23 +234,23 @@ class Dice(object):
         sum_dim = 1
 
         # Edited by eugenio
-        # top = 2 * K.sum(y_true_op * y_pred_op, sum_dim)
+        # top = 2 * tf.keras.backend.sum(y_true_op * y_pred_op, sum_dim)
         sum_dim = 1
         top = 2 * y_true_op * y_pred_op
-        for dims_to_sum in range(len(K.int_shape(y_true_op))-2):
-            top = K.sum(top, sum_dim)
+        for dims_to_sum in range(len(tf.keras.backend.int_shape(y_true_op))-2):
+            top = tf.keras.backend.sum(top, sum_dim)
 
         # Edited by eugenio
-        # bottom = K.sum(K.square(y_true_op), sum_dim) + K.sum(K.square(y_pred_op), sum_dim)
-        bottom_true = K.square(y_true_op)
-        bottom_pred = K.square(y_pred_op)
-        for dims_to_sum in range(len(K.int_shape(y_true_op))-2):
-            bottom_true = K.sum(bottom_true, sum_dim)
-            bottom_pred = K.sum(bottom_pred, sum_dim)
+        # bottom = tf.keras.backend.sum(tf.keras.backend.square(y_true_op), sum_dim) + tf.keras.backend.sum(tf.keras.backend.square(y_pred_op), sum_dim)
+        bottom_true = tf.keras.backend.square(y_true_op)
+        bottom_pred = tf.keras.backend.square(y_pred_op)
+        for dims_to_sum in range(len(tf.keras.backend.int_shape(y_true_op))-2):
+            bottom_true = tf.keras.backend.sum(bottom_true, sum_dim)
+            bottom_pred = tf.keras.backend.sum(bottom_pred, sum_dim)
         bottom = bottom_pred + bottom_true
 
-        # make sure we have no 0s on the bottom. K.epsilon()
-        bottom = K.maximum(bottom, self.area_reg)
+        # make sure we have no 0s on the bottom. tf.keras.backend.epsilon()
+        bottom = tf.keras.backend.maximum(bottom, self.area_reg)
         return top / bottom
 
     def mean_dice(self, y_true, y_pred):
@@ -268,7 +266,7 @@ class Dice(object):
             dice_metric *= self.vox_weights
 
         # return one minus mean dice as loss
-        mean_dice_metric = K.mean(dice_metric)
+        mean_dice_metric = tf.keras.backend.mean(dice_metric)
         tf.verify_tensor_all_finite(mean_dice_metric, 'metric not finite')
         return mean_dice_metric
 
@@ -287,7 +285,7 @@ class Dice(object):
             dice_loss *= self.weights
 
         # return one minus mean dice as loss
-        mean_dice_loss = K.mean(dice_loss)
+        mean_dice_loss = tf.keras.backend.mean(dice_loss)
         tf.verify_tensor_all_finite(mean_dice_loss, 'Loss not finite')
         return mean_dice_loss
 
@@ -323,7 +321,7 @@ class MeanSquaredError():
             y_true = utils.batch_gather(y_true, self.crop_indices)
             y_pred = utils.batch_gather(y_pred, self.crop_indices)
 
-        ksq = K.square(y_pred - y_true)
+        ksq = tf.keras.backend.square(y_pred - y_true)
 
         if self.vox_weights is not None:
             if self.vox_weights == 'y_true':
@@ -336,7 +334,7 @@ class MeanSquaredError():
         if self.weights is not None:
             ksq *= self.weights
 
-        return K.mean(ksq)
+        return tf.keras.backend.mean(ksq)
 
 
 class Mix():
@@ -349,7 +347,7 @@ class Mix():
             self.loss_wts = np.ones(len(loss_wts))
 
     def loss(self, y_true, y_pred):
-        total_loss = K.variable(0)
+        total_loss = tf.keras.backend.variable(0)
         for idx, loss in enumerate(self.losses):
             total_loss += self.loss_wts[idx] * loss(y_true, y_pred)
         return total_loss
@@ -376,16 +374,16 @@ class WGAN_GP(object):
         # shp = y_true.get_shape()[0]
         # WARNING: SHOULD REALLY BE shape=[batch_size, 1] !!!
         # self.batch_size does not work, since it's not None!!!
-        alpha = K.random_uniform(shape=[K.shape(y_pred)[0], 1, 1, 1])
+        alpha = tf.keras.backend.random_uniform(shape=[tf.keras.backend.shape(y_pred)[0], 1, 1, 1])
         diff = y_pred - y_true
         interp = y_true + alpha * diff
 
         # take gradient of D(x_hat)
-        gradients = K.gradients(self.disc(interp), [interp])[0]
-        grad_pen = K.mean(K.square(K.sqrt(K.sum(K.square(gradients), axis=1))-1))
+        gradients = tf.keras.backend.gradients(self.disc(interp), [interp])[0]
+        grad_pen = tf.keras.backend.mean(tf.keras.backend.square(tf.keras.backend.sqrt(tf.keras.backend.sum(tf.keras.backend.square(gradients), axis=1))-1))
 
         # compute loss
-        return (K.mean(disc_pred) - K.mean(disc_true)) + self.lambda_gp * grad_pen
+        return (tf.keras.backend.mean(disc_pred) - tf.keras.backend.mean(disc_true)) + self.lambda_gp * grad_pen
 
 
 class Nonbg(object):
@@ -407,19 +405,19 @@ class Nonbg(object):
         """ prepare a loss of the given metric/loss operating on non-bg data """
         yt = y_true #.eval()
         ytbg = np.where(yt == 0)
-        y_true_fix = K.variable(yt.flat(ytbg))
-        y_pred_fix = K.variable(y_pred.flat(ytbg))
+        y_true_fix = tf.keras.backend.variable(yt.flat(ytbg))
+        y_pred_fix = tf.keras.backend.variable(y_pred.flat(ytbg))
         return self.metric(y_true_fix, y_pred_fix)
 
 
 def l1(y_true, y_pred):
     """ L1 metric (MAE) """
-    return losses.mean_absolute_error(y_true, y_pred)
+    return tf.keras.losses.mean_absolute_error(y_true, y_pred)
 
 
 def l2(y_true, y_pred):
     """ L2 metric (MSE) """
-    return losses.mean_squared_error(y_true, y_pred)
+    return tf.keras.losses.mean_squared_error(y_true, y_pred)
 
 
 ###############################################################################
@@ -431,8 +429,8 @@ def _label_to_one_hot(tens, nb_labels):
     Transform a label nD Tensor to a one-hot 3D Tensor. The input tensor is first
     batch-flattened, and then each batch and each voxel gets a one-hot representation
     """
-    y = K.batch_flatten(tens)
-    return K.one_hot(y, nb_labels)
+    y = tf.keras.backend.batch_flatten(tens)
+    return tf.keras.backend.one_hot(y, nb_labels)
 
 
 def _hard_max(tens, axis):
@@ -442,7 +440,7 @@ def _hard_max(tens, axis):
     therefore, we replace the 'hard max' operation (i.e. argmax + onehot)
     with this approximation
     """
-    tensmax = K.max(tens, axis=axis, keepdims=True)
-    eps_hot = K.maximum(tens - tensmax + K.epsilon(), 0)
-    one_hot = eps_hot / K.epsilon()
+    tensmax = tf.keras.backend.max(tens, axis=axis, keepdims=True)
+    eps_hot = tf.keras.backend.maximum(tens - tensmax + tf.keras.backend.epsilon(), 0)
+    one_hot = eps_hot / tf.keras.backend.epsilon()
     return one_hot

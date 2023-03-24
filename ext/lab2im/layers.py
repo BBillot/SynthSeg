@@ -37,9 +37,8 @@ from typing import Union, List, Tuple, Any
 
 # python imports
 import numpy as np
+
 import tensorflow as tf
-import keras.backend as K
-from keras.layers import Layer
 
 # project imports
 from . import utils
@@ -50,7 +49,7 @@ from ext.neuron import utils as nrn_utils
 import ext.neuron.layers as nrn_layers
 
 
-class RandomSpatialDeformation(Layer):
+class RandomSpatialDeformation(tf.keras.layers.Layer):
 
     """This layer spatially deforms one or several tensors with a combination of affine and elastic transformations.
     The input tensors are expected to have the same shape [batchsize, shape_dim1, ..., shape_dimn, channel].
@@ -201,14 +200,14 @@ class RandomSpatialDeformation(Layer):
                 inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in
                           zip(self.inter_method, inputs)]
             else:
-                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_deform))
-                inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
+                rand_trans = tf.squeeze(tf.keras.backend.less(tf.random.uniform([1], 0, 1), self.prob_deform))
+                inputs = [tf.keras.backend.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
                           for (m, v) in zip(self.inter_method, inputs)]
 
         return unpack_singleton([tf.cast(v, t) for (t, v) in zip(types, inputs)])
 
 
-class RandomCrop(Layer):
+class RandomCrop(tf.keras.layers.Layer):
 
     """Randomly crop all input tensors to a given shape. This cropping is applied to all channels.
     The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
@@ -272,7 +271,7 @@ class RandomCrop(Layer):
         return output_shape if self.several_inputs else output_shape[0]
 
 
-class RandomFlip(Layer):
+class RandomFlip(tf.keras.layers.Layer):
 
     """This function flips the input tensors along the specified axes with a probability of 0.5.
     The input tensors are expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
@@ -389,7 +388,7 @@ class RandomFlip(Layer):
 
         # sample boolean for each element of the batch
         batchsize = tf.split(tf.shape(inputs[0]), [1, self.n_dims + 1])[0]
-        rand_flip = K.less(tf.random.uniform(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0), 0, 1),
+        rand_flip = tf.keras.backend.less(tf.random.uniform(tf.concat([batchsize, tf.ones(1, dtype='int32')], axis=0), 0, 1),
                            self.prob)
 
         # swap r/l labels if necessary
@@ -408,7 +407,7 @@ class RandomFlip(Layer):
         return unpack_singleton([tf.cast(v, t) for (t, v) in zip(types, inputs)])
 
     def _single_swap(self, inputs):
-        return K.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
+        return tf.keras.backend.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
 
     def _single_flip(self, inputs):
         if self.flip_axis is None:
@@ -416,10 +415,10 @@ class RandomFlip(Layer):
         else:
             idx = tf.squeeze(tf.random.uniform([1], 0, len(self.flip_axis), dtype='int32'))
             flip_axis = tf.expand_dims(tf.convert_to_tensor(self.flip_axis, dtype='int32')[idx], axis=0)
-        return K.switch(inputs[1], K.reverse(inputs[0], axes=flip_axis), inputs[0])
+        return tf.keras.backend.switch(inputs[1], tf.keras.backend.reverse(inputs[0], axes=flip_axis), inputs[0])
 
 
-class SampleConditionalGMM(Layer):
+class SampleConditionalGMM(tf.keras.layers.Layer):
     """This layer generates an image by sampling a Gaussian Mixture Model conditioned on a label map given as input.
     The parameters of the GMM are given as two additional inputs to the layer (means and standard deviations):
     image = SampleConditionalGMM(generation_labels)([label_map, means, stds])
@@ -493,7 +492,7 @@ class SampleConditionalGMM(Layer):
         return input_shape[0] if (self.n_channels == 1) else tuple(list(input_shape[0][:-1]) + [self.n_channels])
 
 
-class SampleResolution(Layer):
+class SampleResolution(tf.keras.layers.Layer):
     """Build a random resolution tensor by sampling a uniform distribution of provided range.
 
     You can use this layer in the following ways:
@@ -539,7 +538,7 @@ class SampleResolution(Layer):
         self.return_thickness = return_thickness
         self.n_dims = len(self.min_res)
         self.add_batchsize = False
-        self.min_res_tens = None
+        # self.min_res_tens = None
         super(SampleResolution, self).__init__(**kwargs)
 
     def get_config(self):
@@ -582,12 +581,14 @@ class SampleResolution(Layer):
         if input_shape:
             self.add_batchsize = True
 
-        self.min_res_tens = tf.convert_to_tensor(self.min_res, dtype='float32')
+        # self.min_res_tens = tf.convert_to_tensor(self.min_res, dtype='float32')
 
         self.built = True
         super(SampleResolution, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
+
+        min_res_tens = tf.convert_to_tensor(self.min_res, dtype='float32')
 
         if not self.add_batchsize:
             shape = [self.n_dims]
@@ -597,7 +598,7 @@ class SampleResolution(Layer):
         else:
             batch = tf.split(tf.shape(inputs), [1, -1])[0]
             tile_shape = tf.concat([batch, tf.convert_to_tensor([1], dtype='int32')], axis=0)
-            self.min_res_tens = tf.tile(tf.expand_dims(self.min_res_tens, 0), tile_shape)
+            min_res_tens = tf.tile(tf.expand_dims(min_res_tens, 0), tile_shape)
 
             shape = tf.concat([batch, tf.convert_to_tensor([self.n_dims], dtype='int32')], axis=0)
             indices = tf.stack([tf.range(0, batch[0]), tf.random.uniform(batch, 0, self.n_dims, dtype='int32')], 1)
@@ -605,35 +606,35 @@ class SampleResolution(Layer):
 
         # return min resolution as tensor if min=max
         if (self.max_res_iso is None) & (self.max_res_aniso is None):
-            new_resolution = self.min_res_tens
+            new_resolution = min_res_tens
 
         # sample isotropic resolution only
         elif (self.max_res_iso is not None) & (self.max_res_aniso is None):
             new_resolution_iso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_iso)
-            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_min)),
-                                      self.min_res_tens,
+            new_resolution = tf.keras.backend.switch(tf.squeeze(tf.keras.backend.less(tf.random.uniform([1], 0, 1), self.prob_min)),
+                                      min_res_tens,
                                       new_resolution_iso)
 
         # sample anisotropic resolution only
         elif (self.max_res_iso is None) & (self.max_res_aniso is not None):
             new_resolution_aniso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_aniso)
-            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_min)),
-                                      self.min_res_tens,
-                                      tf.where(mask, new_resolution_aniso, self.min_res_tens))
+            new_resolution = tf.keras.backend.switch(tf.squeeze(tf.keras.backend.less(tf.random.uniform([1], 0, 1), self.prob_min)),
+                                      min_res_tens,
+                                      tf.where(mask, new_resolution_aniso, min_res_tens))
 
         # sample either anisotropic or isotropic resolution
         else:
             new_resolution_iso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_iso)
             new_resolution_aniso = tf.random.uniform(shape, minval=self.min_res, maxval=self.max_res_aniso)
-            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_iso)),
+            new_resolution = tf.keras.backend.switch(tf.squeeze(tf.keras.backend.less(tf.random.uniform([1], 0, 1), self.prob_iso)),
                                       new_resolution_iso,
-                                      tf.where(mask, new_resolution_aniso, self.min_res_tens))
-            new_resolution = K.switch(tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_min)),
-                                      self.min_res_tens,
+                                      tf.where(mask, new_resolution_aniso, min_res_tens))
+            new_resolution = tf.keras.backend.switch(tf.squeeze(tf.keras.backend.less(tf.random.uniform([1], 0, 1), self.prob_min)),
+                                      min_res_tens,
                                       new_resolution)
 
         if self.return_thickness:
-            return [new_resolution, tf.random.uniform(tf.shape(self.min_res_tens), self.min_res_tens, new_resolution)]
+            return [new_resolution, tf.random.uniform(tf.shape(min_res_tens), min_res_tens, new_resolution)]
         else:
             return new_resolution
 
@@ -644,7 +645,7 @@ class SampleResolution(Layer):
             return (None, self.n_dims) if self.add_batchsize else self.n_dims
 
 
-class GaussianBlur(Layer):
+class GaussianBlur(tf.keras.layers.Layer):
     """Applies gaussian blur to an input image.
     The input image is expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
     :param sigma: standard deviation of the blurring kernels to apply. Can be a number, a list of length n_dims, or
@@ -743,7 +744,7 @@ class GaussianBlur(Layer):
                         maskb = tf.cast(mask, 'float32')
                         maskb = tf.concat([self.convnd(tf.expand_dims(maskb[..., n], -1), k, self.stride, 'SAME')
                                            for n in range(self.n_channels)], -1)
-                        image = image / (maskb + K.epsilon())
+                        image = image / (maskb + tf.keras.backend.epsilon())
                         image = tf.where(mask, image, tf.zeros_like(image))
         else:
             if any(self.sigma):
@@ -753,13 +754,13 @@ class GaussianBlur(Layer):
                     maskb = tf.cast(mask, 'float32')
                     maskb = tf.concat([self.convnd(tf.expand_dims(maskb[..., n], -1), self.kernels, self.stride, 'SAME')
                                        for n in range(self.n_channels)], -1)
-                    image = image / (maskb + K.epsilon())
+                    image = image / (maskb + tf.keras.backend.epsilon())
                     image = tf.where(mask, image, tf.zeros_like(image))
 
         return image
 
 
-class DynamicGaussianBlur(Layer):
+class DynamicGaussianBlur(tf.keras.layers.Layer):
     """Applies gaussian blur to an input image, where the standard deviation of the blurring kernel is provided as a
     layer input, which enables to perform dynamic blurring (i.e. the blurring kernel can vary at each minibatch).
     :param max_sigma: maximum value of the standard deviation that will be provided as input. This is used to compute
@@ -824,7 +825,7 @@ class DynamicGaussianBlur(Layer):
         return output
 
 
-class MimicAcquisition(Layer):
+class MimicAcquisition(tf.keras.layers.Layer):
     """
     Layer that takes an image as input, and simulates data that has been acquired at low resolution.
     The output is obtained by resampling the input twice:
@@ -916,7 +917,7 @@ class MimicAcquisition(Layer):
         assert len(inputs) == 2, 'inputs must have two items, the tensor to resample, and the downsampling resolution'
         vol = inputs[0]
         subsample_res = tf.cast(inputs[1], dtype='float32')
-        vol = K.reshape(vol, [-1, *self.inshape])  # necessary for multi_gpu models
+        vol = tf.keras.backend.reshape(vol, [-1, *self.inshape])  # necessary for multi_gpu models
         batchsize = tf.split(tf.shape(vol), [1, -1])[0]
         tile_shape = tf.concat([batchsize, tf.ones([1], dtype='int32')], 0)
 
@@ -933,7 +934,7 @@ class MimicAcquisition(Layer):
         down_loc = tf.cast(down_loc, 'float32') / l2i_et.expand_dims(down_zoom_factor, axis=[1] * self.n_dims)
         inshape_tens = tf.tile(tf.expand_dims(tf.convert_to_tensor(self.inshape[:-1]), 0), tile_shape)
         inshape_tens = l2i_et.expand_dims(inshape_tens, axis=[1] * self.n_dims)
-        down_loc = K.clip(down_loc, 0., tf.cast(inshape_tens, 'float32'))
+        down_loc = tf.keras.backend.clip(down_loc, 0., tf.cast(inshape_tens, 'float32'))
         vol = tf.map_fn(self._single_down_interpn, [vol, down_loc], tf.float32)
 
         # add noise
@@ -981,7 +982,7 @@ class MimicAcquisition(Layer):
         return [output_shape] * 2 if self.build_dist_map else output_shape
 
 
-class BiasFieldCorruption(Layer):
+class BiasFieldCorruption(tf.keras.layers.Layer):
     """This layer applies a smooth random bias field to the input by applying the following steps:
     1) we first sample a value for the standard deviation of a centred normal distribution
     2) a small-size SVF is sampled from this normal distribution
@@ -1068,7 +1069,7 @@ class BiasFieldCorruption(Layer):
             return inputs
 
 
-class IntensityAugmentation(Layer):
+class IntensityAugmentation(tf.keras.layers.Layer):
     """This layer enables to augment the intensities of the input tensor, as well as to apply min_max normalisation.
     The following steps are applied (all are optional):
     1) white noise corruption, with a randomly sampled std dev.
@@ -1173,7 +1174,7 @@ class IntensityAugmentation(Layer):
 
         # clip images to given values
         if self.clip_values is not None:
-            inputs = K.clip(inputs, self.clip_values[0], self.clip_values[1])
+            inputs = tf.keras.backend.clip(inputs, self.clip_values[0], self.clip_values[1])
 
         # normalise
         if self.normalise:
@@ -1188,13 +1189,13 @@ class IntensityAugmentation(Layer):
                 M = intensities[:, min(int(self.perc[1] * self.flatten_shape), self.flatten_shape - 1), ...]
             # simple min and max
             else:
-                m = K.min(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
-                M = K.max(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
+                m = tf.keras.backend.min(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
+                M = tf.keras.backend.max(inputs, axis=list(range(1, self.expand_minmax_dim + 1)))
             # normalise
             m = l2i_et.expand_dims(m, axis=[1] * self.expand_minmax_dim)
             M = l2i_et.expand_dims(M, axis=[1] * self.expand_minmax_dim)
             inputs = tf.clip_by_value(inputs, m, M)
-            inputs = (inputs - m) / (M - m + K.epsilon())
+            inputs = (inputs - m) / (M - m + tf.keras.backend.epsilon())
 
         # apply voxel-wise exponentiation
         if self.gamma_std > 0:
@@ -1213,10 +1214,10 @@ class IntensityAugmentation(Layer):
         return inputs
 
     def _single_invert(self, inputs):
-        return K.switch(tf.squeeze(inputs[1]), 1 - inputs[0], inputs[0])
+        return tf.keras.backend.switch(tf.squeeze(inputs[1]), 1 - inputs[0], inputs[0])
 
 
-class DiceLoss(Layer):
+class DiceLoss(tf.keras.layers.Layer):
     """This layer computes the Dice loss between two tensors. These tensors are expected to 1) have the same shape, and
     2) be probabilistic, i.e. they must have the same shape [batchsize, size_dim1, ..., size_dimN, n_labels] where
     n_labels is the number of labels for which we compute the Dice loss."""
@@ -1244,8 +1245,8 @@ class DiceLoss(Layer):
         x = inputs[0]
         y = inputs[1]
         if self.enable_checks:  # disabling is useful to, e.g., use incomplete label maps
-            x = K.clip(x / (tf.math.reduce_sum(x, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
-            y = K.clip(y / (tf.math.reduce_sum(y, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
+            x = tf.keras.backend.clip(x / (tf.math.reduce_sum(x, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
+            y = tf.keras.backend.clip(y / (tf.math.reduce_sum(y, axis=-1, keepdims=True) + tf.keras.backend.epsilon()), 0, 1)
 
         # compute dice loss for each label
         top = tf.math.reduce_sum(2 * x * y, axis=list(range(1, len(self.inshape))))
@@ -1253,13 +1254,13 @@ class DiceLoss(Layer):
         bottom = tf.math.reduce_sum(bottom, axis=list(range(1, len(self.inshape))))
         last_tensor = top / bottom
 
-        return K.mean(1 - last_tensor)
+        return tf.keras.backend.mean(1 - last_tensor)
 
     def compute_output_shape(self, input_shape):
         return [[]]
 
 
-class WeightedL2Loss(Layer):
+class WeightedL2Loss(tf.keras.layers.Layer):
     """This layer computes a L2 loss weighted by a specified factor between two tensors.
     These tensors are expected to have the same shape [batchsize, size_dim1, ..., size_dimN, n_labels]
     where n_labels is the number of labels for which we compute the loss.
@@ -1288,13 +1289,13 @@ class WeightedL2Loss(Layer):
         gt = inputs[0]
         pred = inputs[1]
         weights = tf.expand_dims(1 - gt[..., 0] + self.background_weight, -1)
-        return K.sum(weights * K.square(pred - self.target_value * (2 * gt - 1))) / (K.sum(weights) * self.n_labels)
+        return tf.keras.backend.sum(weights * tf.keras.backend.square(pred - self.target_value * (2 * gt - 1))) / (tf.keras.backend.sum(weights) * self.n_labels)
 
     def compute_output_shape(self, input_shape):
         return [[]]
 
 
-class ResetValuesToZero(Layer):
+class ResetValuesToZero(tf.keras.layers.Layer):
     """This layer enables to reset given values to 0 within the input tensors.
 
     :param values: list of values to be reset to 0.
@@ -1334,7 +1335,7 @@ class ResetValuesToZero(Layer):
         return inputs
 
 
-class ConvertLabels(Layer):
+class ConvertLabels(tf.keras.layers.Layer):
     """Convert all labels in a tensor by the corresponding given set of values.
     labels_converted = ConvertLabels(source_values, dest_values)(labels).
     labels must be an int32 tensor, and labels_converted will also be int32.
@@ -1367,7 +1368,7 @@ class ConvertLabels(Layer):
         return tf.gather(self.lut, tf.cast(inputs, dtype='int32'))
 
 
-class PadAroundCentre(Layer):
+class PadAroundCentre(tf.keras.layers.Layer):
     """Pad the input tensor to the specified shape with the given value.
     The input tensor is expected to have shape [batchsize, shape_dim1, ..., shape_dimn, channel].
     :param pad_margin: margin to use for padding. The tensor will be padded by the provided margin on each side.
@@ -1433,7 +1434,7 @@ class PadAroundCentre(Layer):
         return tf.pad(inputs, self.pad_margin_tens, mode='CONSTANT', constant_values=self.value)
 
 
-class MaskEdges(Layer):
+class MaskEdges(tf.keras.layers.Layer):
     """Reset the edges of a tensor to zero (i.e. with bands of zeros along the specified axes).
     The width of the zero-band is randomly drawn from a uniform distribution, whose range is given in boundaries.
 
@@ -1517,7 +1518,7 @@ class MaskEdges(Layer):
             mask = mask * tmp_mask
 
         # mask second_channel
-        tensor = K.switch(tf.squeeze(K.greater(tf.random.uniform([1], 0, 1), 1 - self.prob_mask)),
+        tensor = tf.keras.backend.switch(tf.squeeze(tf.keras.backend.greater(tf.random.uniform([1], 0, 1), 1 - self.prob_mask)),
                           inputs * mask,
                           inputs)
 
@@ -1527,7 +1528,7 @@ class MaskEdges(Layer):
         return [input_shape] * 2
 
 
-class ImageGradients(Layer):
+class ImageGradients(tf.keras.layers.Layer):
 
     def __init__(self, gradient_type='sobel', return_magnitude=False, **kwargs):
 
@@ -1628,7 +1629,7 @@ class ImageGradients(Layer):
         return tuple(input_shape)
 
 
-class RandomDilationErosion(Layer):
+class RandomDilationErosion(tf.keras.layers.Layer):
     """
     GPU implementation of binary dilation or erosion. The operation can be chosen to be always a dilation, or always an
     erosion, or randomly choosing between them for each element of the batch.
@@ -1716,19 +1717,19 @@ class RandomDilationErosion(Layer):
             return inputs * tf.cast(mask, dtype=inputs.dtype)
 
     def _sample_factor(self, inputs):
-        return tf.cast(K.switch(K.less(tf.squeeze(inputs[0]), 0),
+        return tf.cast(tf.keras.backend.switch(tf.keras.backend.less(tf.squeeze(inputs[0]), 0),
                                 tf.random.uniform((1,), self.min_factor, self.max_factor, dtype='int32'),
                                 tf.random.uniform((1,), self.min_factor, self.max_factor_dilate, dtype='int32')),
                        dtype='float32')
 
     def _single_blur(self, inputs):
         # dilate...
-        new_mask = K.switch(K.greater(tf.squeeze(inputs[2]), 1 - self.prob + 0.001),
+        new_mask = tf.keras.backend.switch(tf.keras.backend.greater(tf.squeeze(inputs[2]), 1 - self.prob + 0.001),
                             tf.cast(tf.greater(tf.squeeze(self.convnd(tf.expand_dims(inputs[0], 0), inputs[1],
                                     [1] * (self.n_dims + 2), padding='SAME'), axis=0), 0.01), dtype='float32'),
                             inputs[0])
         # ...or erode
-        new_mask = K.switch(K.less(tf.squeeze(inputs[2]), - (1 - self.prob + 0.001)),
+        new_mask = tf.keras.backend.switch(tf.keras.backend.less(tf.squeeze(inputs[2]), - (1 - self.prob + 0.001)),
                             1 - tf.cast(tf.greater(tf.squeeze(self.convnd(tf.expand_dims(1 - new_mask, 0), inputs[1],
                                         [1] * (self.n_dims + 2), padding='SAME'), axis=0), 0.01), dtype='float32'),
                             new_mask)

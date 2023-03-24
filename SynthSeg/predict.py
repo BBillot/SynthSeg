@@ -19,9 +19,6 @@ import os
 import csv
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-import keras.backend as K
-from keras.models import Model
 
 # project imports
 from SynthSeg import evaluate
@@ -446,10 +443,10 @@ def build_model(path_model,
     n_labels_seg = len(labels_segmentation)
 
     if gradients:
-        input_image = KL.Input(input_shape)
+        input_image = tf.keras.layers.Input(input_shape)
         last_tensor = layers.ImageGradients('sobel', True)(input_image)
-        last_tensor = KL.Lambda(lambda x: (x - K.min(x)) / (K.max(x) - K.min(x) + K.epsilon()))(last_tensor)
-        net = Model(inputs=input_image, outputs=last_tensor)
+        last_tensor = tf.keras.layers.Lambda(lambda x: (x - tf.keras.backend.min(x)) / (tf.keras.backend.max(x) - tf.keras.backend.min(x) + tf.keras.backend.epsilon()))(last_tensor)
+        net = tf.keras.models.Model(inputs=input_image, outputs=last_tensor)
     else:
         net = None
 
@@ -471,7 +468,7 @@ def build_model(path_model,
         last_tensor = net.output
         last_tensor._keras_shape = tuple(last_tensor.get_shape().as_list())
         last_tensor = layers.GaussianBlur(sigma=sigma_smoothing)(last_tensor)
-        net = Model(inputs=net.inputs, outputs=last_tensor)
+        net = tf.keras.models.Model(inputs=net.inputs, outputs=last_tensor)
 
     if flip_indices is not None:
 
@@ -483,14 +480,14 @@ def build_model(path_model,
 
         # flip back and re-order channels
         last_tensor = layers.RandomFlip(flip_axis=0, prob=1)(last_tensor)
-        last_tensor = KL.Lambda(lambda x: tf.split(x, [1] * n_labels_seg, axis=-1), name='split')(last_tensor)
+        last_tensor = tf.keras.layers.Lambda(lambda x: tf.split(x, [1] * n_labels_seg, axis=-1), name='split')(last_tensor)
         reordered_channels = [last_tensor[flip_indices[i]] for i in range(n_labels_seg)]
-        last_tensor = KL.Lambda(lambda x: tf.concat(x, -1), name='concat')(reordered_channels)
+        last_tensor = tf.keras.layers.Lambda(lambda x: tf.concat(x, -1), name='concat')(reordered_channels)
 
         # average two segmentations and build model
         name_segm_prediction_layer = 'average_lr'
-        last_tensor = KL.Lambda(lambda x: 0.5 * (x[0] + x[1]), name=name_segm_prediction_layer)([seg, last_tensor])
-        net = Model(inputs=net.inputs, outputs=last_tensor)
+        last_tensor = tf.keras.layers.Lambda(lambda x: 0.5 * (x[0] + x[1]), name=name_segm_prediction_layer)([seg, last_tensor])
+        net = tf.keras.models.Model(inputs=net.inputs, outputs=last_tensor)
 
     return net
 

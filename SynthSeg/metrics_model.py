@@ -17,8 +17,6 @@ License.
 # python imports
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-from keras.models import Model
 
 # third-party imports
 from ext.lab2im import layers
@@ -38,8 +36,8 @@ def metrics_model(input_model, label_list, metrics='dice'):
     # get GT and convert it to probabilistic values
     labels_gt = input_model.get_layer('labels_out').output
     labels_gt = layers.ConvertLabels(label_list)(labels_gt)
-    labels_gt = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels_gt)
-    labels_gt = KL.Reshape(input_shape)(labels_gt)
+    labels_gt = tf.keras.layers.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels_gt)
+    labels_gt = tf.keras.layers.Reshape(input_shape)(labels_gt)
 
     # make sure the tensors have the right keras shape
     last_tensor._keras_shape = tuple(last_tensor.get_shape().as_list())
@@ -55,7 +53,7 @@ def metrics_model(input_model, label_list, metrics='dice'):
         raise Exception('metrics should either be "dice or "wl2, got {}'.format(metrics))
 
     # create the model and return
-    model = Model(inputs=input_model.inputs, outputs=last_tensor)
+    model = tf.keras.models.Model(inputs=input_model.inputs, outputs=last_tensor)
     return model
 
 

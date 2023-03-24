@@ -9,7 +9,6 @@ import zipfile
 import numpy as np
 import nibabel as nib
 import scipy
-from keras.utils import np_utils
 
 # local packages
 from ext.pynd import ndutils as nd
@@ -929,7 +928,7 @@ def img_seg(volpath,
         input_vol = np.vstack([next(img_gen).astype('float16')/255 for i in range(batch_size)])
         input_vol = np.expand_dims(input_vol, axis=-1)
 
-        output_vols = [np_utils.to_categorical(next(seg_gen).astype('int8'), num_classes=2) for i in range(batch_size)]
+        output_vols = [tf.keras.utils.np_utils.to_categorical(next(seg_gen).astype('int8'), num_classes=2) for i in range(batch_size)]
         output_vol = np.vstack([np.expand_dims(f, axis=0) for f in output_vols])
 
         # output input and output

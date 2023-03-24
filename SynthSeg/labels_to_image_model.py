@@ -17,8 +17,6 @@ License.
 # python imports
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-from keras.models import Model
 
 # third-party imports
 from ext.lab2im import utils
@@ -156,9 +154,9 @@ def labels_to_image_model(labels_shape,
     crop_shape, output_shape = get_shapes(labels_shape, output_shape, atlas_res, target_res, output_div_by_n)
 
     # define model inputs
-    labels_input = KL.Input(shape=labels_shape + [1], name='labels_input', dtype='int32')
-    means_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
-    stds_input = KL.Input(shape=list(generation_labels.shape) + [n_channels], name='std_devs_input')
+    labels_input = tf.keras.layers.Input(shape=labels_shape + [1], name='labels_input', dtype='int32')
+    means_input = tf.keras.layers.Input(shape=list(generation_labels.shape) + [n_channels], name='means_input')
+    stds_input = tf.keras.layers.Input(shape=list(generation_labels.shape) + [n_channels], name='std_devs_input')
     list_inputs = [labels_input, means_input, stds_input]
 
     # deform labels
@@ -191,7 +189,7 @@ def labels_to_image_model(labels_shape,
 
     # loop over channels
     channels = list()
-    split = KL.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
+    split = tf.keras.layers.Lambda(lambda x: tf.split(x, [1] * n_channels, axis=-1))(image) if (n_channels > 1) else [image]
     for i, channel in enumerate(split):
 
         if randomise_res:
@@ -207,12 +205,12 @@ def labels_to_image_model(labels_shape,
         else:
             sigma = l2i_et.blurring_sigma_for_downsampling(atlas_res, data_res[i], thickness=thickness[i])
             channel = layers.GaussianBlur(sigma, 1.03)(channel)
-            resolution = KL.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
+            resolution = tf.keras.layers.Lambda(lambda x: tf.convert_to_tensor(data_res[i], dtype='float32'))([])
             channel = layers.MimicAcquisition(atlas_res, data_res[i], output_shape)([channel, resolution])
             channels.append(channel)
 
     # concatenate all channels back
-    image = KL.Lambda(lambda x: tf.concat(x, -1))(channels) if len(channels) > 1 else channels[0]
+    image = tf.keras.layers.Lambda(lambda x: tf.concat(x, -1))(channels) if len(channels) > 1 else channels[0]
 
     # compute image gradient
     if return_gradients:
@@ -227,8 +225,8 @@ def labels_to_image_model(labels_shape,
     labels = layers.ConvertLabels(generation_labels, dest_values=output_labels, name='labels_out')(labels)
 
     # build model (dummy layer enables to keep the labels when plugging this model to other models)
-    image = KL.Lambda(lambda x: x[0], name='image_out')([image, labels])
-    brain_model = Model(inputs=list_inputs, outputs=[image, labels])
+    image = tf.keras.layers.Lambda(lambda x: x[0], name='image_out')([image, labels])
+    brain_model = tf.keras.models.Model(inputs=list_inputs, outputs=[image, labels])
 
     return brain_model
 

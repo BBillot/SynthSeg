@@ -26,8 +26,6 @@ License.
 # python imports
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-import keras.backend as K
 from itertools import combinations
 
 # project imports
@@ -68,17 +66,17 @@ def blurring_sigma_for_downsampling(current_res, downsample_res, mult_coef=None,
 
         # reformat data resolution at which we blur
         if thickness is not None:
-            down_res = KL.Lambda(lambda x: tf.math.minimum(x[0], x[1]))([downsample_res, thickness])
+            down_res = tf.keras.layers.Lambda(lambda x: tf.math.minimum(x[0], x[1]))([downsample_res, thickness])
         else:
             down_res = downsample_res
 
         # get std deviation for blurring kernels
         if mult_coef is None:
-            sigma = KL.Lambda(lambda x: tf.where(tf.math.equal(x, tf.convert_to_tensor(current_res, dtype='float32')),
+            sigma = tf.keras.layers.Lambda(lambda x: tf.where(tf.math.equal(x, tf.convert_to_tensor(current_res, dtype='float32')),
                               0.5, 0.75 * x / tf.convert_to_tensor(current_res, dtype='float32')))(down_res)
         else:
-            sigma = KL.Lambda(lambda x: mult_coef * x / tf.convert_to_tensor(current_res, dtype='float32'))(down_res)
-        sigma = KL.Lambda(lambda x: tf.where(tf.math.equal(x[0], 0.), 0., x[1]))([down_res, sigma])
+            sigma = tf.keras.layers.Lambda(lambda x: mult_coef * x / tf.convert_to_tensor(current_res, dtype='float32'))(down_res)
+        sigma = tf.keras.layers.Lambda(lambda x: tf.where(tf.math.equal(x[0], 0.), 0., x[1]))([down_res, sigma])
 
     return sigma
 
@@ -142,7 +140,7 @@ def gaussian_kernel(sigma, max_sigma=None, blur_range=None, separable=True):
                     comb[i] += 1
 
                 # compute gaussians
-                exp_term = -K.square(locations) / (2 * split_sigma[i] ** 2)
+                exp_term = -tf.keras.backend.square(locations) / (2 * split_sigma[i] ** 2)
                 g = tf.exp(exp_term - tf.math.log(np.sqrt(2 * np.pi) * split_sigma[i]))
                 g = g / tf.reduce_sum(g)
 
@@ -171,9 +169,9 @@ def gaussian_kernel(sigma, max_sigma=None, blur_range=None, separable=True):
 
         # compute gaussians
         sigma_is_0 = tf.equal(sigma_tens, 0)
-        exp_term = -K.square(diff) / (2 * tf.where(sigma_is_0, tf.ones_like(sigma_tens), sigma_tens)**2)
+        exp_term = -tf.keras.backend.square(diff) / (2 * tf.where(sigma_is_0, tf.ones_like(sigma_tens), sigma_tens)**2)
         norms = exp_term - tf.math.log(tf.where(sigma_is_0, tf.ones_like(sigma_tens), np.sqrt(2 * np.pi) * sigma_tens))
-        kernels = K.sum(norms, -1)
+        kernels = tf.keras.backend.sum(norms, -1)
         kernels = tf.exp(kernels)
         kernels /= tf.reduce_sum(kernels)
         kernels = tf.expand_dims(tf.expand_dims(kernels, -1), -1)
@@ -324,13 +322,13 @@ def resample_tensor(tensor,
                 shape = [1, 1, 1]
                 shape[i] = resample_shape[i]
                 reliability_map = reliability_map * np.reshape(tmp_reliability_map, shape)
-            shape = KL.Lambda(lambda x: tf.shape(x))(tensor)
-            mask = KL.Lambda(lambda x: tf.reshape(tf.convert_to_tensor(reliability_map, dtype='float32'),
+            shape = tf.keras.layers.Lambda(lambda x: tf.shape(x))(tensor)
+            mask = tf.keras.layers.Lambda(lambda x: tf.reshape(tf.convert_to_tensor(reliability_map, dtype='float32'),
                                                   shape=x))(shape)
 
         # otherwise just return an all-one tensor
         else:
-            mask = KL.Lambda(lambda x: tf.ones_like(x))(tensor)
+            mask = tf.keras.layers.Lambda(lambda x: tf.ones_like(x))(tensor)
 
         return tensor, mask
 

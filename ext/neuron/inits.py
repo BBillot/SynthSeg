@@ -1,12 +1,12 @@
-''' initializations for the neuron project '''
+""" initializations for the neuron project """
 
 # general imports
 import numpy as np
-import keras.backend as K
+import tensorflow as tf
 
 
 def output_init(shape, name=None, dim_ordering=None):
-    ''' initialization for output weights'''
+    """ initialization for output weights"""
     size = (shape[0], shape[1], shape[2] - shape[3], shape[3])
 
     # initialize output weights with random and identity
@@ -15,4 +15,4 @@ def output_init(shape, name=None, dim_ordering=None):
     idpart_ = np.ones((size[3], size[3]))
     idpart = np.expand_dims(np.expand_dims(idpart_, 0), 0)
     value = np.concatenate((rpart, idpart), axis=2)
-    return K.variable(value, name=name)
+    return tf.keras.backend.variable(value, name=name)

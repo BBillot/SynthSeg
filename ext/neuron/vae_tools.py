@@ -6,13 +6,9 @@ from tempfile import NamedTemporaryFile
 # third party imports
 import tensorflow as tf
 import numpy as np
-import keras
 import matplotlib.pyplot as plt
-from keras import backend as K
 from tqdm import tqdm as tqdm
-from keras import layers as KL
 from sklearn.decomposition import PCA
-from keras.utils import plot_model
 from IPython.display import Image
 
 
@@ -30,12 +26,12 @@ def extract_z_dec(model, sample_layer_name, vis=False, wt_chk=False):
     """
 
     # need to make new model to avoid mu, sigma outputs
-    tmp_model = keras.models.Model(model.inputs, model.outputs[0])
+    tmp_model = tf.keras.models.Model(model.inputs, model.outputs[0])
 
     # get new input
     sample_layer = model.get_layer(sample_layer_name)
     enc_size = sample_layer.get_output_at(0).get_shape().as_list()[1:]
-    new_z_input = KL.Input(enc_size, name='z_input')
+    new_z_input = tf.keras.layers.Input(enc_size, name='z_input')
 
     # prepare outputs
     # assumes z was first input.
@@ -46,11 +42,11 @@ def extract_z_dec(model, sample_layer_name, vis=False, wt_chk=False):
                                               input_layers=input_layers)
 
     # get new model
-    z_dec_model = keras.models.Model(new_inputs, z_dec_model_outs)
+    z_dec_model = tf.keras.models.Model(new_inputs, z_dec_model_outs)
 
     if vis:
         outfile = NamedTemporaryFile().name + '.png'
-        plot_model(z_dec_model, to_file=outfile, show_shapes=True)
+        tf.keras.utils.plot_model(z_dec_model, to_file=outfile, show_shapes=True)
         Image(outfile, width=100)
 
     # check model weights:
@@ -80,10 +76,10 @@ def z_effect(model, gen, z_layer_name, nb_samples=100, do_plot=False, tqdm=tqdm)
     inner = model.get_layer(z_layer_name).get_output_at(1)
 
     # compute gradients
-    gradients = K.gradients(outputTensor, inner)
+    gradients = tf.keras.backend.gradients(outputTensor, inner)
     assert len(gradients) == 1, "wrong gradients"
 
-    # would be nice to be able to do this with K.eval() as opposed to explicit tensorflow sessions.
+    # would be nice to be able to do this with tf.keras.backend.eval() as opposed to explicit tensorflow sessions.
     with tf.Session() as sess:
         sess.run(tf.initialize_all_variables())
 
@@ -188,7 +184,7 @@ def sweep_dec_given_x(full_model, z_dec_model, sample1, sample2, sample_layer_na
     # get a model that also outputs the samples z
     full_output = [*full_model.outputs,
                    full_model.get_layer(sample_layer_name).get_output_at(1)]
-    full_model_plus = keras.models.Model(full_model.inputs, full_output)
+    full_model_plus = tf.keras.models.Model(full_model.inputs, full_output)
 
     # get full predictions for these samples
     pred1 = full_model_plus.predict(sample1[0])
@@ -248,7 +244,7 @@ def pca_init_dense(model, mu_dense_layer_name, undense_layer_name, generator,
     for i in range(nb_inbound_nodes):
         try:
             out_tensor = mu_dense_layer.get_input_at(i)
-            pre_mu_model = keras.models.Model(model.inputs, out_tensor)
+            pre_mu_model = tf.keras.models.Model(model.inputs, out_tensor)
 
             # save the node index
             node_idx = i
@@ -331,12 +327,12 @@ def model_output_pca(pre_mu_model, generator, nb_samples, nb_components,
     """ 
     Test pca model assaignment:
     # make input, then dense, then dense, then output, and see if input is output for y samples.
-    inp = KL.Input(pca.mean_.shape)
-    den = KL.Dense(x_mu.shape[0])
+    inp = tf.keras.layers.Input(pca.mean_.shape)
+    den = tf.keras.layers.Dense(x_mu.shape[0])
     den_o = den(inp)
-    unden = KL.Dense(pca.mean_.shape[0])
+    unden = tf.keras.layers.Dense(pca.mean_.shape[0])
     unden_o = unden(den_o)
-    test_ae = keras.models.Model(inp, [den_o, unden_o])
+    test_ae = tf.keras.models.Model(inp, [den_o, unden_o])
 
     den.set_weights([np.transpose(W), - x_mu])
     unden.set_weights([W, + pca.mean_])

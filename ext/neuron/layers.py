@@ -19,19 +19,17 @@ License: GPLv3
 # third party
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
 
-# TODO: figure out the equivalent for a newer keras version
-#from keras.legacy import interfaces
+from tensorflow.python.keras.utils import conv_utils
+
 from collections import namedtuple
-interfaces = namedtuple(
-    "keras_legacy_interfaces",
-    "legacy_conv3d_support",
-    defaults=[lambda x: x]
-)()
+# interfaces = namedtuple(
+#     "keras_legacy_interfaces",
+#     "legacy_conv3d_support",
+#     defaults=[lambda x: x]
+# )()
 
-from keras.layers import Layer
-from keras.engine.node import Node
+
 from copy import deepcopy
 from tensorflow import TensorShape
 
@@ -39,7 +37,7 @@ from tensorflow import TensorShape
 from .utils import transform, resize, integrate_vec, affine_to_shift, combine_non_linear_and_aff_to_shift
 
 
-class SpatialTransformer(Layer):
+class SpatialTransformer(tf.keras.layers.Layer):
     """
     N-D Spatial Transformer Tensorflow / Keras Layer
 
@@ -147,9 +145,9 @@ class SpatialTransformer(Layer):
         trf = inputs[1:]
 
         # necessary for multi_gpu models...
-        vol = K.reshape(vol, [-1, *self.inshape[0][1:]])
+        vol = tf.keras.backend.reshape(vol, [-1, *self.inshape[0][1:]])
         for i in range(len(trf)):
-            trf[i] = K.reshape(trf[i], [-1, *self.inshape[i+1][1:]])
+            trf[i] = tf.keras.backend.reshape(trf[i], [-1, *self.inshape[i+1][1:]])
 
         # reorder transforms, non linear first and affine second
         ind_nonlinear_linear = [i[0] for i in sorted(enumerate(self.is_affine), key=lambda x:x[1])]
@@ -192,7 +190,7 @@ class SpatialTransformer(Layer):
         return transform(inputs[0], inputs[1], interp_method=self.interp_method)
 
 
-class VecInt(Layer):
+class VecInt(tf.keras.layers.Layer):
     """
     Vector Integration Layer
 
@@ -258,7 +256,7 @@ class VecInt(Layer):
         loc_shift = inputs[0]
 
         # necessary for multi_gpu models...
-        loc_shift = K.reshape(loc_shift, [-1, *self.inshape[1:]])
+        loc_shift = tf.keras.backend.reshape(loc_shift, [-1, *self.inshape[1:]])
         loc_shift.set_shape(inputs[0].shape)
 
         # prepare location shift
@@ -288,7 +286,7 @@ class VecInt(Layer):
                              odeint_fn=self.odeint_fn)
 
 
-class Resize(Layer):
+class Resize(tf.keras.layers.Layer):
     """
     N-D Resize Tensorflow / Keras Layer
     Note: this is not re-shaping an existing volume, but resizing, like scipy's "Zoom"
@@ -392,7 +390,7 @@ class Resize(Layer):
             vol = inputs
 
         # necessary for multi_gpu models...
-        vol = K.reshape(vol, [-1, *self.inshape[1:]])
+        vol = tf.keras.backend.reshape(vol, [-1, *self.inshape[1:]])
 
         # set value of missing size or zoom_factor
         if not any(self.zoom_factor0):
@@ -418,7 +416,7 @@ class Resize(Layer):
 Zoom = Resize
 
 
-class SpatiallySparse_Dense(Layer):
+class SpatiallySparse_Dense(tf.keras.layers.Layer):
     """ 
     Spatially-Sparse Dense Layer (great name, huh?)
     This is a Densely connected (Fully connected) layer with sparse observations.
@@ -461,10 +459,10 @@ class SpatiallySparse_Dense(Layer):
                                       initializer=self.kernel_initializer,
                                       trainable=True)
 
-        M = K.reshape(self.kernel, [-1, self.output_len])  # D x d
-        mt = K.transpose(M)  # d x D
-        mtm_inv = tf.matrix_inverse(K.dot(mt, M))  # d x d
-        self.W = K.dot(mtm_inv, mt)  # d x D
+        M = tf.keras.backend.reshape(self.kernel, [-1, self.output_len])  # D x d
+        mt = tf.keras.backend.transpose(M)  # d x D
+        mtm_inv = tf.matrix_inverse(tf.keras.backend.dot(mt, M))  # d x d
+        self.W = tf.keras.backend.dot(mtm_inv, mt)  # d x D
 
         if self.use_bias:
             self.bias = self.add_weight(name='bias-kernel',
@@ -490,38 +488,38 @@ class SpatiallySparse_Dense(Layer):
             # get inputs
             y, y_mask = args
             a_fact = int(y.get_shape().as_list()[-1] / y_mask.get_shape().as_list()[-1])
-            y_mask = K.repeat_elements(y_mask, a_fact, -1)
-            y_flat = K.batch_flatten(y)  # N x D
-            y_mask_flat = K.batch_flatten(y_mask)  # N x D
+            y_mask = tf.keras.backend.repeat_elements(y_mask, a_fact, -1)
+            y_flat = tf.keras.backend.batch_flatten(y)  # N x D
+            y_mask_flat = tf.keras.backend.batch_flatten(y_mask)  # N x D
 
             # prepare switching matrix
             W = self.W  # d x D
 
-            w_tmp = K.expand_dims(W, 0)  # 1 x d x D
-            Wo = K.permute_dimensions(w_tmp, [0, 2, 1]) * K.expand_dims(y_mask_flat, -1)  # N x D x d
-            WoT = K.permute_dimensions(Wo, [0, 2, 1])  # N x d x D
-            WotWo_inv = tf.matrix_inverse(K.batch_dot(WoT, Wo))  # N x d x d
-            pre = K.batch_dot(WotWo_inv, WoT)  # N x d x D
-            res = K.batch_dot(pre, y_flat)  # N x d
+            w_tmp = tf.keras.backend.expand_dims(W, 0)  # 1 x d x D
+            Wo = tf.keras.backend.permute_dimensions(w_tmp, [0, 2, 1]) * tf.keras.backend.expand_dims(y_mask_flat, -1)  # N x D x d
+            WoT = tf.keras.backend.permute_dimensions(Wo, [0, 2, 1])  # N x d x D
+            WotWo_inv = tf.matrix_inverse(tf.keras.backend.batch_dot(WoT, Wo))  # N x d x d
+            pre = tf.keras.backend.batch_dot(WotWo_inv, WoT)  # N x d x D
+            res = tf.keras.backend.batch_dot(pre, y_flat)  # N x d
 
             if self.use_bias:
-                res += K.expand_dims(self.bias, 0)
+                res += tf.keras.backend.expand_dims(self.bias, 0)
 
         else:
             x_data = args[0]
-            shape = K.shape(x_data)
+            shape = tf.keras.backend.shape(x_data)
 
-            x_data = K.batch_flatten(x_data)  # N x d
+            x_data = tf.keras.backend.batch_flatten(x_data)  # N x d
 
             if self.use_bias:
                 x_data -= self.bias
 
-            res = K.dot(x_data, self.W)
+            res = tf.keras.backend.dot(x_data, self.W)
 
             # reshape
             # Here you can mix integers and symbolic elements of `shape`
             pool_shape = tf.stack([shape[0], *self.orig_input_shape])
-            res = K.reshape(res, pool_shape)
+            res = tf.keras.backend.reshape(res, pool_shape)
 
         return res
 
@@ -537,7 +535,7 @@ class SpatiallySparse_Dense(Layer):
 # "Local" layers -- layers with parameters at each voxel
 #########################################################
 
-class LocalBias(Layer):
+class LocalBias(tf.keras.layers.Layer):
     """ 
     Local bias layer: each pixel/voxel has its own bias operation (one parameter)
     out[v] = in[v] + b
@@ -569,7 +567,7 @@ class LocalBias(Layer):
         return input_shape
 
 
-class LocalParam_new(Layer):
+class LocalParam_new(tf.keras.layers.Layer):
 
     def __init__(self,
                  shape,
@@ -613,7 +611,7 @@ class LocalParam_new(Layer):
             return self.shape
 
 
-class LocalParam(Layer):
+class LocalParam(tf.keras.layers.Layer):
     """ 
     Local Parameter layer: each pixel/voxel has its own parameter (one parameter)
     out[v] = b
@@ -636,11 +634,11 @@ class LocalParam(Layer):
 
         if not name:
             prefix = 'param'
-            name = '%s_%d' % (prefix, K.get_uid(prefix))
-        Layer.__init__(self, name=name, **kwargs)
+            name = '%s_%d' % (prefix, tf.keras.backend.get_uid(prefix))
+        tf.keras.layers.Layer.__init__(self, name=name, **kwargs)
 
         # Create a trainable weight variable for this layer.
-        with K.name_scope(self.name):
+        with tf.keras.backend.name_scope(self.name):
             self.kernel = self.add_weight(name='kernel',
                                           shape=self.shape,
                                           initializer=self.my_initializer,
@@ -658,7 +656,7 @@ class LocalParam(Layer):
         self.is_placeholder = False
 
         # create new node
-        Node(self,
+        tf.keras.engine.node.Node(self,
              inbound_layers=[],
              node_indices=[],
              tensor_indices=[],
@@ -694,7 +692,7 @@ class LocalParam(Layer):
             return outputs
 
 
-class LocalLinear(Layer):
+class LocalLinear(tf.keras.layers.Layer):
     """ 
     Local linear layer: each pixel/voxel has its own linear operation (two parameters)
     out[v] = a * in[v] + b
@@ -728,7 +726,7 @@ class LocalLinear(Layer):
         return input_shape
 
 
-class LocallyConnected3D(Layer):
+class LocallyConnected3D(tf.keras.layers.Layer):
     """
     code based on LocallyConnected3D from keras layers:
     https://github.com/keras-team/keras/blob/master/keras/layers/local.py
@@ -807,7 +805,7 @@ class LocallyConnected3D(Layer):
         `rows` and `cols` values might have changed due to padding.
     """
 
-    @interfaces.legacy_conv3d_support
+    # @interfaces.legacy_conv3d_support
     def __init__(self, filters,
                  kernel_size,
                  strides=(1, 1, 1),
@@ -834,16 +832,16 @@ class LocallyConnected3D(Layer):
             raise ValueError('Invalid border mode for LocallyConnected3D '
                              '(only "valid" is supported): ' + padding)
         self.data_format = conv_utils.normalize_data_format(data_format)
-        self.activation = activations.get(activation)
+        self.activation = tf.keras.activations.get(activation)
         self.use_bias = use_bias
-        self.kernel_initializer = initializers.get(kernel_initializer)
-        self.bias_initializer = initializers.get(bias_initializer)
-        self.kernel_regularizer = regularizers.get(kernel_regularizer)
-        self.bias_regularizer = regularizers.get(bias_regularizer)
-        self.activity_regularizer = regularizers.get(activity_regularizer)
-        self.kernel_constraint = constraints.get(kernel_constraint)
-        self.bias_constraint = constraints.get(bias_constraint)
-        self.input_spec = InputSpec(ndim=5)
+        self.kernel_initializer = tf.keras.initializers.get(kernel_initializer)
+        self.bias_initializer = tf.keras.initializers.get(bias_initializer)
+        self.kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
+        self.bias_regularizer = tf.keras.regularizers.get(bias_regularizer)
+        self.activity_regularizer = tf.keras.regularizers.get(activity_regularizer)
+        self.kernel_constraint = tf.keras.constraints.get(kernel_constraint)
+        self.bias_constraint = tf.keras.constraints.get(bias_constraint)
+        self.input_spec = tf.keras.layers.InputSpec(ndim=5)
 
     def build(self, input_shape):
 
@@ -886,9 +884,9 @@ class LocallyConnected3D(Layer):
         else:
             self.bias = None
         if self.data_format == 'channels_first':
-            self.input_spec = InputSpec(ndim=5, axes={1: input_filter})
+            self.input_spec = tf.keras.layers.InputSpec(ndim=5, axes={1: input_filter})
         else:
-            self.input_spec = InputSpec(ndim=5, axes={-1: input_filter})
+            self.input_spec = tf.keras.layers.InputSpec(ndim=5, axes={-1: input_filter})
         self.built = True
 
     def compute_output_shape(self, input_shape):
@@ -900,6 +898,8 @@ class LocallyConnected3D(Layer):
             rows = input_shape[1]
             cols = input_shape[2]
             z = input_shape[3]
+        else:
+            raise ValueError(f"data_format must be 'channels_first' or 'channels_last'")
 
         rows = conv_utils.conv_output_length(rows, self.kernel_size[0],
                                              self.padding, self.strides[0])
@@ -909,22 +909,23 @@ class LocallyConnected3D(Layer):
                                           self.padding, self.strides[2])
 
         if self.data_format == 'channels_first':
-            return (input_shape[0], self.filters, rows, cols, z)
+            return input_shape[0], self.filters, rows, cols, z
         elif self.data_format == 'channels_last':
-            return (input_shape[0], rows, cols, z, self.filters)
+            return input_shape[0], rows, cols, z, self.filters
 
-    def call(self, inputs):
+    def call(self, inputs, **kwargs):
 
-        output = self.local_conv3d(inputs,
-                                   self.kernel,
-                                   self.kernel_size,
-                                   self.strides,
-                                   (self.output_row, self.output_col, self.output_z),
-                                   self.data_format)
+        output = LocallyConnected3D.local_conv3d(
+            inputs,
+            self.kernel,
+            self.kernel_size,
+            self.strides,
+            (self.output_row, self.output_col, self.output_z),
+            self.data_format)
 
         if self.use_bias:
-            output = K.bias_add(output, self.bias,
-                                data_format=self.data_format)
+            output = tf.keras.backend.bias_add(output, self.bias,
+                                               data_format=self.data_format)
 
         output = self.activation(output)
         return output
@@ -936,21 +937,22 @@ class LocallyConnected3D(Layer):
             'strides': self.strides,
             'padding': self.padding,
             'data_format': self.data_format,
-            'activation': activations.serialize(self.activation),
+            'activation': tf.keras.activations.serialize(self.activation),
             'use_bias': self.use_bias,
-            'kernel_initializer': initializers.serialize(self.kernel_initializer),
-            'bias_initializer': initializers.serialize(self.bias_initializer),
-            'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
-            'bias_regularizer': regularizers.serialize(self.bias_regularizer),
-            'activity_regularizer': regularizers.serialize(self.activity_regularizer),
-            'kernel_constraint': constraints.serialize(self.kernel_constraint),
-            'bias_constraint': constraints.serialize(self.bias_constraint)
+            'kernel_initializer': tf.keras.initializers.serialize(self.kernel_initializer),
+            'bias_initializer': tf.keras.initializers.serialize(self.bias_initializer),
+            'kernel_regularizer': tf.keras.regularizers.serialize(self.kernel_regularizer),
+            'bias_regularizer': tf.keras.regularizers.serialize(self.bias_regularizer),
+            'activity_regularizer': tf.keras.regularizers.serialize(self.activity_regularizer),
+            'kernel_constraint': tf.keras.constraints.serialize(self.kernel_constraint),
+            'bias_constraint': tf.keras.constraints.serialize(self.bias_constraint)
         }
         base_config = super(
             LocallyConnected3D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    def local_conv3d(self, inputs, kernel, kernel_size, strides, output_shape, data_format=None):
+    @classmethod
+    def local_conv3d(cls, inputs, kernel, kernel_size, strides, output_shape, data_format=None):
         """Apply 3D conv with un-shared weights.
         # Arguments
             inputs: 4D tensor with shape:
@@ -979,13 +981,13 @@ class LocallyConnected3D(Layer):
                         `channels_last` or `channels_first`.
         """
         if data_format is None:
-            data_format = K.image_data_format()
+            data_format = tf.keras.backend.image_data_format()
         if data_format not in {'channels_first', 'channels_last'}:
             raise ValueError('Unknown data_format: ' + str(data_format))
 
         stride_row, stride_col, stride_z = strides
         output_row, output_col, output_z = output_shape
-        kernel_shape = K.int_shape(kernel)
+        kernel_shape = tf.keras.backend.int_shape(kernel)
         _, feature_dim, filters = kernel_shape
 
         xs = []
@@ -999,21 +1001,21 @@ class LocallyConnected3D(Layer):
                     slice_z = slice(k * stride_z,
                                     k * stride_z + kernel_size[2])
                     if data_format == 'channels_first':
-                        xs.append(K.reshape(inputs[:, :, slice_row, slice_col, slice_z],
-                                            (1, -1, feature_dim)))
+                        xs.append(tf.keras.backend.reshape(inputs[:, :, slice_row, slice_col, slice_z],
+                                                           (1, -1, feature_dim)))
                     else:
-                        xs.append(K.reshape(inputs[:, slice_row, slice_col, slice_z, :],
-                                            (1, -1, feature_dim)))
+                        xs.append(tf.keras.backend.reshape(inputs[:, slice_row, slice_col, slice_z, :],
+                                                           (1, -1, feature_dim)))
 
-        x_aggregate = K.concatenate(xs, axis=0)
-        output = K.batch_dot(x_aggregate, kernel)
-        output = K.reshape(output,
-                           (output_row, output_col, output_z, -1, filters))
+        x_aggregate = tf.keras.backend.concatenate(xs, axis=0)
+        output = tf.keras.backend.batch_dot(x_aggregate, kernel)
+        output = tf.keras.backend.reshape(output,
+                                          (output_row, output_col, output_z, -1, filters))
 
         if data_format == 'channels_first':
-            output = K.permute_dimensions(output, (3, 4, 0, 1, 2))
+            output = tf.keras.backend.permute_dimensions(output, (3, 4, 0, 1, 2))
         else:
-            output = K.permute_dimensions(output, (3, 0, 1, 2, 4))
+            output = tf.keras.backend.permute_dimensions(output, (3, 0, 1, 2, 4))
         return output
 
 
@@ -1029,7 +1031,7 @@ class LocallyConnected3D(Layer):
 #                                       trainable=True)
 
 #         outputs = self._inbound_nodes[0].output_tensors
-#         z = Input(tensor=K.expand_dims(self.kernel, 0)*mult)
+#         z = Input(tensor=tf.keras.backend.expand_dims(self.kernel, 0)*mult)
 #         if len(outputs) == 1:
 #             self._inbound_nodes[0].output_tensors[0] = z
 #         else:
@@ -1048,7 +1050,7 @@ class LocallyConnected3D(Layer):
 ##########################################
 
 
-class MeanStream(Layer):
+class MeanStream(tf.keras.layers.Layer):
     """ 
     Maintain stream of data mean. 
 
@@ -1057,7 +1059,9 @@ class MeanStream(Layer):
     """
 
     def __init__(self, cap=100, **kwargs):
-        self.cap = K.variable(cap, dtype='float32')
+        self.cap = tf.keras.backend.variable(cap, dtype='float32')
+        self.mean = None
+        self.count = None
         super(MeanStream, self).__init__(**kwargs)
 
     def build(self, input_shape):
@@ -1074,13 +1078,13 @@ class MeanStream(Layer):
                                      initializer='zeros',
                                      trainable=False)
 
-        # self.mean = K.zeros(input_shape[1:], name='mean')
-        # self.count = K.variable(0.0, name='count')
+        # self.mean = tf.keras.backend.zeros(input_shape[1:], name='mean')
+        # self.count = tf.keras.backend.variable(0.0, name='count')
         super(MeanStream, self).build(input_shape)  # Be sure to call this somewhere!
 
-    def call(self, x):
+    def call(self, x, **kwargs):
         # get new mean and count
-        this_bs_int = K.shape(x)[0]
+        this_bs_int = tf.keras.backend.shape(x)[0]
         new_mean, new_count = _mean_update(self.mean, self.count, x, self.cap)
 
         # update op
@@ -1088,30 +1092,33 @@ class MeanStream(Layer):
         self.add_update(updates, x)
 
         # prep for broadcasting :(
-        p = tf.concat((K.reshape(this_bs_int, (1,)), K.shape(self.mean)), 0)
-        z = K.ones(p)
+        p = tf.concat((tf.keras.backend.reshape(this_bs_int, (1,)), tf.keras.backend.shape(self.mean)), 0)
+        z = tf.keras.backend.ones(p)
 
         # the first few 1000 should not matter that much towards this cost
-        return K.minimum(1., new_count / self.cap) * (z * K.expand_dims(new_mean, 0))
+        return tf.keras.backend.minimum(1., new_count / self.cap) * (z * tf.keras.backend.expand_dims(new_mean, 0))
 
     def compute_output_shape(self, input_shape):
         return input_shape
 
 
-class CovStream(Layer):
+class CovStream(tf.keras.layers.Layer):
     """ 
     Maintain stream of data mean. 
 
-    cap refers to mainting an approximation of up to that number of subjects -- that is,
+    cap refers to maintaining an approximation of up to that number of subjects -- that is,
     any incoming datapoint will have at least 1/cap weight.
     """
 
     def __init__(self, cap=100, **kwargs):
-        self.cap = K.variable(cap, dtype='float32')
+        self.cap = tf.keras.backend.variable(cap, dtype='float32')
+        self.mean = None
+        self.cov = None
+        self.count = None
         super(CovStream, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        # Create mean, cov and and count
+        # Create mean, cov and count
         # See note in MeanStream.build()
         self.mean = self.add_weight(name='mean',
                                     shape=input_shape[1:],
@@ -1129,25 +1136,25 @@ class CovStream(Layer):
 
         super(CovStream, self).build(input_shape)  # Be sure to call this somewhere!
 
-    def call(self, x):
+    def call(self, x, **kwargs):
         x_orig = x
 
         # x reshape
-        this_bs_int = K.shape(x)[0]
+        this_bs_int = tf.keras.backend.shape(x)[0]
         this_bs = tf.cast(this_bs_int, 'float32')  # this batch size
         prev_count = self.count
-        x = K.batch_flatten(x)  # B x N
+        x = tf.keras.backend.batch_flatten(x)  # B x N
 
         # update mean
         new_mean, new_count = _mean_update(self.mean, self.count, x, self.cap)
 
         # new C update. Should be B x N x N
-        x = K.expand_dims(x, -1)
-        C_delta = K.batch_dot(x, K.permute_dimensions(x, [0, 2, 1]))
+        x = tf.keras.backend.expand_dims(x, -1)
+        C_delta = tf.keras.backend.batch_dot(x, tf.keras.backend.permute_dimensions(x, [0, 2, 1]))
 
         # update cov
-        prev_cap = K.minimum(prev_count, self.cap)
-        C = self.cov * (prev_cap - 1) + K.sum(C_delta, 0)
+        prev_cap = tf.keras.backend.minimum(prev_count, self.cap)
+        C = self.cov * (prev_cap - 1) + tf.keras.backend.sum(C_delta, 0)
         new_cov = C / (prev_cap + this_bs - 1)
 
         # updates
@@ -1155,26 +1162,26 @@ class CovStream(Layer):
         self.add_update(updates, x_orig)
 
         # prep for broadcasting :(
-        p = tf.concat((K.reshape(this_bs_int, (1,)), K.shape(self.cov)), 0)
-        z = K.ones(p)
+        p = tf.concat((tf.keras.backend.reshape(this_bs_int, (1,)), tf.keras.backend.shape(self.cov)), 0)
+        z = tf.keras.backend.ones(p)
 
-        return K.minimum(1., new_count / self.cap) * (z * K.expand_dims(new_cov, 0))
+        return tf.keras.backend.minimum(1., new_count / self.cap) * (z * tf.keras.backend.expand_dims(new_cov, 0))
 
     def compute_output_shape(self, input_shape):
         v = np.prod(input_shape[1:])
-        return (input_shape[0], v, v)
+        return input_shape[0], v, v
 
 
 def _mean_update(pre_mean, pre_count, x, pre_cap=None):
     # compute this batch stats
     this_sum = tf.reduce_sum(x, 0)
-    this_bs = tf.cast(K.shape(x)[0], 'float32')  # this batch size
+    this_bs = tf.cast(tf.keras.backend.shape(x)[0], 'float32')  # this batch size
 
     # increase count and compute weights
     new_count = pre_count + this_bs
-    alpha = this_bs / K.minimum(new_count, pre_cap)
+    alpha = this_bs / tf.keras.backend.minimum(new_count, pre_cap)
 
     # compute new mean. Note that once we reach self.cap (e.g. 1000), the 'previous mean' matters less
     new_mean = pre_mean * (1 - alpha) + (this_sum / this_bs) * alpha
 
-    return (new_mean, new_count)
+    return new_mean, new_count

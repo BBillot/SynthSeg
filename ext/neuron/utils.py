@@ -29,8 +29,6 @@ from ext.pytools import patchlib as pl
 
 # often changed file
 from imp import reload
-import keras
-import keras.backend as K
 import tensorflow as tf
 
 reload(pl)
@@ -71,7 +69,7 @@ def interpn(vol, loc, interp_method='linear'):
                         % (nb_dims, len(vol.shape)))
 
     if len(vol.shape) == nb_dims:
-        vol = K.expand_dims(vol, -1)
+        vol = tf.keras.backend.expand_dims(vol, -1)
 
     # flatten and float location Tensors
     loc = tf.cast(loc, 'float32')
@@ -129,7 +127,7 @@ def interpn(vol, loc, interp_method='linear'):
             # wlm = tf.stack(wts_lst, axis=0)
             # wt = tf.reduce_prod(wlm, axis=0)
             wt = prod_n(wts_lst)
-            wt = K.expand_dims(wt, -1)
+            wt = tf.keras.backend.expand_dims(wt, -1)
 
             # compute final weighted value for each cube corner
             interp_vol += wt * vol_val
@@ -397,7 +395,7 @@ def integrate_vec(vec, time_dep=False, method='ss', **kwargs):
         assert nb_steps >= 0, 'nb_steps should be >= 0, found: %d' % nb_steps
 
         if time_dep:
-            svec = K.permute_dimensions(vec, [-1, *range(0, vec.shape[-1] - 1)])
+            svec = tf.keras.backend.permute_dimensions(vec, [-1, *range(0, vec.shape[-1] - 1)])
             assert 2 ** nb_steps == svec.shape[0], "2**nb_steps and vector shape don't match"
 
             svec = svec / (2 ** nb_steps)
@@ -434,11 +432,11 @@ def integrate_vec(vec, time_dep=False, method='ss', **kwargs):
 
         # process time point.
         out_time_pt = kwargs['out_time_pt'] if 'out_time_pt' in kwargs.keys() else 1
-        out_time_pt = tf.cast(K.flatten(out_time_pt), tf.float32)
+        out_time_pt = tf.cast(tf.keras.backend.flatten(out_time_pt), tf.float32)
         len_out_time_pt = out_time_pt.get_shape().as_list()[0]
         assert len_out_time_pt is not None, 'len_out_time_pt is None :('
         z = out_time_pt[0:1] * 0.0  # initializing with something like tf.zeros(1) gives a control flow issue.
-        K_out_time_pt = K.concatenate([z, out_time_pt], 0)
+        K_out_time_pt = tf.keras.backend.concatenate([z, out_time_pt], 0)
 
         # enable a new integration function than tf.contrib.integrate.odeint
         odeint_fn = tf.contrib.integrate.odeint
@@ -454,7 +452,7 @@ def integrate_vec(vec, time_dep=False, method='ss', **kwargs):
         # compute integration with odeint
         if 'ode_args' not in kwargs.keys(): kwargs['ode_args'] = {}
         disp = odeint_fn(fn, disp0, K_out_time_pt, **kwargs['ode_args'])
-        disp = K.permute_dimensions(disp[1:len_out_time_pt + 1, :], [*range(1, len(disp.shape)), 0])
+        disp = tf.keras.backend.permute_dimensions(disp[1:len_out_time_pt + 1, :], [*range(1, len(disp.shape)), 0])
 
         # return
         if len_out_time_pt == 1:
@@ -684,12 +682,12 @@ def gaussian_kernel(sigma, windowsize=None, indexing='ij'):
 
     # compute independent gaussians
     diff = [mesh[f] - mid[f] for f in range(len(windowsize))]
-    exp_term = [- K.square(diff[f]) / (2 * (sigma[f] ** 2)) for f in range(nb_dims)]
+    exp_term = [- tf.keras.backend.square(diff[f]) / (2 * (sigma[f] ** 2)) for f in range(nb_dims)]
     norms = [exp_term[f] - np.log(sigma[f] * np.sqrt(2 * np.pi)) for f in range(nb_dims)]
 
     # add an all-ones entry and transform into a large matrix
     norms_matrix = tf.stack(norms, axis=-1)  # *volshape x N
-    g = K.sum(norms_matrix, -1)  # volshape
+    g = tf.keras.backend.sum(norms_matrix, -1)  # volshape
     g = tf.exp(g)
     g /= tf.reduce_sum(g)
 
@@ -741,7 +739,7 @@ def stack_models(models, connecting_node_ids=None):
     for inp in stacked_inputs_:
         if inp not in stacked_inputs:
             stacked_inputs.append(inp)
-    new_model = keras.models.Model(stacked_inputs, output_tensors)
+    new_model = tf.keras.models.Model(stacked_inputs, output_tensors)
     return new_model
 
 
@@ -846,7 +844,7 @@ def mod_submodel(orig_model,
     #   instead, the outbound nodes of the layers will be the input nodes
     #   computed below or passed in
     if input_layers is None:  # if none provided, search for them
-        InputLayerClass = keras.engine.topology.InputLayer
+        InputLayerClass = tf.keras.engine.topology.InputLayer
         input_layers = [l for l in orig_model.layers if isinstance(l, InputLayerClass)]
 
     else:
@@ -905,7 +903,7 @@ def reset_weights(model, session=None):
     """
 
     if session is None:
-        session = K.get_session()
+        session = tf.keras.backend.get_session()
 
     for layer in model.layers:
         reset = False
@@ -958,7 +956,7 @@ def robust_multi_gpu_model(model, gpus, verbose=True):
     if (islist and len(gpus) > 1) or (not islist and gpus > 1):
         count = gpus if not islist else len(gpus)
         print("Returning multi-gpu (%d) model" % count)
-        return keras.utils.multi_gpu_model(model, count)
+        return tf.keras.utils.multi_gpu_model(model, count)
 
     else:
         print("Returning keras model back (single gpu found)")
@@ -971,7 +969,7 @@ def logtanh(x, a=1):
 
     See Also: arcsinh
     """
-    return K.tanh(x) * K.log(2 + a * abs(x))
+    return tf.keras.backend.tanh(x) * tf.keras.backend.log(2 + a * abs(x))
 
 
 def arcsinh(x, alpha=1):
@@ -1145,11 +1143,11 @@ def predict_volume_stack(models,
             batch_vox_idx = batch_end - batch_start
 
             # update stacks
-            all_vol[idx][batch_range, :] = K.batch_flatten(input_batch)[0:batch_vox_idx, :]
-            all_true[idx][batch_range, :] = K.batch_flatten(sample[1])[0:batch_vox_idx, :]
-            all_pred[idx][batch_range, :] = K._batch_flatten(pred)[0:batch_vox_idx, :]
+            all_vol[idx][batch_range, :] = tf.keras.backend.batch_flatten(input_batch)[0:batch_vox_idx, :]
+            all_true[idx][batch_range, :] = tf.keras.backend.batch_flatten(sample[1])[0:batch_vox_idx, :]
+            all_pred[idx][batch_range, :] = tf.keras.backend._batch_flatten(pred)[0:batch_vox_idx, :]
             if do_prior:
-                all_prior[idx][batch_range, :] = K.batch_flatten(sample[0][1])[0:batch_vox_idx, :]
+                all_prior[idx][batch_range, :] = tf.keras.backend.batch_flatten(sample[0][1])[0:batch_vox_idx, :]
 
     # reshape probabilistic answers
     for idx, _ in enumerate(models):
@@ -1295,7 +1293,7 @@ def batch_gather(reference, indices):
         ```
         and indices is `[2, 1]` then the result is `[[6, 7], [12, 13]]`.
     """
-    batch_size = K.shape(reference)[0]
+    batch_size = tf.keras.backend.shape(reference)[0]
     indices = tf.stack([tf.range(batch_size), indices], axis=1)
     return tf.gather_nd(reference, indices)
 

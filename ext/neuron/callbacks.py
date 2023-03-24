@@ -1,6 +1,5 @@
-''' callbacks for the neuron project '''
-
-'''
+"""
+callbacks for the neuron project
 We'd like the following callback actions for neuron:
 
 - print metrics on the test and validation, especially surface-specific dice
@@ -11,12 +10,10 @@ We'd like the following callback actions for neuron:
 --- again, expand CSVLogger or similar
 - save screenshots of a single test subject [Perhaps just do this as a separate callback?]
 --- new callback, PlotSlices
-
-'''
+"""
 import sys
 import collections
-
-import keras
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
@@ -25,7 +22,7 @@ from ext.pytools import timer
 from ext.neuron import utils as nrn_utils
 
 
-class ModelWeightCheck(keras.callbacks.Callback):
+class ModelWeightCheck(tf.keras.callbacks.Callback):
     """
         check model weights for nan and infinite entries
     """
@@ -78,7 +75,7 @@ class ModelWeightCheck(keras.callbacks.Callback):
             # print("max diff", diff)
 
 
-class CheckLossTrend(keras.callbacks.Callback):
+class CheckLossTrend(tf.keras.callbacks.Callback):
     """
         check model weights for nan and infinite entries
     """
@@ -133,7 +130,7 @@ class CheckLossTrend(keras.callbacks.Callback):
             self.losses = [*self.losses[1:], logs['loss']]
 
 
-class PlotTestSlices(keras.callbacks.Callback):
+class PlotTestSlices(tf.keras.callbacks.Callback):
     '''
     plot slices of a test subject from several directions
     '''
@@ -232,7 +229,7 @@ class PlotTestSlices(keras.callbacks.Callback):
             plt.close()
 
 
-class PredictMetrics(keras.callbacks.Callback):
+class PredictMetrics(tf.keras.callbacks.Callback):
     '''
     Compute metrics, like Dice, and save to CSV/log
 
@@ -331,7 +328,7 @@ class PredictMetrics(keras.callbacks.Callback):
                         logs[varname] = meanmet[idx, midx]
 
 
-class ModelCheckpoint(keras.callbacks.Callback):
+class ModelCheckpoint(tf.keras.callbacks.Callback):
     """
     A modification of keras' ModelCheckpoint, but allow for saving on_batch_end
     changes include:
@@ -466,7 +463,7 @@ class ModelCheckpoint(keras.callbacks.Callback):
                         self.model.save(filepath, overwrite=True)
 
 
-class ModelCheckpointParallel(keras.callbacks.Callback):
+class ModelCheckpointParallel(tf.keras.callbacks.Callback):
     """
     
     borrow from: https://github.com/rmkemker/main/blob/master/machine_learning/model_checkpoint_parallel.py

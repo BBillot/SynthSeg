@@ -76,8 +76,7 @@ import csv
 import shutil
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-from keras.models import Model
+
 from scipy.ndimage.filters import convolve
 from scipy.ndimage import label as scipy_label
 from scipy.interpolate import RegularGridInterpolator
@@ -873,9 +872,9 @@ def erode_label_map(labels, labels_to_erode, erosion_factors=1., gpu=False, mode
         else:
             if gpu:
                 if model is None:
-                    mask_in = KL.Input(shape=labels_shape + [1], dtype='float32')
+                    mask_in = tf.keras.layers.Input(shape=labels_shape + [1], dtype='float32')
                     blurred_mask = GaussianBlur([1] * 3)(mask_in)
-                    model = Model(inputs=mask_in, outputs=blurred_mask)
+                    model = tf.keras.models.Model(inputs=mask_in, outputs=blurred_mask)
                 eroded_mask = model.predict(utils.add_axis(np.float32(mask), axis=[0, -1]))
             else:
                 eroded_mask = blur_volume(np.array(mask, dtype='float32'), 1)
@@ -1345,14 +1344,14 @@ def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, r
             if gpu:
                 if (im_shape != previous_model_input_shape) | (model is None):
                     previous_model_input_shape = im_shape
-                    inputs = [KL.Input(shape=im_shape + [1])]
+                    inputs = [tf.keras.layers.Input(shape=im_shape + [1])]
                     sigma = utils.reformat_to_list(sigma, length=n_dims)
                     if mask is None:
                         image = GaussianBlur(sigma=sigma)(inputs[0])
                     else:
-                        inputs.append(KL.Input(shape=im_shape + [1], dtype='float32'))
+                        inputs.append(tf.keras.layers.Input(shape=im_shape + [1], dtype='float32'))
                         image = GaussianBlur(sigma=sigma, use_mask=True)(inputs)
-                    model = Model(inputs=inputs, outputs=image)
+                    model = tf.keras.models.Model(inputs=inputs, outputs=image)
                 if mask is None:
                     im = np.squeeze(model.predict(utils.add_axis(im, axis=[0, -1])))
                 else:
@@ -1832,9 +1831,9 @@ def simulate_upsampled_anisotropic_images(image_dir,
             if gpu:
                 if (im_shape != previous_model_input_shape) | (model is None):
                     previous_model_input_shape = im_shape
-                    image_in = KL.Input(shape=im_shape + [1])
+                    image_in = tf.keras.layers.Input(shape=im_shape + [1])
                     image = GaussianBlur(sigma=sigma)(image_in)
-                    model = Model(inputs=image_in, outputs=image)
+                    model = tf.keras.models.Model(inputs=image_in, outputs=image)
                 im = np.squeeze(model.predict(utils.add_axis(im, axis=[0, -1])))
             else:
                 im = blur_volume(im, sigma, mask=None)
@@ -2093,24 +2092,24 @@ def smoothing_gpu_model(label_shape, label_list, connectivity=1):
 
     # convert labels so values are in [0, ..., N-1] and use one hot encoding
     n_labels = label_list.shape[0]
-    labels_in = KL.Input(shape=label_shape, name='lab_input', dtype='int32')
+    labels_in = tf.keras.layers.Input(shape=label_shape, name='lab_input', dtype='int32')
     labels = ConvertLabels(label_list)(labels_in)
-    labels = KL.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels)
+    labels = tf.keras.layers.Lambda(lambda x: tf.one_hot(tf.cast(x, dtype='int32'), depth=n_labels, axis=-1))(labels)
 
     # count neighbouring voxels
     n_dims, _ = utils.get_dims(label_shape)
     k = utils.add_axis(utils.build_binary_structure(connectivity, n_dims, shape=n_dims), axis=[-1, -1])
-    kernel = KL.Lambda(lambda x: tf.convert_to_tensor(k, dtype='float32'))([])
-    split = KL.Lambda(lambda x: tf.split(x, [1] * n_labels, axis=-1))(labels)
-    labels = KL.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME'))([split[0], kernel])
+    kernel = tf.keras.layers.Lambda(lambda x: tf.convert_to_tensor(k, dtype='float32'))([])
+    split = tf.keras.layers.Lambda(lambda x: tf.split(x, [1] * n_labels, axis=-1))(labels)
+    labels = tf.keras.layers.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME'))([split[0], kernel])
     for i in range(1, n_labels):
-        tmp = KL.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME'))([split[i], kernel])
-        labels = KL.Lambda(lambda x: tf.concat([x[0], x[1]], -1))([labels, tmp])
+        tmp = tf.keras.layers.Lambda(lambda x: tf.nn.convolution(x[0], x[1], padding='SAME'))([split[i], kernel])
+        labels = tf.keras.layers.Lambda(lambda x: tf.concat([x[0], x[1]], -1))([labels, tmp])
 
     # take the argmax and convert labels to original values
-    labels = KL.Lambda(lambda x: tf.math.argmax(x, -1))(labels)
+    labels = tf.keras.layers.Lambda(lambda x: tf.math.argmax(x, -1))(labels)
     labels = ConvertLabels(np.arange(n_labels), label_list)(labels)
-    return Model(inputs=labels_in, outputs=labels)
+    return tf.keras.models.Model(inputs=labels_in, outputs=labels)
 
 
 def erode_labels_in_dir(labels_dir, result_dir, labels_to_erode, erosion_factors=1., gpu=False, recompute=True):
