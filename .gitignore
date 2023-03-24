@@ -2,6 +2,8 @@ venv
 **/__pycache__/
 .idea
 
+tests/.pytest_cache
+
 models/synthseg_2.0.h5
 models/synthseg_parc_2.0.h5
 models/synthseg_qc_2.0.h5
