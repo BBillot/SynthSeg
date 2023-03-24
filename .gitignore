@@ -3,6 +3,7 @@ venv
 .idea
 
 tests/.pytest_cache
+tmp_test_output
 
 models/synthseg_2.0.h5
 models/synthseg_parc_2.0.h5
