@@ -69,7 +69,7 @@ def training(labels_dir,
              max_res_aniso=8.,
              data_res=None,
              thickness=None,
-             bias_field_std=.5,
+             bias_field_std=.7,
              bias_scale=.025,
              return_gradients=False,
              n_levels=5,
@@ -381,7 +381,7 @@ def labels_to_image_model_group(labels_shape,
                                 max_res_aniso=8.,
                                 data_res=None,
                                 thickness=None,
-                                bias_field_std=.5,
+                                bias_field_std=.7,
                                 bias_scale=.025,
                                 return_gradients=False):
 
@@ -448,7 +448,7 @@ def labels_to_image_model_group(labels_shape,
         image = layers.BiasFieldCorruption(bias_field_std, bias_scale, False)(image)
 
     # intensity augmentation
-    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
+    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.5, separate_channels=True)(image)
 
     # loop over channels
     channels = list()

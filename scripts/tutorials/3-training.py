@@ -66,12 +66,12 @@ path_generation_classes = '../../data/labels_classes_priors/generation_classes.n
 
 # spatial deformation parameters
 flipping = True
-scaling_bounds = .15
+scaling_bounds = .2
 rotation_bounds = 15
 shearing_bounds = .012
 translation_bounds = False
-nonlin_std = 3.
-bias_field_std = .5
+nonlin_std = 4.
+bias_field_std = .7
 
 # acquisition resolution parameters
 randomise_res = True

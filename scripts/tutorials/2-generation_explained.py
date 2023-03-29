@@ -99,7 +99,7 @@ output_shape = 160
 # ---------- GMM sampling parameters ----------
 
 # Here we use uniform prior distribution to sample the means/stds of the GMM. Because we don't specify prior_means and
-# prior_stds, those priors will have default bounds of [25, 225], and [5, 25]. Those values enable to generate a wide
+# prior_stds, those priors will have default bounds of [0, 250], and [0, 35]. Those values enable to generate a wide
 # range of contrasts (often unrealistic), which will make the segmentation network contrast-agnostic.
 prior_distributions = 'uniform'
 
@@ -123,12 +123,12 @@ generation_classes = '../../data/labels_classes_priors/generation_classes.npy'
 # than the original segmentations.
 
 flipping = True  # enable right/left flipping
-scaling_bounds = 0.15  # the scaling coefficients will be sampled from U(1-scaling_bounds; 1+scaling_bounds)
+scaling_bounds = 0.2  # the scaling coefficients will be sampled from U(1-scaling_bounds; 1+scaling_bounds)
 rotation_bounds = 15  # the rotation angles will be sampled from U(-rotation_bounds; rotation_bounds)
 shearing_bounds = 0.012  # the shearing coefficients will be sampled from U(-shearing_bounds; shearing_bounds)
 translation_bounds = False  # no translation is performed, as this is already modelled by the random cropping
-nonlin_std = 3.  # this controls the maximum elastic deformation (higher = more deformation)
-bias_field_std = 0.5  # his controls the maximum bias field corruption (higher = more bias)
+nonlin_std = 4.  # this controls the maximum elastic deformation (higher = more deformation)
+bias_field_std = 0.7  # this controls the maximum bias field corruption (higher = more bias)
 
 
 # ---------- Resolution parameters ----------

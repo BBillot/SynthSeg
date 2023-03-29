@@ -61,7 +61,7 @@ def training(image_dir,
              max_res_aniso=8.,
              data_res=None,
              thickness=None,
-             bias_field_std=.5,
+             bias_field_std=.7,
              bias_scale=.025,
              n_levels=5,
              nb_conv_per_level=2,
@@ -262,18 +262,18 @@ def build_augmentation_model(im_shape,
                              output_div_by_n=None,
                              flipping=True,
                              aff=None,
-                             scaling_bounds=0.15,
+                             scaling_bounds=0.2,
                              rotation_bounds=15,
                              shearing_bounds=0.012,
                              translation_bounds=False,
-                             nonlin_std=3.,
+                             nonlin_std=4.,
                              nonlin_scale=.0625,
                              randomise_res=False,
                              max_res_iso=4.,
                              max_res_aniso=8.,
                              data_res=None,
                              thickness=None,
-                             bias_field_std=.5,
+                             bias_field_std=.7,
                              bias_scale=.025):
 
     # reformat resolutions and get shapes
@@ -317,7 +317,7 @@ def build_augmentation_model(im_shape,
         image = layers.BiasFieldCorruption(bias_field_std, bias_scale, False)(image)
 
     # intensity augmentation
-    image = layers.IntensityAugmentation(6, clip=False, normalise=True, gamma_std=.4, separate_channels=True)(image)
+    image = layers.IntensityAugmentation(6, clip=False, normalise=True, gamma_std=.5, separate_channels=True)(image)
 
     # if necessary, loop over channels to 1) blur, 2) downsample to simulated LR, and 3) upsample to target
     if data_res is not None:

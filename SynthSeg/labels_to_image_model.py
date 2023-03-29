@@ -187,7 +187,7 @@ def labels_to_image_model(labels_shape,
         image = layers.BiasFieldCorruption(bias_field_std, bias_scale, False)(image)
 
     # intensity augmentation
-    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.4, separate_channels=True)(image)
+    image = layers.IntensityAugmentation(clip=300, normalise=True, gamma_std=.5, separate_channels=True)(image)
 
     # loop over channels
     channels = list()

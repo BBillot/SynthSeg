@@ -49,14 +49,14 @@ class BrainGenerator:
                  rotation_bounds=15,
                  shearing_bounds=.012,
                  translation_bounds=False,
-                 nonlin_std=3.,
+                 nonlin_std=4.,
                  nonlin_scale=.04,
                  randomise_res=True,
                  max_res_iso=4.,
                  max_res_aniso=8.,
                  data_res=None,
                  thickness=None,
-                 bias_field_std=.5,
+                 bias_field_std=.7,
                  bias_scale=.025,
                  return_gradients=False):
         """

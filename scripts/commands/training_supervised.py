@@ -55,7 +55,7 @@ parser.add_argument("--data_res", dest="data_res", type=infer, default=None)
 parser.add_argument("--thickness", dest="thickness", type=infer, default=None)
 
 # bias field parameters
-parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.5)
+parser.add_argument("--bias_std", type=float, dest="bias_field_std", default=.7)
 parser.add_argument("--bias_scale", type=float, dest="bias_scale", default=.025)
 
 parser.add_argument("--gradients", action='store_true', dest="return_gradients")
