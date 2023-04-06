@@ -244,7 +244,8 @@ def predict(path_images,
 
     if robust:
         print('\nIf you use the new robust version of SynthSeg in a publication, please cite:')
-        print('Robust Segmentation of Brain MRI in the Wild with Hierarchical CNNs and no Retraining')
+        print('Robust machine learning segmentation for large-scale analysis of heterogeneous clinical brain MRI '
+              'datasets')
         print('B. Billot, M. Collin, S.E. Arnold, S. Das, J.E. Iglesias')
     else:
         print('\nIf you use this tool in a publication, please cite:')
