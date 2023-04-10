@@ -608,6 +608,7 @@ def build_model(path_model_segmentation,
     if do_parcellation:
         n_labels_parcellation = len(labels_parcellation)
 
+        # build input for S3: only takes one map for cortical segmentation (no image), 1 = cortex, 0 = other
         last_tensor = net.output
         last_tensor = KL.Lambda(lambda x: tf.cast(tf.argmax(x, axis=-1), 'int32'))(last_tensor)
         last_tensor = layers.ConvertLabels(np.arange(n_labels_seg), labels_segmentation)(last_tensor)

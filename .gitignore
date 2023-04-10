@@ -15,15 +15,10 @@ models/synthseg_parc_2.0.h5
 models/synthseg_qc_2.0.h5
 models/synthseg_robust_2.0.h5
 
-scripts/commands/training_group.py
+scripts/checks
 scripts/commands/SynthSeg_predict_claustrum.py
-scripts/Denoiser
-scripts/gradients
-scripts/heart
-scripts/PAMI
 scripts/previous_papers
 scripts/*.py
-scripts/run_synthseg
 
 SynthSeg/auc_roc_delong.py
 SynthSeg/boxplots.py
