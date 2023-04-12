@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.python.keras.utils.tf_utils import ListWrapper
+
 import nibabel as nib
 import numpy as np
 import pathlib
@@ -11,7 +12,7 @@ from ext.lab2im.layers import GaussianBlur
 
 
 def test_gaussian_blur():
-    layer = GaussianBlur(sigma=[1, 1, 1])
+    layer = GaussianBlur(sigma=5.0)
     x_in = tf.pad(tf.ones((1, 1, 1)), paddings=tf.constant([[10, 10], [10, 10], [10, 10]]))
     x_in = tf.reshape(x_in, [1] + list(x_in.shape) + [1])
     y_out = layer(x_in)
