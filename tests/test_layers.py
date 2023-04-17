@@ -7,7 +7,7 @@ import numpy as np
 from . import TestData
 
 from ext.lab2im.edit_tensors import gaussian_kernel
-from ext.lab2im.layers import GaussianBlur
+from ext.lab2im.layers import GaussianBlur, RandomCrop
 
 
 def test_gaussian_blur(fixed_random_seed):
@@ -35,3 +35,17 @@ def test_gaussian_blur_kernel(fixed_random_seed):
     assert tf.is_tensor(kernels)
 
 
+def test_random_crop(model_inputs, set_random_seeds):
+    random_crop_target_path = Path(__file__).parent / "random_crop_seed43.npy"
+
+    labels_input = Input(shape=model_inputs[0].shape[1:], name='labels_input', dtype='int32')
+    random_crop_layer = RandomCrop(crop_shape=[64]*3)(labels_input)
+
+    model = Model(inputs=labels_input, outputs=random_crop_layer)
+
+    output = model.predict(model_inputs[0])
+
+    # np.save(random_crop_target_path, output)
+    output_target = np.load(str(random_crop_target_path))
+
+    assert np.allclose(output, output_target)
