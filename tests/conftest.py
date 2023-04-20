@@ -24,12 +24,19 @@ def model_inputs():
     Returns:
         A List containing the input label map, as well as the means and stds defining the parameters of the GMM.
     """
-    np.random.seed(43)
+    return get_model_inputs()
 
+
+def get_model_inputs():
+    """
+    Create label_to_image input.
+    Use this method if you need to call it directly in an interactive session.
+    Returns:
+        label_to_image input
+    """
     labels_classes_path = TestData.synth_seg_path / "data" / "labels_classes_priors"
     generation_labels = np.load(labels_classes_path / "generation_labels.npy")
     generation_classes = np.load(labels_classes_path / "generation_classes.npy")
-
     model_inputs_generator = build_model_inputs(
         path_label_maps=sorted(TestData.get_label_maps()),
         n_labels=len(generation_labels),
@@ -43,8 +50,4 @@ def model_inputs():
         use_specific_stats_for_channel=False,
         mix_prior_and_random=False,
     )
-
-    model_inputs = next(model_inputs_generator)
-
-    return model_inputs
-
+    return next(model_inputs_generator)

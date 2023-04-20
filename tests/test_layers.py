@@ -35,17 +35,17 @@ def test_gaussian_blur_kernel(fixed_random_seed):
     assert tf.is_tensor(kernels)
 
 
-def test_random_crop(model_inputs, set_random_seeds):
-    random_crop_target_path = Path(__file__).parent / "random_crop_seed43.npy"
-
-    labels_input = Input(shape=model_inputs[0].shape[1:], name='labels_input', dtype='int32')
-    random_crop_layer = RandomCrop(crop_shape=[64]*3)(labels_input)
-
-    model = Model(inputs=labels_input, outputs=random_crop_layer)
-
-    output = model.predict(model_inputs[0])
-
-    # np.save(random_crop_target_path, output)
-    output_target = np.load(str(random_crop_target_path))
-
-    assert np.allclose(output, output_target)
+def test_random_crop(model_inputs, fixed_random_seed):
+    output_file = TestData.get_test_output_dir() / "test_random_crop.npy"
+    cropped = RandomCrop(crop_shape=[64]*3)(model_inputs[0])
+    assert cropped.shape == (1, 64, 64, 64, 1)
+    data: np.ndarray = tf.squeeze(cropped).numpy()
+    np.save(output_file.as_posix(), data)
+    nib.save(
+        nib.Nifti1Image(
+            data,
+            np.eye(4),
+            dtype="int64"
+        ),
+        TestData.get_test_output_dir() / "test_random_crop.nii"
+    )
