@@ -3,6 +3,13 @@ from argparse import ArgumentParser
 from SynthSeg.training import training
 
 
+def int_or_str(arg: str):
+    try:
+        return int(arg)
+    except ValueError:
+        return arg
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
 
@@ -164,6 +171,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--wandb", help="Log training to WandB.", action="store_true"
     )
+    parser.add_argument(
+        "--wandb_log_freq",
+        type=int_or_str,
+        help="Log frequency for the WandB callback. If 'epoch', logs metrics at the end of each epoch. "
+            "If 'batch', logs metrics at the end of each batch. If an integer, logs metrics at the end of that "
+            "many batches. Defaults to 'epoch'.",
+        default="epoch",
+    )
 
     args = parser.parse_args()
 
@@ -198,4 +213,5 @@ if __name__ == "__main__":
         dice_epochs=args.dice_epochs,
         steps_per_epoch=args.steps_per_epoch,
         wandb=args.wandb,
+        wandb_log_freq=args.wandb_log_freq
     )
