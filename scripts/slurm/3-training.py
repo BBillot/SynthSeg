@@ -160,6 +160,11 @@ if __name__ == "__main__":
         "--no_randomise_res", help="Don't randomise resolution.", action="store_true"
     )
 
+    # wandb
+    parser.add_argument(
+        "--wandb", help="Log training to WandB.", action="store_true"
+    )
+
     args = parser.parse_args()
 
     training(
@@ -192,4 +197,5 @@ if __name__ == "__main__":
         wl2_epochs=args.wl2_epochs,
         dice_epochs=args.dice_epochs,
         steps_per_epoch=args.steps_per_epoch,
+        wandb=args.wandb,
     )
