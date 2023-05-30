@@ -379,7 +379,7 @@ def train_model(model,
 
     # compile
     if compile_model:
-        model.compile(optimizer=tf.keras.optimizers.Adam(lr=learning_rate), loss=metrics.IdentityLoss().loss)
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss=metrics.IdentityLoss().loss)
 
     # fit
     model.fit_generator(generator,
