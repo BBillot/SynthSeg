@@ -20,6 +20,7 @@ import numpy as np
 # project imports
 from .model_inputs import build_model_inputs
 from .labels_to_image_model import labels_to_image_model
+from .brain_generator_options import GeneratorOptions
 
 # third-party imports
 from ext.lab2im import utils, edit_volumes
@@ -333,3 +334,17 @@ class BrainGenerator:
         image = np.squeeze(np.stack(list_images, axis=0))
         labels = np.squeeze(np.stack(list_labels, axis=0))
         return image, labels
+
+
+def create_brain_generator(opts: GeneratorOptions) -> BrainGenerator:
+    """
+    Convenience function to create a BrainGenerator from a dataclass that can easily be serialized, deserialized or
+    used in commandline arguments.
+    Args:
+        opts: Options for the BrainGenerator
+
+    Returns: A BrainGenerator
+
+    """
+    assert isinstance(opts, GeneratorOptions)
+    return BrainGenerator(**opts.to_dict())
