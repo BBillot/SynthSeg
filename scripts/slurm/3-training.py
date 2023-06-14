@@ -167,16 +167,21 @@ if __name__ == "__main__":
         "--no_randomise_res", help="Don't randomise resolution.", action="store_true"
     )
 
-    # wandb
     parser.add_argument(
-        "--wandb", help="Log training to WandB.", action="store_true"
+        "--checkpoint",
+        type=str,
+        help="File path to a checkpoint to resume training.",
+        default=None,
     )
+
+    # wandb
+    parser.add_argument("--wandb", help="Log training to WandB.", action="store_true")
     parser.add_argument(
         "--wandb_log_freq",
         type=int_or_str,
         help="Log frequency for the WandB callback. If 'epoch', logs metrics at the end of each epoch. "
-            "If 'batch', logs metrics at the end of each batch. If an integer, logs metrics at the end of that "
-            "many batches. Defaults to 'epoch'.",
+        "If 'batch', logs metrics at the end of each batch. If an integer, logs metrics at the end of that "
+        "many batches. Defaults to 'epoch'.",
         default="epoch",
     )
 
@@ -212,6 +217,7 @@ if __name__ == "__main__":
         wl2_epochs=args.wl2_epochs,
         dice_epochs=args.dice_epochs,
         steps_per_epoch=args.steps_per_epoch,
+        checkpoint=args.checkpoint,
         wandb=args.wandb,
-        wandb_log_freq=args.wandb_log_freq
+        wandb_log_freq=args.wandb_log_freq,
     )
