@@ -22,7 +22,6 @@ scripts/run_synthseg
 
 SynthSeg/auc_roc_delong.py
 SynthSeg/boxplots.py
-SynthSeg/brain_generator_*
 SynthSeg/check_*
 SynthSeg/predict_synthseg_*
 SynthSeg/predict_vae.py
