@@ -2,3 +2,4 @@ nibabel==4.0.2
 Pillow==9.3.0
 wandb==0.14.0
 pytest==7.2.2
+simple-parsing>=0.1.2
