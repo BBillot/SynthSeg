@@ -1,22 +1,9 @@
 from __future__ import annotations
 from simple_parsing.helpers import Serializable
-from simple_parsing.helpers.serialization import register_decoding_fn
-
 from typing import Optional, Union, List
 from dataclasses import dataclass
 
-BooleanFloatOrList = Union[bool, float, List[float]]
-
-
-def decode_boolean_float_or_list(raw_value):
-    if isinstance(raw_value, (float, bool, list)):
-        return raw_value
-    else:
-        raise RuntimeError(f"Could not decode JSON value {raw_value}"
-                           f"which should have been float or bool or list(float).")
-
-
-register_decoding_fn(BooleanFloatOrList, decode_boolean_float_or_list)
+from .option_types import *
 
 
 @dataclass
@@ -38,11 +25,12 @@ class GeneratorOptions(Serializable):
     hemisphere (can be left or right), and finally all the corresponding contra-lateral structures in the same order.
     """
 
-    n_neutral_labels: Union[None, List[int], str] = None
+    n_neutral_labels: Optional[int] = None
     """
     Number of non-sided generation labels. This is important only if you use
     flipping augmentation. Default is total number of label values.
     """
+
     output_labels: Union[None, List[int], str] = None
     """
     List of the same length as generation_labels to indicate which values to use in
@@ -150,7 +138,7 @@ class GeneratorOptions(Serializable):
     Whether to introduce right/left random flipping.
     """
 
-    scaling_bounds: BooleanFloatOrList = .2
+    scaling_bounds: Union[bool, float, List[float]] = .2
     """
     range of the random sampling to apply at each mini-batch. The scaling factor
     for each dimension is sampled from a uniform distribution of predefined bounds. Can either be:

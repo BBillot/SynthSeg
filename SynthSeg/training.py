@@ -29,6 +29,7 @@ from inspect import getmembers, isclass
 # project imports
 from . import metrics_model as metrics
 from .brain_generator import BrainGenerator
+from .training_options import TrainingOptions
 
 # third-party imports
 from ext.lab2im import utils, layers
@@ -375,3 +376,13 @@ def train_model(model,
                         steps_per_epoch=n_steps,
                         callbacks=callbacks,
                         initial_epoch=init_epoch)
+
+
+def training_from_options(opts: TrainingOptions):
+    """
+    Same as training(...) but can take an instance of TrainingOptions as argument.
+    Args:
+        opts: Parameters for the network training
+    """
+    assert isinstance(opts, TrainingOptions)
+    training(**opts.to_dict())

@@ -42,6 +42,16 @@ class TestData:
         return list(map(lambda p: p.absolute().as_posix(), label_dir.glob("*.nii.gz")))
 
     @classmethod
+    def get_test_data_dir(cls) -> pathlib.Path:
+        """
+        Returns the directory path for test data.
+
+        Returns:
+            pathlib.Path: The absolute path of the test data directory.
+        """
+        return (TestData.synth_seg_path / "testdata").absolute()
+
+    @classmethod
     def get_test_output_dir(cls) -> pathlib.Path:
         """
         Provides (and ensures it exists) a temporary test output directory inside the project
