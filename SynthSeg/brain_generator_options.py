@@ -78,13 +78,7 @@ class GeneratorOptions(Serializable):
 
     # GMM-sampling parameters
 
-    prior_distributions: str = 'uniform'
-    """
-    type of distribution from which we sample the GMM parameters.
-    Can either be 'uniform', or 'normal'. Default is 'uniform'.
-    """
-
-    generation_classes = None
+    generation_classes: Union[None, List[int], str] = None
     """
     Indices regrouping generation labels into classes of same intensity
     distribution. Regrouped labels will thus share the same Gaussian when sampling a new image. Can be a sequence, a
@@ -93,10 +87,16 @@ class GeneratorOptions(Serializable):
     Default is all labels have different classes (K=len(generation_labels)).
     """
 
-    prior_means: Union[None, List[int]] = None
+    prior_distributions: str = 'uniform'
     """
-    hyperparameters controlling the prior distributions of the GMM means. Because
-    these prior distributions are uniform or normal, they require by 2 hyperparameters. Thus prior_means can be:
+    type of distribution from which we sample the GMM parameters.
+    Can either be 'uniform', or 'normal'. Default is 'uniform'.
+    """
+
+    prior_means: Union[None, List[int], List[List[int]]] = None
+    """
+    Controls the prior distributions of the GMM means. Because
+    these prior distributions are uniform or normal, they require 2 value. Thus prior_means can be:
     1) a sequence of length 2, directly defining the two hyperparameters: [min, max] if prior_distributions is
     uniform, [mean, std] if the distribution is normal. The GMM means of are independently sampled at each
     mini_batch from the same distribution.
@@ -115,19 +115,19 @@ class GeneratorOptions(Serializable):
 
     prior_stds: Union[None, List[int]] = None
     """
-    same as prior_means but for the standard deviations of the GMM.
+    Same as prior_means but for the standard deviations of the GMM.
     Default is None, which corresponds to prior_stds = [5, 25].
     """
 
     use_specific_stats_for_channel: bool = False
     """
-    whether the i-th block of two rows in the prior arrays must be
+    Whether the i-th block of two rows in the prior arrays must be
     only used to generate the i-th channel. If True, n_mod should be equal to n_channels. Default is False.
     """
 
     mix_prior_and_random: bool = False
     """
-    if prior_means is not None, enables to reset the priors to their default
+    If prior_means is not None, enables to reset the priors to their default
     values for half of these cases, and thus generate images of random contrast.
     """
 
