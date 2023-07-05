@@ -286,6 +286,8 @@ def load_array_if_path(var, load_as_numpy=True):
     if (isinstance(var, str)) & load_as_numpy:
         assert os.path.isfile(var), 'No such path: %s' % var
         var = np.load(var)
+    elif isinstance(var, list):
+        var = np.array(var)
     return var
 
 
