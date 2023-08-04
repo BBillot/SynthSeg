@@ -277,7 +277,7 @@ class TrainingOptions(Serializable):
     A value of 2 will double them (resp. half) after each max-pooling (resp. upsampling). 3 will triple them, etc.
     """
 
-    activation: str = 'elu'
+    activation: str = "elu"
     """
     Activation for all convolution layers except the last, which will use softmax regardless. Can be 'elu', 'relu'.
     """
@@ -325,8 +325,7 @@ class TrainingOptions(Serializable):
     def with_absolute_paths(self, reference_file: str):
         """
         Adds absolute paths to specified file paths in the TrainingOptions object.
-        Since all string properties are supposed to be paths, we just iterate through all properties
-        and change the ones that are strings.
+        We just iterate through all properties and change the ones that are supposed to be paths.
 
         Args:
             reference_file (str): The reference file to be used for generating absolute paths.
@@ -335,8 +334,9 @@ class TrainingOptions(Serializable):
             TrainingOptions: A copy of the TrainingOptions object with absolute paths added.
         """
         copy = TrainingOptions()
+        non_path_properties = ["activation", "prior_distributions", "wandb_log_freq"]
         for key, value in vars(self).items():
-            if isinstance(value, str):
+            if isinstance(value, str) and key not in non_path_properties:
                 setattr(copy, key, get_absolute_path(value, reference_file))
             else:
                 setattr(copy, key, value)
