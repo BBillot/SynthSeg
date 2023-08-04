@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional, Union, List
 from simple_parsing.helpers.serialization import Serializable
-from simple_parsing.helpers.serialization import register_decoding_fn
 
 from .option_types import *
+from .option_utils import get_absolute_path
 
 
 @dataclass
@@ -52,7 +51,7 @@ class TrainingOptions(Serializable):
     Can be a list or a 1d numpy array, or the path to such an array. Default is output_labels = generation_labels.    
     """
 
-    subjects_prob: Union[None, str, List[int]]= None
+    subjects_prob: Union[None, str, List[int]] = None
     """
     Relative order of importance (doesn't have to be probabilistic), with which to pick
     the provided label maps at each minibatch. Can be a sequence, a 1D numpy array, or the path to such an array, and it
@@ -322,3 +321,23 @@ class TrainingOptions(Serializable):
     If "batch", logs metrics at the end of each batch. If an integer, logs metrics at the end of that
     many batches.
     """
+
+    def with_absolute_paths(self, reference_file: str):
+        """
+        Adds absolute paths to specified file paths in the TrainingOptions object.
+        Since all string properties are supposed to be paths, we just iterate through all properties
+        and change the ones that are strings.
+
+        Args:
+            reference_file (str): The reference file to be used for generating absolute paths.
+
+        Returns:
+            TrainingOptions: A copy of the TrainingOptions object with absolute paths added.
+        """
+        copy = TrainingOptions()
+        for key, value in vars(self).items():
+            if isinstance(value, str):
+                setattr(copy, key, get_absolute_path(value, reference_file))
+            else:
+                setattr(copy, key, value)
+        return copy

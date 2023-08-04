@@ -385,4 +385,7 @@ def training_from_options(opts: TrainingOptions):
         opts: Parameters for the network training
     """
     assert isinstance(opts, TrainingOptions)
-    training(**opts.to_dict())
+    keyword_args = opts.to_dict()
+    labels_dir = keyword_args.pop("labels_dir")
+    model_dir = keyword_args.pop("model_dir")
+    training(labels_dir, model_dir, **keyword_args)
