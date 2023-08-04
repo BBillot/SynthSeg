@@ -1,9 +1,9 @@
 from __future__ import annotations
 from simple_parsing.helpers import Serializable
-from typing import Optional, Union, List
 from dataclasses import dataclass
 
 from .option_types import *
+from .option_utils import get_absolute_path
 
 
 @dataclass
@@ -247,3 +247,24 @@ class GeneratorOptions(Serializable):
     whether to return the synthetic image or the magnitude of its spatial
     gradient (computed with Sobel kernels).
     """
+
+    def with_absolute_paths(self, reference_file: str):
+        """
+        Adds absolute paths to specified file paths in the GeneratorOptions object.
+        Since all string properties are supposed to be paths, we just iterate through all properties
+        and change the ones that are strings.
+
+        Args:
+            reference_file (str): The reference file to be used for generating absolute paths.
+
+        Returns:
+            GeneratorOptions: A copy of the GeneratorOptions object with absolute paths added.
+        """
+        copy = GeneratorOptions()
+        excluded_properties = ["prior_distributions"]
+        for key, value in vars(self).items():
+            if isinstance(value, str) and key not in excluded_properties:
+                setattr(copy, key, get_absolute_path(value, reference_file))
+            else:
+                setattr(copy, key, value)
+        return copy

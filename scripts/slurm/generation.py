@@ -1,3 +1,4 @@
+import os.path
 from dataclasses import dataclass
 from typing import Optional
 from simple_parsing import ArgumentParser
@@ -36,6 +37,7 @@ def fix_relative_path(dir_or_file: str) -> str:
     else:
         return dir_or_file
 
+
 if __name__ == '__main__':
     logger = logging.getLogger("Generate Brain")
     logger.setLevel(logging.DEBUG)
@@ -46,7 +48,9 @@ if __name__ == '__main__':
     logger.addHandler(ch)
 
     parser = ArgumentParser()
+    # noinspection PyTypeChecker
     parser.add_arguments(Options, "general")
+    # noinspection PyTypeChecker
     parser.add_arguments(GeneratorOptions, "generate")
     args = parser.parse_args()
 
@@ -63,10 +67,14 @@ if __name__ == '__main__':
     conf_file = fix_relative_path(general_params.config_file)
     if isinstance(conf_file, str) and isfile(conf_file) and access(conf_file, R_OK):
         logger.info("Loading generator config from configuration file.")
+
+        # Load config and make paths  within the config absolute
         generator_config = GeneratorOptions.load(conf_file)
+        generator_config = generator_config.with_absolute_paths(os.path.abspath(conf_file))
     else:
         logger.info("No valid config file. Initialize generator with default values and cmd-line parameters.")
         generator_config = args.generate
+        generator_config = generator_config.with_absolute_paths(os.path.abspath(conf_file))
 
     if general_params.count <= 0:
         logger.error(f"Number of training pairs to generate must be positive but was {general_params.count}.")
