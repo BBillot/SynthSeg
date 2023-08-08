@@ -16,6 +16,9 @@ License.
 
 # python imports
 import numpy as np
+import tensorflow as tf
+from typing import Union
+from pathlib import Path
 
 # project imports
 from .model_inputs import build_model_inputs
@@ -23,7 +26,7 @@ from .labels_to_image_model import labels_to_image_model
 from .brain_generator_options import GeneratorOptions
 
 # third-party imports
-from ext.lab2im import utils, edit_volumes
+from ext.lab2im import utils, edit_volumes, layers
 
 
 class BrainGenerator:
@@ -334,6 +337,67 @@ class BrainGenerator:
         image = np.squeeze(np.stack(list_images, axis=0))
         labels = np.squeeze(np.stack(list_labels, axis=0))
         return image, labels
+
+    def generate_tfrecord(self, file: Union[str, Path], n: int = 1) -> Path:
+        """Generate data for the `training_with_tfrecords` module.
+
+        Args:
+            file: Path to the output file. We will add a '.tfrecord' extension if not specified.
+            n: Number of generated "brain image and label map" pairs to be written to the file
+
+        Returns:
+            Absolute path to the output file.
+        """
+        if isinstance(file, str):
+            file = Path(file)
+
+        if file.suffix != ".tfrecord":
+            file = file.parent / (file.name + ".tfrecord")
+
+        n_labels = len(np.unique(self.output_labels))
+
+        with tf.io.TFRecordWriter(str(file)) as writer:
+            for _ in range(n):
+                model_inputs = next(self.model_inputs_generator)
+                [image, labels] = self.labels_to_image_model.predict(model_inputs)
+
+                # remove batch dim, and channel dim in labels
+                image, labels = image[0], labels[0, ..., 0]
+
+                # convert labels to probabilistic values
+                labels = layers.ConvertLabels(self.output_labels)(labels)
+                labels = (
+                    tf.keras.layers.Lambda(
+                        lambda x: tf.one_hot(
+                            tf.cast(x, dtype="int32"),
+                            depth=n_labels,
+                            axis=-1,
+                        )
+                    )(labels)
+                    .numpy()
+                    .astype("int32")
+                )
+
+                # create tf example
+                features = {
+                    "image": tf.train.Feature(
+                        bytes_list=tf.train.BytesList(
+                            value=[tf.io.serialize_tensor(image).numpy()]
+                        )
+                    ),
+                    "labels": tf.train.Feature(
+                        bytes_list=tf.train.BytesList(
+                            value=[tf.io.serialize_tensor(labels).numpy()]
+                        )
+                    ),
+                }
+
+                example = tf.train.Example(features=tf.train.Features(feature=features))
+
+                # write to file
+                writer.write(example.SerializeToString())
+
+        return file.absolute()
 
 
 def create_brain_generator(opts: GeneratorOptions) -> BrainGenerator:
