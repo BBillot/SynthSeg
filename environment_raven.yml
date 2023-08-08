@@ -1,5 +1,6 @@
 name: synthseg_raven
 channels:
+  - defaults
   - conda-forge
 dependencies:
   # trying to emulate following env on raven:
@@ -7,7 +8,7 @@ dependencies:
   - python=3.9.7
   - cudatoolkit=11.6.0
   - cudnn=8.4.1
-  - tensorflow=2.11.0
+  - tensorflow-gpu=2.11.0
   - scikit-learn=1.1.1
   - tqdm=4.62.3
   - matplotlib=3.4.3
