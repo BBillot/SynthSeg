@@ -29,14 +29,24 @@ class TrainingOptions(Serializable):
     Args:
         data_dir: Path to the data dir.
         output_dir: Path to the output dir.
-        n_labels: Number of output labels.
+        exist_ok:
+        checkpoint:
         lr: Learning rate for the training.
+        batch_size:
         wl2_epochs: Number of epochs for which the network (except the soft-max layer) is trained with L2
             norm loss function.
         dice_epochs: Number of epochs with the soft Dice loss function.
         steps_per_epoch: Number of steps per epoch.
+        n_levels:
+        nb_conv_per_level:
+        conv_size:
+        unet_feat_count:
+        feat_multiplier:
+        activation:
         strategy: Define a distributed training strategy: 'mirrored' or 'multiworker'.
             If None, do not distribute the training.
+        wandb:
+        wandb_log_freq:
     """
 
     data_dir: Path
