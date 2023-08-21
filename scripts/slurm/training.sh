@@ -48,5 +48,5 @@ export TF_XLA_FLAGS="--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit"
 
 # TODO: David, why does Python know where `training.py` is when we only set the PYTHONPATH to the top-level
 # project directory? IMO, the could _should_ be something like
-# srun python scripts/slurm/training.sh --config_file data/cbs/original_training_config/training.json
+# srun python scripts/slurm/training.sh --training_config data/cbs/original_training_config/training.json
 srun python training.py --dice_epochs=3 --wandb

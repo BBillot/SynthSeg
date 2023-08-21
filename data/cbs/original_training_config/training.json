@@ -1,6 +1,6 @@
 {
   "labels_dir": "../../training_label_maps",
-  "model_dir": "../../cbs/original_config/model",
+  "model_dir": "../../cbs/original_training_config/model",
   "n_levels": 5,
   "nb_conv_per_level": 2,
   "n_neutral_labels": 18,
