@@ -996,7 +996,8 @@ def draw_value_from_distribution(hyperparameter,
         return None
 
     # reformat parameter_range
-    hyperparameter = load_array_if_path(hyperparameter, load_as_numpy=True)
+    if isinstance(hyperparameter, str):
+        hyperparameter = load_array_if_path(hyperparameter, load_as_numpy=True)
     if not isinstance(hyperparameter, np.ndarray):
         if hyperparameter is None:
             hyperparameter = np.array([[centre - default_range] * size, [centre + default_range] * size])

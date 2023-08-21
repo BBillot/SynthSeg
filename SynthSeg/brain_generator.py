@@ -236,8 +236,8 @@ class BrainGenerator:
                 'generation_classes should a linear range between 0 and its maximum value.'
         else:
             self.generation_classes = np.arange(self.generation_labels.shape[0])
-        self.prior_means = utils.load_array_if_path(prior_means)
-        self.prior_stds = utils.load_array_if_path(prior_stds)
+        self.prior_means = utils.load_array_if_path(prior_means) if isinstance(prior_means, str) else prior_means
+        self.prior_stds = utils.load_array_if_path(prior_stds) if isinstance(prior_stds, str) else prior_stds
         self.use_specific_stats_for_channel = use_specific_stats_for_channel
         # linear transformation parameters
         self.scaling_bounds = utils.load_array_if_path(scaling_bounds)

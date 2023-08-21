@@ -93,7 +93,7 @@ class GeneratorOptions(Serializable):
     Can either be 'uniform', or 'normal'. Default is 'uniform'.
     """
 
-    prior_means: Union[None, List[int], List[List[int]]] = None
+    prior_means: Union[None, List[float], List[List[float]]] = None
     """
     Controls the prior distributions of the GMM means. Because
     these prior distributions are uniform or normal, they require 2 value. Thus prior_means can be:
@@ -113,7 +113,7 @@ class GeneratorOptions(Serializable):
     Default is None, which corresponds to prior_means = [25, 225].
     """
 
-    prior_stds: Union[None, List[int]] = None
+    prior_stds: Union[None, List[float], List[List[float]]] = None
     """
     Same as prior_means but for the standard deviations of the GMM.
     Default is None, which corresponds to prior_stds = [5, 25].

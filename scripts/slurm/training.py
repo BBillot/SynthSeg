@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 
 from SynthSeg.training_options import TrainingOptions
-from SynthSeg.training import training_from_options
 
 
 @dataclass
@@ -13,7 +12,7 @@ class CmdLineTrainingOptions:
     Specify the training configuration
     """
 
-    config_file: str = ""
+    training_config: str = ""
     """
     Path to a JSON file that represents the serialized form of a TrainingOptions instance.
     """
@@ -47,4 +46,7 @@ if __name__ == "__main__":
         training_options.checkpoint = checkpoint_files[0]
         training_options.dice_epochs = 0
 
+    # We import it here so that TF will be loaded after everything has been set up.
+    # This should help to not wait 20 seconds when you just call it with --help.
+    from SynthSeg.training import training_from_options
     training_from_options(training_options)

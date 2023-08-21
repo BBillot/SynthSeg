@@ -8,8 +8,6 @@ import logging
 import sys
 
 from SynthSeg.brain_generator_options import GeneratorOptions
-from SynthSeg.brain_generator import create_brain_generator
-from ext.lab2im import utils
 
 project_directory = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -54,6 +52,7 @@ if __name__ == '__main__':
     parser.add_arguments(GeneratorOptions, "generate")
     args = parser.parse_args()
 
+    from ext.lab2im import utils
     general_params: Options = args.general
     if isinstance(general_params.output_dir, str):
         output_dir = fix_relative_path(general_params.output_dir)
@@ -68,11 +67,11 @@ if __name__ == '__main__':
     if isinstance(conf_file, str) and isfile(conf_file) and access(conf_file, R_OK):
         logger.info("Loading generator config from configuration file.")
 
-        # Load config and make paths  within the config absolute
+        # Load config and make paths within the config absolute
         generator_config = GeneratorOptions.load(conf_file)
         generator_config = generator_config.with_absolute_paths(os.path.abspath(conf_file))
     else:
-        logger.info("No valid config file. Initialize generator with default values and cmd-line parameters.")
+        logger.error("No valid config file. Initialize generator with default values and cmd-line parameters.")
         generator_config = args.generate
         generator_config = generator_config.with_absolute_paths(os.path.abspath(conf_file))
 
@@ -80,6 +79,7 @@ if __name__ == '__main__':
         logger.error(f"Number of training pairs to generate must be positive but was {general_params.count}.")
         exit(0)
 
+    from SynthSeg.brain_generator import create_brain_generator
     generator = create_brain_generator(generator_config)
     image_output_dir = f"{output_dir}/images"
     label_output_dir = f"{output_dir}/labels"

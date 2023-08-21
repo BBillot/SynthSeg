@@ -102,7 +102,7 @@ class TrainingOptions(Serializable):
     """
 
     # Todo: Check how easy it is to serialize and deserialize nested integer lists
-    prior_means: Optional[str] = None
+    prior_means: Union[None, str, List[List[float]]] = None
     """
     Hyperparameters controlling the prior distributions of the GMM means. Because
     these prior distributions are uniform or normal, they require by 2 hyperparameters. Can be a path to:
@@ -118,7 +118,7 @@ class TrainingOptions(Serializable):
     Default is None, which corresponds all GMM means sampled from uniform distribution U(25, 225).
     """
 
-    prior_stds: str = None
+    prior_stds: Union[None, str, List[List[float]]] = None
     """
     same as prior_means but for the standard deviations of the GMM.
     Default is None, which corresponds to U(5, 25).
@@ -305,7 +305,7 @@ class TrainingOptions(Serializable):
     possible, this is equivalent to the frequency at which the models are saved.
     """
 
-    checkpoint: str = None
+    checkpoint: Optional[str] = None
     """
     Path of an already saved model to load before starting the training.
     """
