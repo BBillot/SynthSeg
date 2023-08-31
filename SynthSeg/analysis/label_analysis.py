@@ -136,6 +136,36 @@ def analyseLabelScanPair(scan_file: str, label_file: str) -> dict:
     return {"neutral_regions": neutral_regions, "left_regions": left_regions, "right_regions": right_regions}
 
 
+def equalizeLeftRightRegions(regions_dict: dict) -> dict:
+    """
+    Equalizes the mean and standard deviation between corresponding left and right regions.
+    The input should be the dictionary that is returned by `analyseLabelScanPair`.
+    The reasoning here is that when creating training data, we don't want to have different random
+    distributions for corresponding left/right regions.
+
+    Args:
+        regions_dict (dict): A dictionary with keys: ['left_regions', 'neutral_regions', 'right_regions'].
+
+    Returns:
+        dict: The updated regions dictionary with equalized mean and standard deviation values.
+    """
+    assert sorted(list(regions_dict.keys())) == ["left_regions", "neutral_regions", "right_regions"]
+    left_regions = regions_dict["left_regions"]
+    right_regions = regions_dict["right_regions"]
+    assert len(left_regions) == len(right_regions)
+    for i in range(len(left_regions)):
+        left_name = left_regions[i].label.name
+        right_name = left_name.replace("Left-", "Right-").replace("ctx-lh", "ctx-rh")
+        assert right_regions[i].label.name == right_name
+        new_mean = 0.5*(left_regions[i].mean + right_regions[i].mean)
+        new_std_dev = 0.5*(left_regions[i].std_dev + right_regions[i].std_dev)
+        left_regions[i].mean = new_mean
+        right_regions[i].mean = new_mean
+        left_regions[i].std_dev = new_std_dev
+        right_regions[i].std_dev = new_std_dev
+    return regions_dict
+
+
 def listAvailableLabelsInMap(nifti_file: str) -> np.ndarray:
     """
     Reads in a segmentation NIfTI image and returns a list of all labels found in the image.
