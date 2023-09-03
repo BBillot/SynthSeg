@@ -1,19 +1,17 @@
 import os
-from typing import Tuple
+from typing import Tuple, Union
 from contextlib import nullcontext
-from dataclasses import dataclass
 from inspect import getmembers, isclass
 from pathlib import Path
 
 import tensorflow as tf
-from simple_parsing.helpers.serialization import Serializable
 
 from ext.lab2im import layers
 from ext.neuron import layers as nrn_layers
 from ext.neuron import models as nrn_models
 
 from .metrics_model import WeightedL2Loss, DiceLoss, IdentityLoss
-from .option_types import *
+from .training_options import TrainingOptions
 
 
 class NullStrategy:
@@ -22,58 +20,11 @@ class NullStrategy:
         return nullcontext()
 
 
-@dataclass
-class TrainingOptions(Serializable):
-    """Options for a training with an already generated dataset, e.i. we already have synthetic brain images.
-
-    Args:
-        data_dir: Path to the data dir.
-        output_dir: Path to the output dir.
-        exist_ok:
-        checkpoint:
-        lr: Learning rate for the training.
-        batch_size:
-        wl2_epochs: Number of epochs for which the network (except the soft-max layer) is trained with L2
-            norm loss function.
-        dice_epochs: Number of epochs with the soft Dice loss function.
-        steps_per_epoch: Number of steps per epoch.
-        n_levels:
-        nb_conv_per_level:
-        conv_size:
-        unet_feat_count:
-        feat_multiplier:
-        activation:
-        strategy: Define a distributed training strategy: 'mirrored' or 'multiworker'.
-            If None, do not distribute the training.
-        wandb:
-        wandb_log_freq:
-    """
-
-    data_dir: Path
-    output_dir: Path
-    exist_ok: bool = False
-    checkpoint: Optional[Path] = None
-    lr: float = 1e-4
-    batch_size: int = 1
-    wl2_epochs: int = 1
-    dice_epochs: int = 50
-    steps_per_epoch: Optional[int] = None
-    n_levels: int = 5
-    nb_conv_per_level: int = 2
-    conv_size: int = 3
-    unet_feat_count: int = 24
-    feat_multiplier: int = 2
-    activation: str = "elu"
-    strategy: Optional[str] = None
-    wandb: bool = False
-    wandb_log_freq: Union[str, int] = "epoch"
-
-
 def training(opts: TrainingOptions):
     """Train the U-net with a TFRecord Dataset.
 
     Args:
-        opts: The training options
+        opts: The training options. The parameters related to the generation of the synthetic images will be ignored.
     """
     # Check epochs
     assert (opts.wl2_epochs > 0) | (
@@ -83,7 +34,7 @@ def training(opts: TrainingOptions):
     )
 
     # Define distributed strategy
-    if opts.strategy is None:
+    if opts.strategy == "null":
         strategy = NullStrategy()
     elif opts.strategy == "mirrored":
         strategy = tf.distribute.MirroredStrategy()
@@ -92,8 +43,10 @@ def training(opts: TrainingOptions):
     else:
         raise NotImplementedError(f"The '{opts.strategy}' strategy is not implemented.")
 
+    output_dir = Path(opts.model_dir)
+
     # Create output dir
-    opts.output_dir.mkdir(parents=True, exist_ok=opts.exist_ok)
+    output_dir.mkdir(parents=True)
 
     # Create dataset from tfrecords
     dataset = read_tfrecords(opts.data_dir)
@@ -103,7 +56,7 @@ def training(opts: TrainingOptions):
         input_shape, nb_labels = example[0][0].shape, example[1].shape[-1]
 
     # Batch dataset
-    dataset = dataset.batch(opts.batch_size)
+    dataset = dataset.batch(opts.batchsize)
 
     checkpoint = opts.checkpoint
 
@@ -135,7 +88,7 @@ def training(opts: TrainingOptions):
 
     if opts.wl2_epochs > 0:
         callbacks = build_callbacks(
-            output_dir=opts.output_dir,
+            output_dir=output_dir,
             metric_type="wl2",
             wandb=opts.wandb,
             wandb_log_freq=opts.wandb_log_freq,
@@ -154,7 +107,7 @@ def training(opts: TrainingOptions):
 
             wandb.finish()
 
-        checkpoint = opts.output_dir / ("wl2_%03d.h5" % opts.wl2_epochs)
+        checkpoint = output_dir / ("wl2_%03d.h5" % opts.wl2_epochs)
 
     if opts.dice_epochs > 0:
         with strategy.scope():
@@ -169,7 +122,7 @@ def training(opts: TrainingOptions):
                 )
 
         callbacks = build_callbacks(
-            output_dir=opts.output_dir,
+            output_dir=output_dir,
             metric_type="dice",
             wandb=opts.wandb,
             wandb_log_freq=opts.wandb_log_freq,
@@ -184,7 +137,7 @@ def training(opts: TrainingOptions):
         )
 
 
-def read_tfrecords(data_dir: Path) -> tf.data.Dataset:
+def read_tfrecords(data_dir: str) -> tf.data.Dataset:
     def parse_example(example):
         feature_description = {
             "image": tf.io.FixedLenFeature([], tf.string),
@@ -196,7 +149,7 @@ def read_tfrecords(data_dir: Path) -> tf.data.Dataset:
 
         return (image,), labels
 
-    files = list(data_dir.glob("*.tfrecord"))
+    files = sorted(list(Path(data_dir).glob("*.tfrecord")))
     dataset = tf.data.TFRecordDataset(files)
     dataset = dataset.map(parse_example)
 

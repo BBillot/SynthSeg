@@ -1,5 +1,6 @@
 from simple_parsing import parse
-from SynthSeg.training_with_tfrecords import TrainingOptions, training
+from SynthSeg.training_with_tfrecords import training
+from SynthSeg.training_options import TrainingOptions
 
 
 if __name__ == "__main__":
