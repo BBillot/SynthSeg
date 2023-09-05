@@ -96,9 +96,9 @@ class GeneratorOptions(Serializable):
     prior_means: Union[None, List[float], List[List[float]]] = None
     """
     Controls the prior distributions of the GMM means. Because
-    these prior distributions are uniform or normal, they require 2 value. Thus prior_means can be:
+    these prior distributions are uniform or normal, they require 2 values. Thus prior_means can be:
     1) a sequence of length 2, directly defining the two hyperparameters: [min, max] if prior_distributions is
-    uniform, [mean, std] if the distribution is normal. The GMM means of are independently sampled at each
+    uniform, [mean, std] if the distribution is normal. The GMM means are independently sampled at each
     mini_batch from the same distribution.
     2) an array of shape (2, K), where K is the number of classes (K=len(generation_labels) if generation_classes is
     not given). The mean of the Gaussian distribution associated to class k in [0, ...K-1] is sampled at each

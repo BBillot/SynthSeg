@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
 import os
+import re
 
 
 @dataclass
@@ -62,6 +63,9 @@ def getFreeSurferLUT() -> dict:
 
 
 FSL_LUT = getFreeSurferLUT()
+FSL_LEFT_LABEL_REGEX = re.compile("[Ll]eft[_-].+|ctx-lh.+|wm[_-]lh.+|.+_l")
+FSL_RIGHT_LABEL_REGEX = re.compile("[Rr]ight[_-].+|ctx-rh.+|wm[_-]rh.+|.+_r")
+
 
 
 def generateTissueTypesFromSample(scan_data: np.ndarray, segmentation_data: np.ndarray, label: int) -> TissueType:
@@ -84,5 +88,8 @@ def generateTissueTypesFromSample(scan_data: np.ndarray, segmentation_data: np.n
     data = scanData[mask]
     mean = np.mean(data)
     stdDev = np.std(data)
-    lut_entry = FSL_LUT[label] if label in FSL_LUT.keys() else FreeSurferLUTEntry()
+    if label not in FSL_LUT.keys():
+        print(f"Label number {label} not found in FSL lookup table. Using background for it!")
+        label = 0
+    lut_entry = FSL_LUT[label]
     return TissueType(lut_entry, label, mean, stdDev)

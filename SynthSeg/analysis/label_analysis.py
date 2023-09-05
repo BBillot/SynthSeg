@@ -3,10 +3,9 @@ import nibabel.processing as proc
 import numpy as np
 from os import listdir
 from os.path import isfile, join
-from typing import List
 import re
 
-from SynthSeg.analysis.freesurfer_tools import TissueType, generateTissueTypesFromSample
+import SynthSeg.analysis.freesurfer_tools as fsl_tools
 
 
 def windowRescale(nifti_file: str,
@@ -37,7 +36,6 @@ def windowRescale(nifti_file: str,
 def createContrastEntries(
         scan_file: str,
         label_file: str,
-        generation_labels: list,
         percent_deviation: float = 5.0) -> dict:
     """
     Create contrast entries for given scan and label files where the label image should be a segmentation
@@ -51,44 +49,53 @@ def createContrastEntries(
     Args:
         scan_file (str): The file path of the scan.
         label_file (str): The file path of the label.
-        generation_labels (list): The generation labels to use.
         percent_deviation (float, optional): The percentage deviation. Defaults to 5.0.
 
     Returns:
         dict: With the entries "output_labels", "generation_classes", "prior_means", and "prior_stds". All are input
         arguments for SynthSeg's brain generator.
     """
-    label_img = nib.load(label_file)
-    label_data = label_img.get_fdata()
-    scan_img = nib.load(scan_file)
-    scan_data = scan_img.get_fdata()
-    resampled_labels = proc.resample_from_to(label_img, scan_img, order=0)
+
     # noinspection PyUnresolvedReferences
-    resampled_labels_data = resampled_labels.get_fdata()
-    labels = np.unique(label_data.flatten()).astype(np.int32)
-    output_labels = [x if x in labels else 0 for x in generation_labels]
-    generation_classes = []
+    info = analyseLabelScanPair(scan_file, label_file)
+    info = equalizeLeftRightRegions(info)
+    assert set(info.keys()) == {"left_regions", "neutral_regions", "right_regions", "labels"}
+    # labels = info["labels"]
+
+    # Generate the `generation_labels` automatically by combining neutral labels, left labels, and right labels
+    # in that order.
+    generation_labels = [i.segmentation_class for name in
+                         ["neutral_regions", "left_regions", "right_regions"] for i in info[name]]
+    len_neutral_labels = len(info["neutral_regions"])
+    len_left_labels = len(info["left_regions"])
+    generation_classes_neutral = list(range(len_neutral_labels))
+    generation_classes_left = list(range(len_neutral_labels, len_neutral_labels + len_left_labels))
+    generation_classes = generation_classes_neutral + generation_classes_left + generation_classes_left
     min_prior_means = []
     max_prior_means = []
     min_prior_stds = []
     max_prior_stds = []
-    for label_index in range(len(generation_labels)):
-        current_label = generation_labels[label_index]
-        generation_classes.append(label_index)
-        if current_label not in labels:
-            min_prior_means.append(0.0)
-            max_prior_means.append(1.0)
-            min_prior_stds.append(0.0)
-            max_prior_stds.append(1.0)
-        else:
-            mean = np.mean(scan_data[resampled_labels_data == current_label])
-            std = np.std(scan_data[resampled_labels_data == current_label])
-            min_prior_means.append(mean*(1.0 - percent_deviation/100.0))
-            max_prior_means.append(mean*(1.0 + percent_deviation/100.0))
-            min_prior_stds.append(std*(1.0 - percent_deviation/100.0)*0.001)
-            max_prior_stds.append(std*(1.0 + percent_deviation/100.0)*0.001)
+
+    def appendValues(t: fsl_tools.TissueType):
+        mean = t.mean
+        std = t.std_dev
+        min_prior_means.append(max(0.0, mean*(1.0 - percent_deviation/100.0)))
+        max_prior_means.append(min(1.0, mean*(1.0 + percent_deviation/100.0)))
+        min_prior_stds.append(max(0.0, std*(1.0 - percent_deviation/100.0)*0.001))
+        max_prior_stds.append(min(1.0, std*(1.0 + percent_deviation/100.0)*0.001))
+
+    for label_index in range(len_neutral_labels):
+        current_type = info["neutral_regions"][label_index]
+        appendValues(current_type)
+
+    for label_index in range(len_left_labels):
+        current_type = info["left_regions"][label_index]
+        appendValues(current_type)
+
     return {
-        "output_labels": output_labels,
+        "generation_labels": generation_labels,
+        "n_neutral_labels": len_neutral_labels,
+        "output_labels": generation_labels,
         "generation_classes": generation_classes,
         "prior_means": [min_prior_means, max_prior_means],
         "prior_stds": [min_prior_stds, max_prior_stds]}
@@ -120,20 +127,22 @@ def analyseLabelScanPair(scan_file: str, label_file: str) -> dict:
     # noinspection PyUnresolvedReferences
     resampled_labels_data = resampled_labels.get_fdata()
     labels = np.unique(label_data.flatten()).astype(np.int32)
-    result = list(map(lambda l: generateTissueTypesFromSample(scan_data, resampled_labels_data, l), labels))
+    result = list(map(lambda l: fsl_tools.generateTissueTypesFromSample(scan_data, resampled_labels_data, l), labels))
 
-    left_pattern = re.compile("Left-.+|ctx-lh")
-    right_pattern = re.compile("Right-.+|ctx-rh")
-
-    left_regions = list(filter(lambda entry: re.match(left_pattern, entry.label.name), result))
+    left_regions = list(filter(lambda entry: re.match(fsl_tools.FSL_LEFT_LABEL_REGEX, entry.label.name), result))
     left_regions.sort(key=lambda entry: entry.segmentation_class)
-    right_regions = list(filter(lambda entry: re.match(right_pattern, entry.label.name), result))
+    right_regions = list(filter(lambda entry: re.match(fsl_tools.FSL_RIGHT_LABEL_REGEX, entry.label.name), result))
     right_regions.sort(key=lambda entry: entry.segmentation_class)
     neutral_regions = [reg for reg in result if reg not in left_regions and reg not in right_regions]
     neutral_regions.sort(key=lambda entry: entry.segmentation_class)
     assert len(left_regions) == len(right_regions), \
         "There should be exactly as many left regions as there are right regions"
-    return {"neutral_regions": neutral_regions, "left_regions": left_regions, "right_regions": right_regions}
+    return {
+        "neutral_regions": neutral_regions,
+        "left_regions": left_regions,
+        "right_regions": right_regions,
+        "labels": labels
+    }
 
 
 def equalizeLeftRightRegions(regions_dict: dict) -> dict:
@@ -149,7 +158,7 @@ def equalizeLeftRightRegions(regions_dict: dict) -> dict:
     Returns:
         dict: The updated regions dictionary with equalized mean and standard deviation values.
     """
-    assert sorted(list(regions_dict.keys())) == ["left_regions", "neutral_regions", "right_regions"]
+    assert set(regions_dict.keys()) == {"left_regions", "neutral_regions", "right_regions", "labels"}
     left_regions = regions_dict["left_regions"]
     right_regions = regions_dict["right_regions"]
     assert len(left_regions) == len(right_regions)
@@ -178,7 +187,7 @@ def listAvailableLabelsInMap(nifti_file: str) -> np.ndarray:
         np.ndarray: Sorted numpy array of all found labels
     """
     labelMap = nib.load(nifti_file)
-    data = np.array(labelMap.get_data(), dtype=np.int32)
+    data = np.array(labelMap.get_data(), dtype=np.int64)
     return np.unique(data)
 
 
