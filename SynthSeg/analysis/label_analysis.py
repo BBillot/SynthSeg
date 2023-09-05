@@ -127,7 +127,7 @@ def analyseLabelScanPair(scan_file: str, label_file: str) -> dict:
     # noinspection PyUnresolvedReferences
     resampled_labels_data = resampled_labels.get_fdata()
     labels = np.unique(label_data.flatten()).astype(np.int32)
-    result = list(map(lambda l: fsl_tools.generateTissueTypesFromSample(scan_data, resampled_labels_data, l), labels))
+    result = list(map(lambda l: fsl_tools.generate_tissue_types_from_sample(scan_data, resampled_labels_data, l), labels))
 
     left_regions = list(filter(lambda entry: re.match(fsl_tools.FSL_LEFT_LABEL_REGEX, entry.label.name), result))
     left_regions.sort(key=lambda entry: entry.segmentation_class)

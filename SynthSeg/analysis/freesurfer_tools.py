@@ -63,12 +63,39 @@ def getFreeSurferLUT() -> dict:
 
 
 FSL_LUT = getFreeSurferLUT()
-FSL_LEFT_LABEL_REGEX = re.compile("[Ll]eft[_-].+|ctx-lh.+|wm[_-]lh.+|.+_l")
-FSL_RIGHT_LABEL_REGEX = re.compile("[Rr]ight[_-].+|ctx-rh.+|wm[_-]rh.+|.+_r")
+FSL_LEFT_LABEL_REGEX = re.compile(r"^([Ll])eft[_-]|^ctx-(lh)-|^wm[_-](lh)[_-]|(_l)$")
+FSL_RIGHT_LABEL_REGEX = re.compile(r"^([Rr])ight[_-]|^ctx-(rh)-|^wm[_-](rh)[_-]|(_r)$")
 
 
+def substitute_left_right(match) -> str:
+    if match.group(1):
+        if match.group(1) == "L":
+            return match.group().replace("Left", "Right")
+        else:
+            return match.group().replace("left", "right")
+    elif match.group(2) or match.group(3):
+        return match.group().replace("lh", "rh")
+    elif match.group(4):
+        return match.group().replace("_l", "_r")
+    else:
+        return match.group()
 
-def generateTissueTypesFromSample(scan_data: np.ndarray, segmentation_data: np.ndarray, label: int) -> TissueType:
+
+def substitute_right_left(match) -> str:
+    if match.group(1):
+        if match.group(1) == "R":
+            return match.group().replace("Right", "Left")
+        else:
+            return match.group().replace("right", "left")
+    elif match.group(2) or match.group(3):
+        return match.group().replace("rh", "lh").replace("rh", "lh")
+    elif match.group(4):
+        return match.group().replace("_r", "_l")
+    else:
+        return match.group()
+
+
+def generate_tissue_types_from_sample(scan_data: np.ndarray, segmentation_data: np.ndarray, label: int) -> TissueType:
     """
     Takes an existing segmentation for a scan and calculates statistical values for the segmentation class of the given
     `label`.
@@ -82,14 +109,14 @@ def generateTissueTypesFromSample(scan_data: np.ndarray, segmentation_data: np.n
     Returns:
         TissueType: Statistics of the region with additional FreeSurfer metadata.
     """
-    scanData = scan_data
-    segData = segmentation_data
-    mask = segData == label
-    data = scanData[mask]
+    scan_data = scan_data
+    seg_data = segmentation_data
+    mask = seg_data == label
+    data = scan_data[mask]
     mean = np.mean(data)
-    stdDev = np.std(data)
+    std_dev = np.std(data)
     if label not in FSL_LUT.keys():
         print(f"Label number {label} not found in FSL lookup table. Using background for it!")
         label = 0
     lut_entry = FSL_LUT[label]
-    return TissueType(lut_entry, label, mean, stdDev)
+    return TissueType(lut_entry, label, mean, std_dev)

@@ -18,39 +18,40 @@ def test_left_right_regions():
          f"{len(left_regions)}/{len(right_regions)}")
 
 
-def test_left_right_names():
-    names = [entry.name for entry in list(fsl_tools.FSL_LUT.values())]
-    for entry in names:
-        left_name: str = entry
-        if fsl_tools.FSL_LEFT_LABEL_REGEX.match(left_name):
-            right_name_1 = left_name.replace("Left", "Right")
-            right_name_2 = left_name.replace("ctx_lh", "ctx_rh")
-            right_name_3 = left_name.replace("ctx-lh", "ctx-rh")
-            right_name_4 = left_name.replace("wm-lh", "wm-rh")
-            right_name_5 = left_name.replace("wm_lh", "wm_rh")
-            right_name_6 = left_name.replace("_l", "_r")
-            assert right_name_1 in names or \
-                   right_name_2 in names or \
-                   right_name_3 in names or \
-                   right_name_4 in names or \
-                   right_name_5 in names or \
-                   right_name_6 in names, f"Missing right equivalent region for {left_name}"
-
-
 def test_right_left_names():
-    names = [entry.name for entry in list(fsl_tools.FSL_LUT.values())]
-    for entry in names:
-        right_name: str = entry
-        if fsl_tools.FSL_RIGHT_LABEL_REGEX.match(right_name):
-            left_name_1 = right_name.replace("Right", "Left")
-            left_name_2 = right_name.replace("ctx_rh", "ctx_lh")
-            left_name_3 = right_name.replace("ctx-rh", "ctx-lh")
-            left_name_4 = right_name.replace("wm-rh", "wm-lh")
-            left_name_5 = right_name.replace("wm_rh", "wm_lh")
-            left_name_6 = right_name.replace("_r", "_l")
-            assert left_name_1 in names or \
-                   left_name_2 in names or \
-                   left_name_3 in names or \
-                   left_name_4 in names or \
-                   left_name_5 in names or \
-                   left_name_6 in names, f"Missing left equivalent region for {right_name}"
+    all_names = [entry.name for entry in fsl_tools.FSL_LUT.values()]
+    for name in all_names:
+        if fsl_tools.FSL_LEFT_LABEL_REGEX.match(name):
+            right_name = fsl_tools.FSL_LEFT_LABEL_REGEX.sub(fsl_tools.substitute_left_right, name)
+            assert right_name in all_names, \
+                f"For {name}, right counterpart region '{right_name}' doesn't exist in FSL LUT."
+        elif fsl_tools.FSL_RIGHT_LABEL_REGEX.match(name):
+            left_name = fsl_tools.FSL_RIGHT_LABEL_REGEX.sub(fsl_tools.substitute_right_left, name)
+            assert left_name in all_names, \
+                f"For {name}, left counterpart region '{left_name}' doesn't exist in FSL LUT."
+
+
+def test_label_name_replacement():
+    left_samples = [
+        "Left-Cerebral-Exterior",
+        "IPL_PFcm_l",
+        "left_hippocampal_fissure",
+        "ctx-lh-parsopercularis",
+        "wm-lh-superiorfrontal",
+        "ctx-lh-entorhinal"
+    ]
+
+    right_samples = [
+        "Right-Cerebral-Exterior",
+        "IPL_PFcm_r",
+        "right_hippocampal_fissure",
+        "ctx-rh-parsopercularis",
+        "wm-rh-superiorfrontal",
+        "ctx-rh-entorhinal"
+    ]
+
+    for [left, right] in zip(left_samples, right_samples):
+        substituted_left = fsl_tools.FSL_LEFT_LABEL_REGEX.sub(fsl_tools.substitute_left_right, left)
+        substituted_right = fsl_tools.FSL_RIGHT_LABEL_REGEX.sub(fsl_tools.substitute_right_left, right)
+        assert right == substituted_left
+        assert left == substituted_right
