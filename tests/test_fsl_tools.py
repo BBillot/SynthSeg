@@ -2,6 +2,9 @@ import SynthSeg.analysis.freesurfer_tools as fsl_tools
 
 
 def test_left_right_regions():
+    """
+    Tests if there are exactly as many left regions as there are right regions in the FreeSurfer lookup table.
+    """
     names = [entry.name for entry in list(fsl_tools.FSL_LUT.values())]
     left_regions = []
     right_regions = []
@@ -19,6 +22,13 @@ def test_left_right_regions():
 
 
 def test_right_left_names():
+    """
+    Test the right and left region names in the FSL LUT.
+
+    This method tests whether the right and left region names have counterparts in the FSL LUT.
+    It checks that each right region name has a corresponding left region name, and vice versa.
+    If a counterpart region name is missing, an assertion error is raised.
+    """
     all_names = [entry.name for entry in fsl_tools.FSL_LUT.values()]
     for name in all_names:
         if fsl_tools.FSL_LEFT_LABEL_REGEX.match(name):
@@ -32,6 +42,11 @@ def test_right_left_names():
 
 
 def test_label_name_replacement():
+    """
+    This simply tests if the substitution of left/right specific parts with their counterparts work.
+    Returns:
+
+    """
     left_samples = [
         "Left-Cerebral-Exterior",
         "IPL_PFcm_l",
