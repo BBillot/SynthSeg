@@ -12,6 +12,7 @@ from ext.neuron import models as nrn_models
 
 from .metrics_model import WeightedL2Loss, DiceLoss, IdentityLoss
 from .training_options import TrainingOptions
+from .brain_generator import read_tfrecords
 
 
 class NullStrategy:
@@ -49,11 +50,12 @@ def training(opts: TrainingOptions):
     output_dir.mkdir(parents=True)
 
     # Create dataset from tfrecords
-    dataset = read_tfrecords(opts.data_dir)
+    files = sorted(list(Path(opts.data_dir).glob("*.tfrecord")))
+    dataset = read_tfrecords(files)
 
     # Get output shape and number of labels from first example of the dataset
     for example in dataset.take(1):
-        input_shape, nb_labels = example[0][0].shape, example[1].shape[-1]
+        input_shape, nb_labels = example[0].shape, example[1].shape[-1]
 
     # Batch dataset
     dataset = dataset.batch(opts.batchsize)
@@ -135,25 +137,6 @@ def training(opts: TrainingOptions):
             callbacks=callbacks,
             initial_epoch=init_epoch,
         )
-
-
-def read_tfrecords(data_dir: str) -> tf.data.Dataset:
-    def parse_example(example):
-        feature_description = {
-            "image": tf.io.FixedLenFeature([], tf.string),
-            "labels": tf.io.FixedLenFeature([], tf.string),
-        }
-        example = tf.io.parse_single_example(example, feature_description)
-        image = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        labels = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
-
-        return (image,), labels
-
-    files = sorted(list(Path(data_dir).glob("*.tfrecord")))
-    dataset = tf.data.TFRecordDataset(files)
-    dataset = dataset.map(parse_example)
-
-    return dataset
 
 
 def load_model(

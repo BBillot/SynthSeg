@@ -412,3 +412,21 @@ def create_brain_generator(opts: GeneratorOptions) -> BrainGenerator:
     """
     assert isinstance(opts, GeneratorOptions)
     return BrainGenerator(**opts.to_dict())
+
+
+def read_tfrecords(files: List[Union[Path, str]]) -> tf.data.Dataset:
+    def parse_example(example):
+        feature_description = {
+            "image": tf.io.FixedLenFeature([], tf.string),
+            "labels": tf.io.FixedLenFeature([], tf.string),
+        }
+        example = tf.io.parse_single_example(example, feature_description)
+        image = tf.io.parse_tensor(example["image"], out_type=tf.float32)
+        labels = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
+
+        return image, labels
+
+    dataset = tf.data.TFRecordDataset(files)
+    dataset = dataset.map(parse_example)
+
+    return dataset
