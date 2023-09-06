@@ -338,12 +338,13 @@ class BrainGenerator:
         labels = np.squeeze(np.stack(list_labels, axis=0))
         return image, labels
 
-    def generate_tfrecord(self, file: Union[str, Path], n: int = 1) -> Path:
+    def generate_tfrecord(self, file: Union[str, Path]) -> Path:
         """Generate data for the `training_with_tfrecords` module.
+
+        The file will contain `self.batchsize` image-label pairs.
 
         Args:
             file: Path to the output file. We will add a '.tfrecord' extension if not specified.
-            n: Number of generated "brain image and label map" pairs to be written to the file
 
         Returns:
             Absolute path to the output file.
@@ -357,12 +358,12 @@ class BrainGenerator:
         n_labels = len(np.unique(self.output_labels))
 
         with tf.io.TFRecordWriter(str(file)) as writer:
-            for _ in range(n):
-                model_inputs = next(self.model_inputs_generator)
-                [image, labels] = self.labels_to_image_model.predict(model_inputs)
+            model_inputs = next(self.model_inputs_generator)
+            images, labelss = self.labels_to_image_model.predict(model_inputs)
 
-                # remove batch dim, and channel dim in labels
-                image, labels = image[0], labels[0, ..., 0]
+            for image, labels in zip(images, labelss):
+                # remove channel dim in labels
+                labels = labels[..., 0]
 
                 # convert labels to probabilistic values
                 labels = layers.ConvertLabels(self.output_labels)(labels)
