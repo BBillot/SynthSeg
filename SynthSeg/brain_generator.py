@@ -17,7 +17,7 @@ License.
 # python imports
 import numpy as np
 import tensorflow as tf
-from typing import Union
+from typing import Union, Tuple, List
 from pathlib import Path
 
 # project imports
@@ -326,16 +326,29 @@ class BrainGenerator:
     def generate_brain(self):
         """call this method when an object of this class has been instantiated to generate new brains"""
         (image, labels) = next(self.brain_generator)
-        # put back images in native space
+        image, labels = self._put_in_native_space(image, labels)
+        return image, labels
+
+    def _put_in_native_space(
+        self, images: np.ndarray, labels: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Helper method to put images/labels back in native space"""
         list_images = list()
         list_labels = list()
         for i in range(self.batchsize):
-            list_images.append(edit_volumes.align_volume_to_ref(image[i], np.eye(4),
-                                                                aff_ref=self.aff, n_dims=self.n_dims))
-            list_labels.append(edit_volumes.align_volume_to_ref(labels[i], np.eye(4),
-                                                                aff_ref=self.aff, n_dims=self.n_dims))
+            list_images.append(
+                edit_volumes.align_volume_to_ref(
+                    images[i], np.eye(4), aff_ref=self.aff, n_dims=self.n_dims
+                )
+            )
+            list_labels.append(
+                edit_volumes.align_volume_to_ref(
+                    labels[i], np.eye(4), aff_ref=self.aff, n_dims=self.n_dims
+                )
+            )
         image = np.squeeze(np.stack(list_images, axis=0))
         labels = np.squeeze(np.stack(list_labels, axis=0))
+
         return image, labels
 
     def generate_tfrecord(self, file: Union[str, Path]) -> Path:
@@ -399,6 +412,31 @@ class BrainGenerator:
                 writer.write(example.SerializeToString())
 
         return file.absolute()
+
+    def tfrecord_to_brain(
+        self, file: Union[str, Path]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Read a tfrecord file and return the brain images and labels in the `self.generate_brain` format.
+
+        Args:
+            file: Path to the TFRecord file.
+
+        Returns:
+            Brain images and labels in the `self.generate_brain` format.
+        """
+        dataset = read_tfrecords([file]).batch(self.batchsize)
+        images, labels = next(dataset.as_numpy_iterator())
+
+        # Decode labels
+        labels = tf.argmax(labels, axis=-1)
+        n_labels = len(np.unique(self.output_labels))
+        labels = layers.ConvertLabels(
+            np.arange(n_labels), dest_values=self.output_labels
+        )(labels).numpy()
+
+        images, labels = self._put_in_native_space(images, labels)
+
+        return images, labels
 
 
 def create_brain_generator(opts: GeneratorOptions) -> BrainGenerator:
