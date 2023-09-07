@@ -30,14 +30,8 @@ if __name__ == "__main__":
         exit(1)
 
     # Check if the configuration file exists and load it
-    if (
-        (not os.path.isfile(file_name))
-        or (not file_name.endswith(".json"))
-        or (not os.access(file_name, os.R_OK))
-    ):
-        raise RuntimeError(
-            f"Configuration file {file_name} does not exist or is not readable."
-        )
+    if (not os.path.isfile(file_name)) or (not file_name.endswith(".json")) or (not os.access(file_name, os.R_OK)):
+        raise RuntimeError(f"Configuration file {file_name} does not exist or is not readable.")
 
     # Loading the training options and fixing all relative paths
     training_options = TrainingOptions.load(file_name)

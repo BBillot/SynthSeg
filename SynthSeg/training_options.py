@@ -95,7 +95,7 @@ class TrainingOptions(Serializable):
     Can be a list or a 1d numpy array, or the path to such an array.
     """
 
-    prior_distributions: str = "uniform"
+    prior_distributions: str = 'uniform'
     """
     Type of distribution from which we sample the GMM parameters.
     Can either be 'uniform', or 'normal'. Default is 'uniform'.
@@ -143,7 +143,7 @@ class TrainingOptions(Serializable):
     Iff True, introduce right/left random flipping.
     """
 
-    scaling_bounds: Union[float, str, bool] = 0.2
+    scaling_bounds: Union[float, str, bool] = .2
     """
     if apply_linear_trans is True, the scaling factor for each dimension is
     sampled from a uniform distribution of predefined bounds. Can either be:
@@ -160,7 +160,7 @@ class TrainingOptions(Serializable):
     bounds are centred on 0 rather than 1, i.e. (0+rotation_bounds[i], 0-rotation_bounds[i]).
     """
 
-    shearing_bounds: Union[float, str, bool] = 0.012
+    shearing_bounds: Union[float, str, bool] = .012
     """
     Similar to scaling_bounds but for the shearing parameter.
     """
@@ -171,13 +171,13 @@ class TrainingOptions(Serializable):
     encourage using it when cropping is deactivated (i.e. when output_shape=None).
     """
 
-    nonlin_std: float = 4.0
+    nonlin_std: float = 4.
     """
     Standard deviation of the normal distribution from which we sample the first tensor for synthesising the 
     deformation field. Set to 0 to completely deactivate elastic deformation.
     """
 
-    nonlin_scale: float = 0.04
+    nonlin_scale: float = .04
     """
     Ratio between the size of the input label maps and the size of the sampled
     tensor for synthesising the elastic deformation field.
@@ -193,7 +193,7 @@ class TrainingOptions(Serializable):
     and 3) resampled at target_resolution.
     """
 
-    max_res_iso: Optional[float] = 4.0
+    max_res_iso: Optional[float] = 4.
     """
     If randomise_res is True, this enables to control the upper bound of the uniform
     distribution from which we sample the random resolution U(min_res, max_res_iso), where min_res is the resolution of
@@ -201,7 +201,7 @@ class TrainingOptions(Serializable):
     True, at least one of max_res_iso or max_res_aniso must be given.
     """
 
-    max_res_aniso: Union[None, float, List[float]] = 8.0
+    max_res_aniso: Union[None, float, List[float]] = 8.
     """
     If randomise_res is True, this enables to downsample the input volumes to a random LR in
     only 1 (random) direction. This is done by randomly selecting a direction i in the range [0, n_dims-1], and sampling
@@ -228,7 +228,7 @@ class TrainingOptions(Serializable):
 
     # Bias field parameters
 
-    bias_field_std: float = 0.5
+    bias_field_std: float = .5
     """
     If strictly positive, this triggers the corruption of images with a bias field.
     The bias field is obtained by sampling a first small tensor from a normal distribution, resizing it to
@@ -237,7 +237,7 @@ class TrainingOptions(Serializable):
     Set to 0 to completely deactivate bias field corruption.
     """
 
-    bias_scale: float = 0.025
+    bias_scale: float = .025
     """
     If bias_field_std is not False, this designates the ratio between the size of
     the input label maps and the size of the first sampled tensor for synthesising the bias field.
