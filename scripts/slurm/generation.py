@@ -16,7 +16,7 @@ project_directory = path.dirname(path.dirname(path.dirname(path.abspath(__file__
 @dataclass
 class Options:
     output_dir: Optional[str] = None
-    """Output Folder where the generated training data is stored."""
+    """Output Folder where the generated maps are stored."""
 
     config_file: Optional[str] = None
     """Path to the JSON config file containing the GeneratorOptions for the brain generator."""
@@ -94,12 +94,12 @@ def _generate_tfrecord(
     brain_generator.generate_tfrecord(output_path / f"{file_name}.tfrecord")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     logger = logging.getLogger("Generate Brain")
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
@@ -111,7 +111,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     from ext.lab2im import utils
-
     general_params: Options = args.general
     if isinstance(general_params.output_dir, str):
         output_dir = fix_relative_path(general_params.output_dir)
@@ -125,26 +124,17 @@ if __name__ == "__main__":
 
         # Load config and make paths within the config absolute
         generator_config = GeneratorOptions.load(conf_file)
-        generator_config = generator_config.with_absolute_paths(
-            os.path.abspath(conf_file)
-        )
+        generator_config = generator_config.with_absolute_paths(os.path.abspath(conf_file))
     else:
-        logger.error(
-            "No valid config file. Initialize generator with default values and cmd-line parameters."
-        )
+        logger.error("No valid config file. Initialize generator with default values and cmd-line parameters.")
         generator_config = args.generate
-        generator_config = generator_config.with_absolute_paths(
-            os.path.abspath(conf_file)
-        )
+        generator_config = generator_config.with_absolute_paths(os.path.abspath(conf_file))
 
     if general_params.count <= 0:
-        logger.error(
-            f"Number of training pairs to generate must be positive but was {general_params.count}."
-        )
+        logger.error(f"Number of training pairs to generate must be positive but was {general_params.count}.")
         exit(0)
 
     from SynthSeg.brain_generator import create_brain_generator
-
     generator = create_brain_generator(generator_config)
     for i in range(
         general_params.start_int, general_params.start_int + general_params.count
