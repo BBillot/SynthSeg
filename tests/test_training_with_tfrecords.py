@@ -18,7 +18,7 @@ def test_training(tmp_path):
 
     training(
         TrainingOptions(
-            data_dir=str(tmp_path),
+            tfrecords_dir=str(tmp_path),
             model_dir=str(tmp_path / "output"),
             wl2_epochs=1,
             dice_epochs=1,
