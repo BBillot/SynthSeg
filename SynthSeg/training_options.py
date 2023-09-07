@@ -324,7 +324,7 @@ class TrainingOptions(Serializable):
 
     # Only for training_with_tfrecords
 
-    data_dir: str = "./tfrecords"
+    tfrecords_dir: Optional[str] = None
     """
     Path to the directory that contains the TFRecords. Only needed when training with TFRecords.
     """
@@ -332,8 +332,8 @@ class TrainingOptions(Serializable):
     strategy: str = "null"
     """
     Specify the TF distributed strategy for the training. ONLY SUPPORTED WHEN TRAINING WITH TFRECORDS.
-    Must be one of: 'null' (no distribution), 'mirrored' or 'multiworker'.
-    See ... for more information. 
+    Must be one of: 'null' (no distribution) or 'mirrored'.
+    See https://www.tensorflow.org/guide/distributed_training for more information. 
     """
 
     def with_absolute_paths(self, reference_file: str):

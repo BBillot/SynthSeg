@@ -50,7 +50,7 @@ def training(opts: TrainingOptions):
     output_dir.mkdir(parents=True)
 
     # Create dataset from tfrecords
-    files = sorted(list(Path(opts.data_dir).glob("*.tfrecord")))
+    files = sorted(list(Path(opts.tfrecords_dir).glob("*.tfrecord")))
     dataset = read_tfrecords(files)
 
     # Get output shape and number of labels from first example of the dataset
