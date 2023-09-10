@@ -345,13 +345,14 @@ class BrainGenerator:
 
         return image, labels
 
-    def generate_tfrecord(self, file: Union[str, Path]) -> Path:
+    def generate_tfrecord(self, file: Union[str, Path], compression_type: str = "") -> Path:
         """Generate data for the `training_with_tfrecords` module.
 
         The file will contain `self.batchsize` image-label pairs.
 
         Args:
             file: Path to the output file. We will add a '.tfrecord' extension if not specified.
+            compression_type: One of "GZIP", "ZLIB" or "" (no compression).
 
         Returns:
             Absolute path to the output file.
@@ -364,7 +365,9 @@ class BrainGenerator:
 
         n_labels = len(np.unique(self.output_labels))
 
-        with tf.io.TFRecordWriter(str(file)) as writer:
+        with tf.io.TFRecordWriter(
+            str(file), options=tf.io.TFRecordOptions(compression_type=compression_type)
+        ) as writer:
             model_inputs = next(self.model_inputs_generator)
             images, labelss = self.labels_to_image_model.predict(model_inputs)
 

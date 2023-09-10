@@ -14,6 +14,7 @@ def test_brain_generator(fixed_random_seed):
         nib.save(nib.Nifti1Image(img_data.numpy(), np.eye(4)), TestData.get_test_output_dir() / "generated_brain.nii")
     assert im.shape == lab.shape, "Shape of the label image and the generated MRI are not the same"
 
+
 def test_tfrecords(tmp_path):
     label_map_files = TestData.get_label_maps()
     brain_generator = bg.BrainGenerator(label_map_files[0], target_res=8, batchsize=2)
@@ -28,3 +29,19 @@ def test_tfrecords(tmp_path):
 
     np.testing.assert_array_equal(image, image2)
     np.testing.assert_array_equal(labels, labels2)
+
+
+def test_tfrecords_compression(tmp_path):
+    label_map_files = TestData.get_label_maps()
+    brain_generator = bg.BrainGenerator(label_map_files[0], target_res=8, batchsize=2)
+
+    tf.keras.utils.set_random_seed(43)
+    tfrecord = tmp_path / "test.tfrecord"
+    brain_generator.generate_tfrecord(tfrecord)
+    size1 = tfrecord.stat().st_size
+
+    tfrecord = tmp_path / "test2.tfrecord"
+    brain_generator.generate_tfrecord(tfrecord, compression_type="GZIP")
+    size2 = tfrecord.stat().st_size
+
+    assert size1/size2 > 40
