@@ -17,7 +17,7 @@ License.
 # python imports
 import numpy as np
 import tensorflow as tf
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Optional
 from pathlib import Path
 
 # project imports
@@ -450,7 +450,22 @@ def create_brain_generator(opts: GeneratorOptions) -> BrainGenerator:
     return BrainGenerator(**opts.to_dict())
 
 
-def read_tfrecords(files: List[Union[Path, str]]) -> tf.data.Dataset:
+def read_tfrecords(
+    files: List[Union[Path, str]], compression_type: str = "", num_parallel_reads: Optional[int] = None,
+) -> tf.data.Dataset:
+    """Read in TFRecords and return a TF Dataset.
+
+    Args:
+        files: List of tfrecord file paths.
+        compression_type: One of "GZIP", "ZLIB" or "" (no compression).
+        num_parallel_reads: Passed on to `tf.data.TFRecordDataset`
+            https://www.tensorflow.org/api_docs/python/tf/data/TFRecordDataset
+            Number of files to read in parallel. If greater than one, the records of files read in
+            parallel are outputted in an interleaved order. If None, files will be read sequentially.
+
+    Returns:
+        A tf.data.TFRecordDataset that yields image-label pairs.
+    """
     def parse_example(example):
         feature_description = {
             "image": tf.io.FixedLenFeature([], tf.string),
@@ -462,7 +477,9 @@ def read_tfrecords(files: List[Union[Path, str]]) -> tf.data.Dataset:
 
         return image, labels
 
-    dataset = tf.data.TFRecordDataset(files)
+    dataset = tf.data.TFRecordDataset(
+        files, compression_type=compression_type, num_parallel_reads=num_parallel_reads
+    )
     dataset = dataset.map(parse_example)
 
     return dataset
