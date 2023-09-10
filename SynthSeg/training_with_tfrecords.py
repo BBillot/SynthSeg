@@ -39,8 +39,6 @@ def training(opts: TrainingOptions):
         strategy = NullStrategy()
     elif opts.strategy == "mirrored":
         strategy = tf.distribute.MirroredStrategy()
-    elif opts.strategy == "multiworker":
-        strategy = tf.distribute.MultiWorkerMirroredStrategy()
     else:
         raise NotImplementedError(f"The '{opts.strategy}' strategy is not implemented.")
 
