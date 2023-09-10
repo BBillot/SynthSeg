@@ -49,7 +49,11 @@ def training(opts: TrainingOptions):
 
     # Create dataset from tfrecords
     files = sorted(list(Path(opts.tfrecords_dir).glob("*.tfrecord")))
-    dataset = read_tfrecords(files)
+    dataset = read_tfrecords(
+        files,
+        compression_type=opts.compression_type,
+        num_parallel_reads=opts.num_parallel_reads,
+    )
 
     # Get output shape and number of labels from first example of the dataset
     for example in dataset.take(1):

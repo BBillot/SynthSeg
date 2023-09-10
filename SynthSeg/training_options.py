@@ -329,6 +329,21 @@ class TrainingOptions(Serializable):
     Path to the directory that contains the TFRecords. Only needed when training with TFRecords.
     """
 
+    compression_type: str = ""
+    """
+    One of "GZIP", "ZLIB" or "" (no compression).
+    Passed on to `tf.data.TFRecordDataset`:
+    https://www.tensorflow.org/api_docs/python/tf/data/TFRecordDataset
+    """
+
+    num_parallel_reads: Optional[int] = None
+    """ 
+    Number of files to read in parallel. If greater than one, the records of files read in 
+    parallel are outputted in an interleaved order. If None, files will be read sequentially.
+    Passed on to `tf.data.TFRecordDataset`:
+    https://www.tensorflow.org/api_docs/python/tf/data/TFRecordDataset
+    """
+
     strategy: str = "null"
     """
     Specify the TF distributed strategy for the training. ONLY SUPPORTED WHEN TRAINING WITH TFRECORDS.
