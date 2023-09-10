@@ -11,7 +11,7 @@ class CmdLineTrainingOptions:
     Specify the training configuration
     """
 
-    training_config: str = ""
+    cfg_file: str = ""
     """
     Path to a JSON file that represents the serialized form of a TrainingOptions instance.
     """
@@ -20,22 +20,15 @@ class CmdLineTrainingOptions:
 if __name__ == "__main__":
     parser = simple_parsing.ArgumentParser()
     # noinspection PyTypeChecker
-    parser.add_arguments(CmdLineTrainingOptions, dest="config")
-    args: CmdLineTrainingOptions = parser.parse_args().config
-    file_name = args.config_file
+    parser.add_argument("--cfg_file", type=str, default="", help="Path to a cfg file.")
+    parser.add_arguments(TrainingOptions, dest="options")
+    args = parser.parse_args()
 
-    if file_name == "":
-        print("Missing config file")
-        parser.print_help()
-        exit(1)
-
-    # Check if the configuration file exists and load it
-    if (not os.path.isfile(file_name)) or (not file_name.endswith(".json")) or (not os.access(file_name, os.R_OK)):
-        raise RuntimeError(f"Configuration file {file_name} does not exist or is not readable.")
-
-    # Loading the training options and fixing all relative paths
-    training_options = TrainingOptions.load(file_name)
-    training_options = training_options.with_absolute_paths(os.path.abspath(file_name))
+    if args.cfg_file:
+        training_options = TrainingOptions.load(args.cfg_file)
+        training_options = training_options.with_absolute_paths(os.path.abspath(args.cfg_file))
+    else:
+        training_options = args.options
 
     # TODO: Fix this
     # If we have a checkpoint model, use that for continuing the training
