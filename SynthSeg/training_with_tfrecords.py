@@ -9,6 +9,7 @@ import tensorflow as tf
 from ext.lab2im import layers
 from ext.neuron import layers as nrn_layers
 from ext.neuron import models as nrn_models
+from . import segmentation_model
 
 from .metrics_model import WeightedL2Loss, DiceLoss, IdentityLoss
 from .training_options import TrainingOptions
@@ -51,7 +52,7 @@ def training(opts: TrainingOptions):
     output_dir = Path(opts.model_dir)
 
     # Create output dir
-    output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create dataset from tfrecords
     files = sorted(list(Path(opts.tfrecords_dir).glob("*.tfrecord")))
@@ -73,18 +74,19 @@ def training(opts: TrainingOptions):
     # Define and compile model
     with strategy.scope():
         # prepare the segmentation model
-        unet_model = nrn_models.unet(
-            input_shape=input_shape,
-            nb_labels=nb_labels,
-            nb_levels=opts.n_levels,
-            nb_conv_per_level=opts.nb_conv_per_level,
-            conv_size=opts.conv_size,
-            nb_features=opts.unet_feat_count,
-            feat_mult=opts.feat_multiplier,
-            activation=opts.activation,
-            batch_norm=-1,
-            name="unet",
-        )
+        # unet_model = nrn_models.unet(
+        #     input_shape=input_shape,
+        #     nb_labels=nb_labels,
+        #     nb_levels=opts.n_levels,
+        #     nb_conv_per_level=opts.nb_conv_per_level,
+        #     conv_size=opts.conv_size,
+        #     nb_features=opts.unet_feat_count,
+        #     feat_mult=opts.feat_multiplier,
+        #     activation=opts.activation,
+        #     batch_norm=-1,
+        #     name="unet",
+        # )
+        unet_model = segmentation_model.unet(input_shape, nb_labels)
 
         # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
         if opts.wl2_epochs > 0:
