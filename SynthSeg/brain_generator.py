@@ -472,10 +472,10 @@ def read_tfrecords(
             "labels": tf.io.FixedLenFeature([], tf.string),
         }
         example = tf.io.parse_single_example(example, feature_description)
-        image = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        labels = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
+        example["image"] = tf.io.parse_tensor(example["image"], out_type=tf.float32)
+        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
 
-        return image, labels
+        return example["image"], example["labels"]
 
     dataset = tf.data.TFRecordDataset(
         files, compression_type=compression_type, num_parallel_reads=num_parallel_reads
