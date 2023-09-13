@@ -386,7 +386,7 @@ class BrainGenerator:
                         )
                     )(labels)
                     .numpy()
-                    .astype("int32")
+                    .astype("uint8")
                 )
 
                 # create tf example
@@ -473,7 +473,7 @@ def read_tfrecords(
         }
         example = tf.io.parse_single_example(example, feature_description)
         example["image"] = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
+        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.uint8)
 
         return example["image"], example["labels"]
 
