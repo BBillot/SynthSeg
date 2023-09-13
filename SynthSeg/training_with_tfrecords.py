@@ -204,12 +204,12 @@ def build_callbacks(
     callbacks = [tf.keras.callbacks.ModelCheckpoint(save_file_name, verbose=1)]
 
     # TensorBoard callback
-    #if metric_type == "dice":
-    callbacks.append(
-        tf.keras.callbacks.TensorBoard(
-            log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False, profile_batch="100,102"
+    if metric_type == "dice":
+        callbacks.append(
+            tf.keras.callbacks.TensorBoard(
+                log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=False
+            )
         )
-    )
 
     # WandB callback
     if wandb:
