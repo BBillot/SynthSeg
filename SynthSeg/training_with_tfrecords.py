@@ -74,19 +74,21 @@ def training(opts: TrainingOptions):
     # Define and compile model
     with strategy.scope():
         # prepare the segmentation model
-        # unet_model = nrn_models.unet(
-        #     input_shape=input_shape,
-        #     nb_labels=nb_labels,
-        #     nb_levels=opts.n_levels,
-        #     nb_conv_per_level=opts.nb_conv_per_level,
-        #     conv_size=opts.conv_size,
-        #     nb_features=opts.unet_feat_count,
-        #     feat_mult=opts.feat_multiplier,
-        #     activation=opts.activation,
-        #     batch_norm=-1,
-        #     name="unet",
-        # )
-        unet_model = segmentation_model.unet(input_shape, nb_labels)
+        if opts.use_original_unet:
+            unet_model = nrn_models.unet(
+                input_shape=input_shape,
+                nb_labels=nb_labels,
+                nb_levels=opts.n_levels,
+                nb_conv_per_level=opts.nb_conv_per_level,
+                conv_size=opts.conv_size,
+                nb_features=opts.unet_feat_count,
+                feat_mult=opts.feat_multiplier,
+                activation=opts.activation,
+                batch_norm=-1,
+                name="unet",
+            )
+        else:
+            unet_model = segmentation_model.unet(input_shape, nb_labels)
 
         # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
         if opts.wl2_epochs > 0:

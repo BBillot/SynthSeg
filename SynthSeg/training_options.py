@@ -351,6 +351,13 @@ class TrainingOptions(Serializable):
     See https://www.tensorflow.org/guide/distributed_training for more information. 
     """
 
+    use_original_unet: bool = True
+    """
+    Use the original implementation of the unet architecture? Otherwise we will use a custom implementation using more
+    "standard" building blocks.
+    The original implementation leads to a memory leak when trying to distribute the training over multiple GPUs.
+    """
+
     def with_absolute_paths(self, reference_file: str):
         """
         Adds absolute paths to specified file paths in the TrainingOptions object.
