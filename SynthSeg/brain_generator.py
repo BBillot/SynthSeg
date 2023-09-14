@@ -363,7 +363,7 @@ class BrainGenerator:
         if file.suffix != ".tfrecord":
             file = file.parent / (file.name + ".tfrecord")
 
-        output_labels = np.unique(self.output_labels).astype("int16")
+        n_labels = len(np.unique(self.output_labels))
 
         with tf.io.TFRecordWriter(
             str(file), options=tf.io.TFRecordOptions(compression_type=compression_type)
@@ -376,7 +376,18 @@ class BrainGenerator:
                 labels = labels[..., 0]
 
                 # convert labels to probabilistic values
-                labels = layers.ConvertLabels(output_labels, dtype="int16")(labels)
+                labels = layers.ConvertLabels(self.output_labels)(labels)
+                labels = (
+                    tf.keras.layers.Lambda(
+                        lambda x: tf.one_hot(
+                            tf.cast(x, dtype="int32"),
+                            depth=n_labels,
+                            axis=-1,
+                        )
+                    )(labels)
+                    .numpy()
+                    .astype("uint8")
+                )
 
                 # create tf example
                 features = {
@@ -390,11 +401,6 @@ class BrainGenerator:
                             value=[tf.io.serialize_tensor(labels).numpy()]
                         )
                     ),
-                    "output_labels": tf.train.Feature(
-                        bytes_list=tf.train.BytesList(
-                            value=[tf.io.serialize_tensor(output_labels).numpy()]
-                        )
-                    )
                 }
 
                 example = tf.train.Example(features=tf.train.Features(feature=features))
@@ -416,13 +422,13 @@ class BrainGenerator:
             Brain images and labels in the `self.generate_brain` format.
         """
         dataset = read_tfrecords([file]).batch(self.batchsize)
-        images, (labels, output_labels) = next(dataset.as_numpy_iterator())
+        images, labels = next(dataset.as_numpy_iterator())
 
         # Decode labels
         labels = tf.argmax(labels, axis=-1)
-        n_labels = len(output_labels)
+        n_labels = len(np.unique(self.output_labels))
         labels = layers.ConvertLabels(
-            np.arange(n_labels), dest_values=output_labels
+            np.arange(n_labels), dest_values=self.output_labels
         )(labels).numpy()
 
         images, labels = self._put_in_native_space(images, labels)
@@ -464,14 +470,12 @@ def read_tfrecords(
         feature_description = {
             "image": tf.io.FixedLenFeature([], tf.string),
             "labels": tf.io.FixedLenFeature([], tf.string),
-            "output_labels": tf.io.FixedLenFeature([], tf.string),
         }
         example = tf.io.parse_single_example(example, feature_description)
         example["image"] = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.int16)
-        example["output_labels"] = tf.io.parse_tensor(example["output_labels"], out_type=tf.int16)
+        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.uint8)
 
-        return example["image"], (example["labels"], example["output_labels"])
+        return example["image"], example["labels"]
 
     dataset = tf.data.TFRecordDataset(
         files, compression_type=compression_type, num_parallel_reads=num_parallel_reads
