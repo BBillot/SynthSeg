@@ -22,7 +22,7 @@ class NullStrategy:
         return nullcontext()
 
 
-def training(opts: TrainingOptions):
+def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
     """Train the U-net with a TFRecord Dataset.
 
     Args:
@@ -100,6 +100,7 @@ def training(opts: TrainingOptions):
                 loss=WeightedL2Loss(n_labels=nb_labels),
             )
 
+    results = None
     if opts.wl2_epochs > 0:
         callbacks = build_callbacks(
             output_dir=output_dir,
@@ -109,7 +110,7 @@ def training(opts: TrainingOptions):
         )
 
         # fit
-        wl2_model.fit(
+        results = wl2_model.fit(
             dataset,
             epochs=opts.wl2_epochs,
             steps_per_epoch=opts.steps_per_epoch,
@@ -142,13 +143,15 @@ def training(opts: TrainingOptions):
             wandb_log_freq=opts.wandb_log_freq,
         )
 
-        dice_model.fit(
+        results = dice_model.fit(
             dataset,
             epochs=opts.dice_epochs,
             steps_per_epoch=opts.steps_per_epoch,
             callbacks=callbacks,
             initial_epoch=init_epoch,
         )
+
+    return results
 
 
 def load_model(
