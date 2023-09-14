@@ -384,7 +384,6 @@ class BrainGenerator:
                         x, depth=len(output_labels), axis=-1, dtype="uint8"
                     )
                 )(labels)
-                labels = tf.sparse.from_dense(labels)
 
                 # create tf example
                 features = {
@@ -395,7 +394,7 @@ class BrainGenerator:
                     ),
                     "labels": tf.train.Feature(
                         bytes_list=tf.train.BytesList(
-                            value=tf.io.serialize_sparse(labels).numpy()
+                            value=[tf.io.serialize_tensor(labels).numpy()]
                         )
                     ),
                 }
@@ -469,14 +468,11 @@ def read_tfrecords(
     def parse_example(example):
         feature_description = {
             "image": tf.io.FixedLenFeature([], tf.string),
-            "labels": tf.io.FixedLenFeature([3], tf.string),
+            "labels": tf.io.FixedLenFeature([], tf.string),
         }
         example = tf.io.parse_single_example(example, feature_description)
         example["image"] = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        example["labels"] = tf.io.deserialize_many_sparse(
-            [example["labels"]], dtype=tf.uint8
-        )
-        example["labels"] = tf.sparse.to_dense(example["labels"])[0, ...]
+        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.uint8)
 
         return example["image"], example["labels"]
 
