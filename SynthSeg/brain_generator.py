@@ -345,7 +345,9 @@ class BrainGenerator:
 
         return image, labels
 
-    def generate_tfrecord(self, file: Union[str, Path], compression_type: str = "") -> Path:
+    def generate_tfrecord(
+        self, file: Union[str, Path], compression_type: str = ""
+    ) -> Path:
         """Generate data for the `training_with_tfrecords` module.
 
         The file will contain `self.batchsize` image-label pairs.
@@ -363,31 +365,26 @@ class BrainGenerator:
         if file.suffix != ".tfrecord":
             file = file.parent / (file.name + ".tfrecord")
 
-        n_labels = len(np.unique(self.output_labels))
+        output_labels = np.unique(self.output_labels)
+
+        model_inputs = next(self.model_inputs_generator)
+        images, labelss = self.labels_to_image_model.predict(model_inputs)
 
         with tf.io.TFRecordWriter(
             str(file), options=tf.io.TFRecordOptions(compression_type=compression_type)
         ) as writer:
-            model_inputs = next(self.model_inputs_generator)
-            images, labelss = self.labels_to_image_model.predict(model_inputs)
-
             for image, labels in zip(images, labelss):
                 # remove channel dim in labels
                 labels = labels[..., 0]
 
                 # convert labels to probabilistic values
-                labels = layers.ConvertLabels(self.output_labels)(labels)
-                labels = (
-                    tf.keras.layers.Lambda(
-                        lambda x: tf.one_hot(
-                            tf.cast(x, dtype="int32"),
-                            depth=n_labels,
-                            axis=-1,
-                        )
-                    )(labels)
-                    .numpy()
-                    .astype("uint8")
-                )
+                labels = layers.ConvertLabels(output_labels)(labels)
+                labels = tf.keras.layers.Lambda(
+                    lambda x: tf.one_hot(
+                        x, depth=len(output_labels), axis=-1, dtype="uint8"
+                    )
+                )(labels)
+                labels = tf.sparse.from_dense(labels)
 
                 # create tf example
                 features = {
@@ -398,7 +395,7 @@ class BrainGenerator:
                     ),
                     "labels": tf.train.Feature(
                         bytes_list=tf.train.BytesList(
-                            value=[tf.io.serialize_tensor(labels).numpy()]
+                            value=tf.io.serialize_sparse(labels).numpy()
                         )
                     ),
                 }
@@ -451,7 +448,9 @@ def create_brain_generator(opts: GeneratorOptions) -> BrainGenerator:
 
 
 def read_tfrecords(
-    files: List[Union[Path, str]], compression_type: str = "", num_parallel_reads: Optional[int] = None,
+    files: List[Union[Path, str]],
+    compression_type: str = "",
+    num_parallel_reads: Optional[int] = None,
 ) -> tf.data.Dataset:
     """Read in TFRecords and return a TF Dataset.
 
@@ -466,14 +465,18 @@ def read_tfrecords(
     Returns:
         A tf.data.TFRecordDataset that yields image-label pairs.
     """
+
     def parse_example(example):
         feature_description = {
             "image": tf.io.FixedLenFeature([], tf.string),
-            "labels": tf.io.FixedLenFeature([], tf.string),
+            "labels": tf.io.FixedLenFeature([3], tf.string),
         }
         example = tf.io.parse_single_example(example, feature_description)
         example["image"] = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.uint8)
+        example["labels"] = tf.io.deserialize_many_sparse(
+            [example["labels"]], dtype=tf.uint8
+        )
+        example["labels"] = tf.sparse.to_dense(example["labels"])[0, ...]
 
         return example["image"], example["labels"]
 
