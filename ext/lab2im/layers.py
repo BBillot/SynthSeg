@@ -1347,20 +1347,22 @@ class ConvertLabels(tf.keras.layers.Layer):
     which enables to remap label maps to [0, ..., N-1].
     """
 
-    def __init__(self, source_values, dest_values=None, **kwargs):
+    def __init__(self, source_values, dest_values=None, dtype: str = "int32", **kwargs):
         self.source_values = source_values
         self.dest_values = dest_values
         self.lut = None
+        self._dtype = dtype
         super(ConvertLabels, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
         config["source_values"] = self.source_values
         config["dest_values"] = self.dest_values
+        config["dtype"] = self._dtype
         return config
 
     def build(self, input_shape):
-        self.lut = tf.convert_to_tensor(utils.get_mapping_lut(self.source_values, dest=self.dest_values), dtype='int32')
+        self.lut = tf.convert_to_tensor(utils.get_mapping_lut(self.source_values, dest=self.dest_values), dtype=self._dtype)
         self.built = True
         super(ConvertLabels, self).build(input_shape)
 
