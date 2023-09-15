@@ -381,7 +381,7 @@ class BrainGenerator:
                 labels = layers.ConvertLabels(output_labels)(labels)
                 labels = tf.keras.layers.Lambda(
                     lambda x: tf.one_hot(
-                        x, depth=len(output_labels), axis=-1, dtype="uint8"
+                        x, depth=len(output_labels), axis=-1, dtype="int32"
                     )
                 )(labels)
 
@@ -471,10 +471,10 @@ def read_tfrecords(
             "labels": tf.io.FixedLenFeature([], tf.string),
         }
         example = tf.io.parse_single_example(example, feature_description)
-        example["image"] = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        example["labels"] = tf.io.parse_tensor(example["labels"], out_type=tf.uint8)
+        image = tf.io.parse_tensor(example["image"], out_type=tf.float32)
+        labels = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
 
-        return example["image"], example["labels"]
+        return image, labels
 
     dataset = tf.data.TFRecordDataset(
         files, compression_type=compression_type, num_parallel_reads=num_parallel_reads
