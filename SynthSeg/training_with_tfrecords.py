@@ -1,5 +1,6 @@
 import os
-from typing import Tuple, Union
+from dataclasses import asdict
+from typing import Tuple, Union, Optional
 from contextlib import nullcontext
 from inspect import getmembers, isclass
 from pathlib import Path
@@ -107,6 +108,7 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
             metric_type="wl2",
             wandb=opts.wandb,
             wandb_log_freq=opts.wandb_log_freq,
+            training_opts=opts,
         )
 
         # fit
@@ -141,6 +143,7 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
             metric_type="dice",
             wandb=opts.wandb,
             wandb_log_freq=opts.wandb_log_freq,
+            training_opts=opts,
         )
 
         results = dice_model.fit(
@@ -199,6 +202,7 @@ def build_callbacks(
     metric_type,
     wandb: bool = False,
     wandb_log_freq: Union[str, int] = "epoch",
+    training_opts: Optional[TrainingOptions] = None,
 ):
     # create log folder
     log_dir = output_dir / "logs"
@@ -221,7 +225,7 @@ def build_callbacks(
         import wandb as wandbm
         from wandb.integration.keras import WandbMetricsLogger
 
-        wandbm.init()
+        wandbm.init(config=asdict(training_opts) if training_opts else None)
         callbacks.append(WandbMetricsLogger(log_freq=wandb_log_freq))
 
     return callbacks
