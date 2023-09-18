@@ -379,11 +379,6 @@ class BrainGenerator:
 
                 # convert labels to probabilistic values
                 labels = layers.ConvertLabels(output_labels)(labels)
-                labels = tf.keras.layers.Lambda(
-                    lambda x: tf.one_hot(
-                        x, depth=len(output_labels), axis=-1, dtype="int32"
-                    )
-                )(labels)
 
                 # create tf example
                 features = {
@@ -420,11 +415,9 @@ class BrainGenerator:
         dataset = read_tfrecords([file]).batch(self.batchsize)
         images, labels = next(dataset.as_numpy_iterator())
 
-        # Decode labels
-        labels = tf.argmax(labels, axis=-1)
-        n_labels = len(np.unique(self.output_labels))
+        output_labels = np.unique(self.output_labels)
         labels = layers.ConvertLabels(
-            np.arange(n_labels), dest_values=self.output_labels
+            np.arange(len(output_labels)), dest_values=output_labels
         )(labels).numpy()
 
         images, labels = self._put_in_native_space(images, labels)

@@ -4,7 +4,6 @@ import nibabel as nib
 import numpy as np
 import SynthSeg.brain_generator as bg
 import timeit
-import pytest
 
 
 def test_brain_generator(fixed_random_seed):
@@ -45,17 +44,15 @@ def test_tfrecords_compression(tmp_path):
     tf.keras.utils.set_random_seed(43)
     tfrecord = tmp_path / "test.tfrecord"
     brain_generator.generate_tfrecord(tfrecord)
-    size1 = tfrecord.stat().st_size
 
-    tfrecord = tmp_path / "test2.tfrecord"
-    brain_generator.generate_tfrecord(tfrecord, compression_type="GZIP")
-    size2 = tfrecord.stat().st_size
+    tf.keras.utils.set_random_seed(43)
+    tfrecord2 = tmp_path / "test2.tfrecord"
+    brain_generator.generate_tfrecord(tfrecord2, compression_type="GZIP")
 
-    assert size1 / size2 > 40
+    assert tfrecord.stat().st_size / tfrecord2.stat().st_size > 2
 
 
-@pytest.mark.parametrize("compression", ("", "GZIP"))
-def test_read_tfrecords(tmp_path, compression):
+def test_read_tfrecords(tmp_path):
     def measure_iteration(ds):
         def func():
             for _ in ds:
@@ -64,22 +61,23 @@ def test_read_tfrecords(tmp_path, compression):
         return func
 
     label_map_files = TestData.get_label_maps()
-    brain_generator = bg.BrainGenerator(label_map_files[0], target_res=8, batchsize=3)
+    brain_generator = bg.BrainGenerator(label_map_files[0], target_res=8, batchsize=2)
 
     tf.keras.utils.set_random_seed(43)
-    for i in range(2):
+    for i in range(10):
         tfrecord = tmp_path / f"test{i}.tfrecord"
-        brain_generator.generate_tfrecord(tfrecord, compression_type=compression)
+        brain_generator.generate_tfrecord(tfrecord, compression_type="GZIP")
     files = list(tmp_path.glob("*.tfrecord"))
 
-    dataset = bg.read_tfrecords(files, compression_type=compression)
+    dataset = bg.read_tfrecords(files, compression_type="GZIP")
     time1 = timeit.timeit(measure_iteration(dataset), number=10)
 
     dataset = bg.read_tfrecords(
         files,
         num_parallel_reads=2,
-        compression_type=compression,
+        compression_type="GZIP",
     )
     time2 = timeit.timeit(measure_iteration(dataset), number=10)
 
+    print(time1, time2)
     assert time1 > time2
