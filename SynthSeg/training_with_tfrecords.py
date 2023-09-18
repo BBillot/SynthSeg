@@ -62,13 +62,11 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
         compression_type=opts.compression_type,
         num_parallel_reads=opts.num_parallel_reads,
     )
+    dataset = dataset.batch(opts.batchsize).prefetch(1)
 
-    # Get output shape and number of labels from first example of the dataset
-    for example in dataset.take(1):
-        input_shape, nb_labels = example[0].shape, example[1].shape[-1]
-
-    # Batch dataset
-    dataset = dataset.batch(opts.batchsize)
+    input_shape = opts.input_shape
+    if isinstance(input_shape, int):
+        input_shape = (input_shape, input_shape, input_shape, 1)
 
     checkpoint = opts.checkpoint
 
@@ -78,7 +76,7 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
         if opts.use_original_unet:
             unet_model = nrn_models.unet(
                 input_shape=input_shape,
-                nb_labels=nb_labels,
+                nb_labels=opts.n_labels,
                 nb_levels=opts.n_levels,
                 nb_conv_per_level=opts.nb_conv_per_level,
                 conv_size=opts.conv_size,
@@ -89,7 +87,7 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
                 name="unet",
             )
         else:
-            unet_model = segmentation_model.unet(input_shape, nb_labels)
+            unet_model = segmentation_model.unet(input_shape, opts.n_labels)
 
         # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
         if opts.wl2_epochs > 0:
@@ -98,7 +96,7 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
             )
             wl2_model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=opts.lr),
-                loss=WeightedL2Loss(n_labels=nb_labels),
+                loss=WeightedL2Loss(n_labels=opts.n_labels),
             )
 
     results = None
@@ -135,7 +133,7 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
             if not is_compiled:
                 dice_model.compile(
                     optimizer=tf.keras.optimizers.Adam(learning_rate=opts.lr),
-                    loss=DiceLoss(),
+                    loss=DiceLoss(n_labels=opts.n_labels),
                 )
 
         callbacks = build_callbacks(

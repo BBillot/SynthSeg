@@ -88,6 +88,7 @@ class WeightedL2Loss:
         return config
 
     def __call__(self, gt, pred):
+        gt = tf.one_hot(gt, depth=self._n_labels, axis=-1, dtype=tf.float32)
         gt = tf.cast(gt, tf.float32)
         weights = tf.expand_dims(1 - gt[..., 0] + self._background_weight, -1)
         return tf.keras.backend.sum(
@@ -96,33 +97,38 @@ class WeightedL2Loss:
 
 
 class DiceLoss:
-    def __init__(self, dim: int = 3, enable_checks: bool = True):
+    def __init__(self, n_labels: int, dim: int = 3, enable_checks: bool = True):
+        self._n_labels = n_labels
         self._dim = dim
         self._enable_checks = enable_checks
 
     def get_config(self):
-        config = {"dim": self._dim, "enable_checks": self._enable_checks}
+        config = {
+            "n_labels": self._n_labels,
+            "dim": self._dim,
+            "enable_checks": self._enable_checks,
+        }
         return config
 
-    def __call__(self, x, y):
-        x = tf.cast(x, tf.float32)
+    def __call__(self, gt, pred):
+        gt = tf.one_hot(gt, depth=self._n_labels, axis=-1, dtype=tf.float32)
         # make sure tensors are probabilistic
         if (
             self._enable_checks
         ):  # disabling is useful to, e.g., use incomplete label maps
-            x = tf.keras.backend.clip(
-                x
+            gt = tf.keras.backend.clip(
+                gt
                 / (
-                    tf.math.reduce_sum(x, axis=-1, keepdims=True)
+                    tf.math.reduce_sum(gt, axis=-1, keepdims=True)
                     + tf.keras.backend.epsilon()
                 ),
                 0,
                 1,
             )
-            y = tf.keras.backend.clip(
-                y
+            pred = tf.keras.backend.clip(
+                pred
                 / (
-                    tf.math.reduce_sum(y, axis=-1, keepdims=True)
+                    tf.math.reduce_sum(pred, axis=-1, keepdims=True)
                     + tf.keras.backend.epsilon()
                 ),
                 0,
@@ -130,8 +136,8 @@ class DiceLoss:
             )
 
         # compute dice loss for each label
-        top = tf.math.reduce_sum(2 * x * y, axis=list(range(1, self._dim + 1)))
-        bottom = tf.math.square(x) + tf.math.square(y) + tf.keras.backend.epsilon()
+        top = tf.math.reduce_sum(2 * gt * pred, axis=list(range(1, self._dim + 1)))
+        bottom = tf.math.square(gt) + tf.math.square(pred) + tf.keras.backend.epsilon()
         bottom = tf.math.reduce_sum(bottom, axis=list(range(1, self._dim + 1)))
         last_tensor = top / bottom
 

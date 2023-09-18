@@ -58,12 +58,14 @@ def test_training(
     opts = TrainingOptions(
         labels_dir=label_map_files[0],  # only needed for the experiment below
         target_res=8,  # only needed for the experiment below
-        tfrecords_dir=str(tmp_path),
         model_dir=str(tmp_path / "output"),
         wl2_epochs=wl2_epochs,
         dice_epochs=dice_epochs,
         steps_per_epoch=2,
         batchsize=1,
+        tfrecords_dir=str(tmp_path),
+        input_shape=32,
+        n_labels=53,
     )
 
     results = training(opts)

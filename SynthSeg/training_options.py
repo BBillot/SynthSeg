@@ -344,11 +344,14 @@ class TrainingOptions(Serializable):
     https://www.tensorflow.org/api_docs/python/tf/data/TFRecordDataset
     """
 
-    strategy: str = "null"
+    input_shape: Union[int, List[int]] = 160
     """
-    Specify the TF distributed strategy for the training. ONLY SUPPORTED WHEN TRAINING WITH TFRECORDS.
-    Must be one of: 'null' (no distribution) or 'mirrored'.
-    See https://www.tensorflow.org/guide/distributed_training for more information. 
+    Input shape of the data. If int, we assume it is (input_shape, input_shape, input_shape, 1).
+    """
+
+    n_labels: int = 53
+    """
+    Number of output labels.
     """
 
     use_original_unet: bool = True
@@ -356,6 +359,13 @@ class TrainingOptions(Serializable):
     Use the original implementation of the unet architecture? Otherwise we will use a custom implementation using more
     "standard" building blocks.
     The original implementation leads to a memory leak when trying to distribute the training over multiple GPUs.
+    """
+
+    strategy: str = "null"
+    """
+    Specify the TF distributed strategy for the training. ONLY SUPPORTED WHEN TRAINING WITH TFRECORDS.
+    Must be one of: 'null' (no distribution) or 'mirrored'.
+    See https://www.tensorflow.org/guide/distributed_training for more information. 
     """
 
     def with_absolute_paths(self, reference_file: str):
