@@ -23,12 +23,11 @@ class NullStrategy:
         return nullcontext()
 
 
-def training(opts: TrainingOptions, labels_dtype: "tf.DType" = tf.int32) -> tf.keras.callbacks.History:
+def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
     """Train the U-net with a TFRecord Dataset.
 
     Args:
         opts: The training options. The parameters related to the generation of the synthetic images will be ignored.
-        labels_dtype: dtype of the labels
     """
     # Check epochs
     assert (opts.wl2_epochs > 0) | (
@@ -62,7 +61,6 @@ def training(opts: TrainingOptions, labels_dtype: "tf.DType" = tf.int32) -> tf.k
         files,
         compression_type=opts.compression_type,
         num_parallel_reads=opts.num_parallel_reads,
-        labels_dtype=labels_dtype,
     )
 
     # Get output shape and number of labels from first example of the dataset
