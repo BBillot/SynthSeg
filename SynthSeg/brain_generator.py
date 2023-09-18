@@ -346,7 +346,7 @@ class BrainGenerator:
         return image, labels
 
     def generate_tfrecord(
-        self, file: Union[str, Path], compression_type: str = ""
+        self, file: Union[str, Path], compression_type: str = "", labels_dtype: "tf.DType" = tf.int32
     ) -> Path:
         """Generate data for the `training_with_tfrecords` module.
 
@@ -355,6 +355,7 @@ class BrainGenerator:
         Args:
             file: Path to the output file. We will add a '.tfrecord' extension if not specified.
             compression_type: One of "GZIP", "ZLIB" or "" (no compression).
+            labels_dtype: dtype of the labels
 
         Returns:
             Absolute path to the output file.
@@ -381,7 +382,7 @@ class BrainGenerator:
                 labels = layers.ConvertLabels(output_labels)(labels)
                 labels = tf.keras.layers.Lambda(
                     lambda x: tf.one_hot(
-                        x, depth=len(output_labels), axis=-1, dtype="int32"
+                        x, depth=len(output_labels), axis=-1, dtype=labels_dtype
                     )
                 )(labels)
 
@@ -450,6 +451,7 @@ def read_tfrecords(
     files: List[Union[Path, str]],
     compression_type: str = "",
     num_parallel_reads: Optional[int] = None,
+    labels_dtype: "tf.DType" = tf.int32,
 ) -> tf.data.Dataset:
     """Read in TFRecords and return a TF Dataset.
 
@@ -460,11 +462,11 @@ def read_tfrecords(
             https://www.tensorflow.org/api_docs/python/tf/data/TFRecordDataset
             Number of files to read in parallel. If greater than one, the records of files read in
             parallel are outputted in an interleaved order. If None, files will be read sequentially.
+        labels_dtype: dtype of the labels
 
     Returns:
         A tf.data.TFRecordDataset that yields image-label pairs.
     """
-
     def parse_example(example):
         feature_description = {
             "image": tf.io.FixedLenFeature([], tf.string),
@@ -472,7 +474,7 @@ def read_tfrecords(
         }
         example = tf.io.parse_single_example(example, feature_description)
         image = tf.io.parse_tensor(example["image"], out_type=tf.float32)
-        labels = tf.io.parse_tensor(example["labels"], out_type=tf.int32)
+        labels = tf.io.parse_tensor(example["labels"], out_type=labels_dtype)
 
         return image, labels
 
