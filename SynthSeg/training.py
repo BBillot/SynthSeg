@@ -307,20 +307,19 @@ def training(labels_dir,
         checkpoint = os.path.join(model_dir, 'wl2_%03d.h5' % wl2_epochs)
 
     # fine-tuning with dice metric
-    if dice_epochs > 0:
-        dice_model = metrics.metrics_model(unet_model, segmentation_labels, 'dice')
-        results = train_model(
-            dice_model,
-            input_generator,
-            lr,
-            dice_epochs,
-            steps_per_epoch,
-            model_dir,
-            'dice',
-            checkpoint,
-            wandb=wandb,
-            wandb_log_freq=wandb_log_freq
-        )
+    dice_model = metrics.metrics_model(unet_model, segmentation_labels, 'dice')
+    results = train_model(
+        dice_model,
+        input_generator,
+        lr,
+        dice_epochs,
+        steps_per_epoch,
+        model_dir,
+        'dice',
+        checkpoint,
+        wandb=wandb,
+        wandb_log_freq=wandb_log_freq
+    )
 
     return results
 
