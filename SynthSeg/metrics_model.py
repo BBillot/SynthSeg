@@ -89,7 +89,6 @@ class WeightedL2Loss:
 
     def __call__(self, gt, pred):
         gt = tf.one_hot(gt, depth=self._n_labels, axis=-1, dtype=tf.float32)
-        gt = tf.cast(gt, tf.float32)
         weights = tf.expand_dims(1 - gt[..., 0] + self._background_weight, -1)
         return tf.keras.backend.sum(
             weights * tf.keras.backend.square(pred - self._target_value * (2 * gt - 1))
