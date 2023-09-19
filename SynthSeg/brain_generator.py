@@ -399,6 +399,9 @@ class BrainGenerator:
                 # write to file
                 writer.write(example.SerializeToString())
 
+        print(f"Wrote {self.batchsize} image-label pairs to {file}, "
+              f"image shape: {self.model_output_shape}, n_labels: {len(output_labels)}")
+
         return file.absolute()
 
     def tfrecord_to_brain(
