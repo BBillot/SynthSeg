@@ -380,7 +380,13 @@ class TrainingOptions(Serializable):
             TrainingOptions: A copy of the TrainingOptions object with absolute paths added.
         """
         copy = TrainingOptions()
-        non_path_properties = ["activation", "prior_distributions", "wandb_log_freq"]
+        non_path_properties = [
+            "activation",
+            "prior_distributions",
+            "wandb_log_freq",
+            "compression_type",
+            "strategy"
+        ]
         for key, value in vars(self).items():
             if isinstance(value, str) and key not in non_path_properties:
                 setattr(copy, key, get_absolute_path(value, reference_file))
