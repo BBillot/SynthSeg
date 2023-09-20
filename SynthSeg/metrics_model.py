@@ -73,7 +73,10 @@ class IdentityLoss(object):
 
 class WeightedL2Loss:
     def __init__(
-        self, n_labels: int, target_value: float = 5, background_weight: float = 1e-4
+        self,
+        n_labels: int,
+        target_value: float = 5.0,
+        background_weight: float = 1.0e-4,
     ):
         self._n_labels = n_labels
         self._target_value = target_value
