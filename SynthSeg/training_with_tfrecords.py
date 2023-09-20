@@ -36,12 +36,6 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
         opts.wl2_epochs, opts.dice_epochs
     )
 
-    # Make sure ints are recognized as such
-    try:
-        opts.wandb_log_freq = int(opts.wandb_log_freq)
-    except ValueError:
-        pass
-
     # Define distributed strategy
     if opts.strategy == "null":
         strategy = NullStrategy()
