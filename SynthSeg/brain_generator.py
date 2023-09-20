@@ -377,7 +377,7 @@ class BrainGenerator:
                 # remove channel dim in labels
                 labels = labels[..., 0]
 
-                # convert labels to probabilistic values
+                # convert labels to continuous range
                 labels = layers.ConvertLabels(output_labels)(labels)
 
                 # create tf example
