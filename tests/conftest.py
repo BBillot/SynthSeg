@@ -7,17 +7,6 @@ from . import TestData
 from SynthSeg.model_inputs import build_model_inputs
 
 
-@pytest.fixture
-def fixed_random_seed() -> None:
-    """
-        Initializes known random generators to make tests deterministic.
-    """
-    seed = 12345
-    random.seed(seed)
-    tf.random.set_seed(seed)
-    np.random.seed(seed)
-
-
 @pytest.fixture(scope="session")
 def model_inputs():
     """This fixture returns a list of inputs necessary for the label_to_image model.

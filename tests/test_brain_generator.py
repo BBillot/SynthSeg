@@ -6,7 +6,8 @@ import SynthSeg.brain_generator as bg
 import timeit
 
 
-def test_brain_generator(fixed_random_seed):
+def test_brain_generator():
+    tf.keras.utils.set_random_seed(12345)
     label_map_files = TestData.get_label_maps()
     brain_generator = bg.BrainGenerator(label_map_files[0])
     im, lab = brain_generator.generate_brain()
