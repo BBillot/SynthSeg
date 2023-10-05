@@ -1044,7 +1044,7 @@ def mask_images_in_dir(image_dir, result_dir, mask_dir=None, threshold=0.1, dila
     """Mask all volumes in a folder, either with masks in a specified folder, or by keeping only the intensity values
     above a specified threshold.
     :param image_dir: path of directory with images to mask
-    :param result_dir: path of directory where masked images will be writen
+    :param result_dir: path of directory where masked images will be written
     :param mask_dir: (optional) path of directory containing masks. Masks are matched to images by sorting order.
     Mask volumes don't have to be boolean or 0/1 arrays as all strictly positive values are used to build the masks.
     Masks should have the same size as images. If images are multi-channel, masks can either be uni- or multi-channel.
@@ -1102,7 +1102,7 @@ def rescale_images_in_dir(image_dir, result_dir,
                           recompute=True):
     """This function linearly rescales all volumes in image_dir between new_min and new_max.
     :param image_dir: path of directory with images to rescale
-    :param result_dir: path of directory where rescaled images will be writen
+    :param result_dir: path of directory where rescaled images will be written
     :param new_min: (optional) minimum value for the rescaled images.
     :param new_max: (optional) maximum value for the rescaled images.
     :param min_percentile: (optional) percentile for estimating robust minimum of volume (float in [0,...100]),
@@ -1132,7 +1132,7 @@ def rescale_images_in_dir(image_dir, result_dir,
 def crop_images_in_dir(image_dir, result_dir, cropping_margin=None, cropping_shape=None, recompute=True):
     """Crop all volumes in a folder by a given margin, or to a given shape.
     :param image_dir: path of directory with images to rescale
-    :param result_dir: path of directory where cropped images will be writen
+    :param result_dir: path of directory where cropped images will be written
     :param cropping_margin: (optional) margin by which to crop the volume.
     Can be an int, a sequence or a 1d numpy array. Should be given if cropping_shape is None.
     :param cropping_shape: (optional) shape to which the volume will be cropped.
@@ -1169,7 +1169,7 @@ def crop_images_around_region_in_dir(image_dir,
     2) thresholding the input volume
     3) keeping a set of label values if the volume is a label map.
     :param image_dir: path of directory with images to crop
-    :param result_dir: path of directory where cropped images will be writen
+    :param result_dir: path of directory where cropped images will be written
     :param mask_dir: (optional) path of directory of input masks
     :param threshold: (optional) lower bound to determine values to crop around
     :param masking_labels: (optional) if the volume is a label map, it can be cropped around a given set of labels by
@@ -1208,7 +1208,7 @@ def crop_images_around_region_in_dir(image_dir,
 def pad_images_in_dir(image_dir, result_dir, max_shape=None, padding_value=0, recompute=True):
     """Pads all the volumes in a folder to the same shape (either provided or computed).
     :param image_dir: path of directory with images to pad
-    :param result_dir: path of directory where padded images will be writen
+    :param result_dir: path of directory where padded images will be written
     :param max_shape: (optional) shape to pad the volumes to. Can be an int, a sequence or a 1d numpy array.
     If None, volumes will be padded to the shape of the biggest volume in image_dir.
     :param padding_value: (optional) value to pad the volumes with.
@@ -1249,7 +1249,7 @@ def flip_images_in_dir(image_dir, result_dir, axis=None, direction=None, recompu
     """Flip all images in a directory along a specified axis.
     If unknown, this axis can be replaced by an anatomical direction.
     :param image_dir: path of directory with images to flip
-    :param result_dir: path of directory where flipped images will be writen
+    :param result_dir: path of directory where flipped images will be written
     :param axis: (optional) axis along which to flip the volume
     :param direction: (optional) if axis is None, the volume can be flipped along an anatomical direction:
     'rl' (right/left), 'ap' (anterior/posterior), 'si' (superior/inferior).
@@ -1277,7 +1277,7 @@ def align_images_in_dir(image_dir, result_dir, aff_ref=None, path_ref=None, reco
     This reference orientation can be directly provided as an affine matrix, or can be specified by a reference volume.
     If neither are provided, the reference orientation is assumed to be an identity matrix.
     :param image_dir: path of directory with images to align
-    :param result_dir: path of directory where flipped images will be writen
+    :param result_dir: path of directory where flipped images will be written
     :param aff_ref: (optional) reference affine matrix. Can be a numpy array, or the path to such array.
     :param path_ref: (optional) path of a volume to which all images will be aligned. Can also be the path to a folder
     with as many images as in image_dir, in which case each image in image_dir is aligned to its counterpart in path_ref
@@ -1323,7 +1323,7 @@ def align_images_in_dir(image_dir, result_dir, aff_ref=None, path_ref=None, reco
 def correct_nans_images_in_dir(image_dir, result_dir, recompute=True):
     """Correct NaNs in all images in a directory.
     :param image_dir: path of directory with images to correct
-    :param result_dir: path of directory where corrected images will be writen
+    :param result_dir: path of directory where corrected images will be written
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
     # create result dir
@@ -1346,7 +1346,7 @@ def correct_nans_images_in_dir(image_dir, result_dir, recompute=True):
 def blur_images_in_dir(image_dir, result_dir, sigma, mask_dir=None, gpu=False, recompute=True):
     """This function blurs all the images in image_dir with kernels of the specified std deviations.
     :param image_dir: path of directory with images to blur
-    :param result_dir: path of directory where blurred images will be writen
+    :param result_dir: path of directory where blurred images will be written
     :param sigma: standard deviation of the blurring gaussian kernels.
     Can be a number (isotropic blurring), or a sequence with the same length as the number of dimensions of images.
     :param mask_dir: (optional) path of directory with masks of the region to blur.
@@ -1407,7 +1407,7 @@ def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
     """This function forms multimodal images by stacking channels located in different folders.
     :param list_channel_dir: list of all directories, each containing the same channel for all images.
     Channels are matched between folders by sorting order.
-    :param result_dir: path of directory where multimodal images will be writen
+    :param result_dir: path of directory where multimodal images will be written
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
 
@@ -1445,7 +1445,7 @@ def create_mutlimodal_images(list_channel_dir, result_dir, recompute=True):
 def convert_images_in_dir_to_nifty(image_dir, result_dir, aff=None, ref_aff_dir=None, recompute=True):
     """Converts all images in image_dir to nifty format.
     :param image_dir: path of directory with images to convert
-    :param result_dir: path of directory where converted images will be writen
+    :param result_dir: path of directory where converted images will be written
     :param aff: (optional) affine matrix in homogeneous coordinates with which to write the images.
     Can also be 'FS' to write images with FreeSurfer typical affine matrix.
     :param ref_aff_dir: (optional) alternatively to providing a fixed aff, different affine matrices can be used for
@@ -1495,7 +1495,7 @@ def mri_convert_images_in_dir(image_dir,
     The interpolation type can be specified (i.e. 'nearest'), as well as a folder containing references for resampling.
     reference_dir can be the path of a single *image* if same_reference=True.
     :param image_dir: path of directory with images to convert
-    :param result_dir: path of directory where converted images will be writen
+    :param result_dir: path of directory where converted images will be written
     :param interpolation: (optional) interpolation type, can be 'inter' (default), 'cubic', 'nearest', 'trilinear'
     :param reference_dir: (optional) path of directory with reference images. References are matched to images by
     sorting order. If same_reference is false, references and images are matched by sorting order.
@@ -1558,7 +1558,7 @@ def samseg_images_in_dir(image_dir,
     deleted.
     :param image_dir: path of directory with input images
     :param result_dir: path of directory where processed images folders (if keep_segm_only is False),
-    or samseg segmentation (if keep_segm_only is True) will be writen
+    or samseg segmentation (if keep_segm_only is True) will be written
     :param atlas_dir: (optional) path of samseg atlas directory. If None, use samseg default atlas.
     :param threads: (optional) number of threads to use
     :param path_freesurfer: (optional) path FreeSurfer home
@@ -1613,7 +1613,7 @@ def niftyreg_images_in_dir(image_dir,
                            same_floating=False,
                            same_reference=False,
                            same_transformation=False,
-                           path_nifty_reg='/home/benjamin/Softwares/niftyreg-gpu/build/reg-apps',
+                           path_nifty_reg='/home/benjamin/Software/niftyreg-gpu/build/reg-apps',
                            recompute=True):
     """This function launches one of niftyreg functions (reg_aladin, reg_f3d, reg_resample) on all images contained
     in image_dir.
@@ -1627,8 +1627,8 @@ def niftyreg_images_in_dir(image_dir,
     :param input_transformation_dir: (optional) path of a directory containing all the input transformation (for
     reg_resample, or reg_f3d). Can also be the path to a single transformation that will be used for all images
     in image_dir (set same_transformation to True in that case).
-    :param result_dir: path of directory where output images will be writen.
-    :param result_transformation_dir: path of directory where resulting transformations will be writen (for
+    :param result_dir: path of directory where output images will be written.
+    :param result_transformation_dir: path of directory where resulting transformations will be written (for
     reg_aladin and reg_f3d).
     :param interpolation: (optional) integer describing the order of the interpolation to apply (0 = nearest neighbours)
     :param same_floating: (optional) set to true if only one image is used as floating image.
@@ -1743,7 +1743,7 @@ def upsample_anisotropic_images(image_dir,
                                 recompute=True):
     """This function takes as input a set of LR images and resample them to HR with respect to reference images.
     :param image_dir: path of directory with input images (only uni-modal images supported)
-    :param resample_image_result_dir: path of directory where resampled images will be writen
+    :param resample_image_result_dir: path of directory where resampled images will be written
     :param resample_like_dir: path of directory with reference images.
     :param path_freesurfer: (optional) path freesurfer home, as this function uses mri_convert
     :param recompute: (optional) whether to recompute result files even if they already exists
@@ -1818,11 +1818,11 @@ def simulate_upsampled_anisotropic_images(image_dir,
     2) a set of HR images obtained by resampling the LR images to native HR with linear interpolation.
     Additionally, this function can also create a set of LR labels from label maps corresponding to the input images.
     :param image_dir: path of directory with input images (only uni-model images supported)
-    :param downsample_image_result_dir: path of directory where downsampled images will be writen
-    :param resample_image_result_dir: path of directory where resampled images will be writen
+    :param downsample_image_result_dir: path of directory where downsampled images will be written
+    :param resample_image_result_dir: path of directory where resampled images will be written
     :param data_res: resolution of LR images. Can either be: an int, a float, a list or a numpy array.
     :param labels_dir: (optional) path of directory with label maps corresponding to input images
-    :param downsample_labels_result_dir: (optional) path of directory where downsampled label maps will be writen
+    :param downsample_labels_result_dir: (optional) path of directory where downsampled label maps will be written
     :param slice_thickness: (optional) thickness of slices to simulate. Can be a number, a list or a numpy array.
     :param build_dist_map: (optional) whether to return the resampled images with an additional channel indicating the
     distance of each voxel to the nearest acquired voxel. Default is False.
@@ -1983,7 +1983,7 @@ def correct_labels_in_dir(labels_dir, results_dir, incorrect_labels, correct_lab
     - a list a given values,
     - or with the nearest label value.
     :param labels_dir: path of directory with input label maps
-    :param results_dir: path of directory where corrected label maps will be writen
+    :param results_dir: path of directory where corrected label maps will be written
     :param incorrect_labels: list of all label values to correct (e.g. [1, 2, 3, 4]).
     :param correct_labels: (optional) list of correct label values to replace the incorrect ones.
     Correct values must have the same order as their corresponding value in list_incorrect_labels.
@@ -2017,10 +2017,10 @@ def correct_labels_in_dir(labels_dir, results_dir, incorrect_labels, correct_lab
 def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, mask_result_dir=None, recompute=True):
     """This function masks all label maps in a folder by keeping a set of given label values.
     :param labels_dir: path of directory with input label maps
-    :param result_dir: path of directory where corrected label maps will be writen
+    :param result_dir: path of directory where corrected label maps will be written
     :param values_to_keep: list of values for masking the label maps.
     :param masking_value: (optional) value to mask the label maps with
-    :param mask_result_dir: (optional) path of directory where applied masks will be writen
+    :param mask_result_dir: (optional) path of directory where applied masks will be written
     :param recompute: (optional) whether to recompute result files even if they already exists
     """
 
@@ -2060,7 +2060,7 @@ def mask_labels_in_dir(labels_dir, result_dir, values_to_keep, masking_value=0, 
 def smooth_labels_in_dir(labels_dir, result_dir, gpu=False, labels_list=None, connectivity=1, recompute=True):
     """Smooth all label maps in a folder by replacing each voxel by the value of its most numerous neighbours.
     :param labels_dir: path of directory with input label maps
-    :param result_dir: path of directory where smoothed label maps will be writen
+    :param result_dir: path of directory where smoothed label maps will be written
     :param gpu: (optional) whether to use a gpu implementation for faster processing
     :param labels_list: (optional) if gpu is True, path of numpy array with all label values.
     Automatically computed if not provided.
@@ -2158,7 +2158,7 @@ def smoothing_gpu_model(label_shape, label_list, connectivity=1):
 def erode_labels_in_dir(labels_dir, result_dir, labels_to_erode, erosion_factors=1., gpu=False, recompute=True):
     """Erode a given set of label values for all label maps in a folder.
     :param labels_dir: path of directory with input label maps
-    :param result_dir: path of directory where cropped label maps will be writen
+    :param result_dir: path of directory where cropped label maps will be written
     :param labels_to_erode: list of label values to erode
     :param erosion_factors: (optional) list of erosion factors to use for each label value. If values are integers,
     normal erosion applies. If float, we first 1) blur a mask of the corresponding label value with a gpu model,
@@ -2196,7 +2196,7 @@ def upsample_labels_in_dir(labels_dir,
     taking the argmax of the label values probability maps.
     :param labels_dir: path of directory with label maps to upsample
     :param target_res: resolution at which to upsample the label maps. can be a single number (isotropic), or a list.
-    :param result_dir: path of directory where the upsampled label maps will be writen
+    :param result_dir: path of directory where the upsampled label maps will be written
     :param path_label_list: (optional) path of numpy array containing all label values.
     Computed automatically if not given.
     :param path_freesurfer: (optional) path freesurfer home (upsampling performed with mri_convert)
@@ -2355,7 +2355,7 @@ def build_atlas(labels_dir,
     :param margin: (optional) If align_centre_of_mass is True, margin by which to crop the input label maps around
     their center of mass. Therefore it controls the size of the output atlas: (2*margin + 1)**n_dims.
     :param shape: shape of the output atlas.
-    :param path_atlas: (optional) path where the output atlas will be writen.
+    :param path_atlas: (optional) path where the output atlas will be written.
     Default is None, where the atlas is not saved."""
 
     # list of all label maps and create result dir
@@ -2460,9 +2460,9 @@ def crop_dataset_to_minimum_size(labels_dir, result_dir, image_dir=None, image_r
     the same size (taken to be the maximum size of the cropped maps).
     If images are provided, they undergo the same transformations as their corresponding label maps.
     :param labels_dir: path of directory with input label maps
-    :param result_dir: path of directory where cropped label maps will be writen
+    :param result_dir: path of directory where cropped label maps will be written
     :param image_dir: (optional) if not None, the cropping will be applied to all images in this directory
-    :param image_result_dir: (optional) path of directory where cropped images will be writen
+    :param image_result_dir: (optional) path of directory where cropped images will be written
     :param margin: (optional) margin to apply around the label maps during cropping
     """
 
@@ -2701,9 +2701,9 @@ def subdivide_dataset_to_patches(patch_shape,
     """This function subdivides images and/or label maps into several smaller patches of specified shape.
     :param patch_shape: shape of patches to create. Can either be an int, a sequence, or a 1d numpy array.
     :param image_dir: (optional) path of directory with input images
-    :param image_result_dir: (optional) path of directory where image patches will be writen
+    :param image_result_dir: (optional) path of directory where image patches will be written
     :param labels_dir: (optional) path of directory with input label maps
-    :param labels_result_dir: (optional) path of directory where label map patches will be writen
+    :param labels_result_dir: (optional) path of directory where label map patches will be written
     :param full_background: (optional) whether to keep patches only labelled as background (only if label maps are
     provided).
     :param remove_after_dividing: (optional) whether to delete input images after having divided them in smaller

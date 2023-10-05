@@ -202,7 +202,7 @@ def build_intensity_stats(list_image_dir,
     If list_image_dir is a list of several folders, list_labels_dir can either be a list of folders (one for each image
     folder), or the path to a single folder, which will be used for all datasets.
     If a dataset has multi-modal images, the same label map is applied to all modalities.
-    :param result_dir: path of directory where estimated priors will be writen.
+    :param result_dir: path of directory where estimated priors will be written.
     :param estimation_labels: labels to estimate intensity statistics from.
     Can be a sequence, a 1d numpy array, or the path to a 1d numpy array.
     :param estimation_classes: (optional) enables to regroup structures into classes of similar intensity statistics.

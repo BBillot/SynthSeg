@@ -67,7 +67,7 @@ def predict(path_images,
     This function uses trained models to segment images.
     It is crucial that the inputs match the architecture parameters of the trained model.
     :param path_images: path of the images to segment. Can be the path to a directory or the path to a single image.
-    :param path_segmentations: path where segmentations will be writen.
+    :param path_segmentations: path where segmentations will be written.
     Should be a dir, if path_images is a dir, and a file if path_images is a file.
     :param path_model: path ot the trained model.
     :param labels_segmentation: List of labels for which to compute Dice scores. It should be the same list as the
@@ -78,13 +78,13 @@ def predict(path_images,
     :param names_segmentation: (optional) List of names corresponding to the names of the segmentation labels.
     Only used when path_volumes is provided. Must be of the same size as segmentation_labels. Can be given as a
     list, a numpy array of strings, or the path to such a numpy array. Default is None.
-    :param path_posteriors: (optional) path where posteriors will be writen.
+    :param path_posteriors: (optional) path where posteriors will be written.
     Should be a dir, if path_images is a dir, and a file if path_images is a file.
-    :param path_resampled: (optional) path where images resampled to 1mm isotropic will be writen.
+    :param path_resampled: (optional) path where images resampled to 1mm isotropic will be written.
     We emphasise that images are resampled as soon as the resolution in one of the axes is not in the range [0.9; 1.1].
     Should be a dir, if path_images is a dir, and a file if path_images is a file. Default is None, where resampled
     images are not saved.
-    :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be writen.
+    :param path_volumes: (optional) path of a csv file where the soft volumes of all segmented regions will be written.
     The rows of the csv file correspond to subjects, and the columns correspond to segmentation labels.
     The soft volume of a structure corresponds to the sum of its predicted probability map.
     :param min_pad: (optional) minimum size of the images to process. Can be an int, a sequence or a 1d numpy array.
@@ -113,7 +113,7 @@ def predict(path_images,
     :param activation: (optional) activation function. Can be 'elu', 'relu'.
     :param gt_folder: (optional) path of the ground truth label maps corresponding to the input images. Should be a dir,
     if path_images is a dir, or a file if path_images is a file.
-    Providing a gt_folder will trigger a Dice evaluation, where scores will be writen along with the path_segmentations.
+    Providing a gt_folder will trigger a Dice evaluation, where scores will be written along with the path_segmentations.
     Specifically, the scores are contained in a numpy array, where labels are in rows, and subjects in columns.
     :param evaluation_labels: (optional) if gt_folder is True you can evaluate the Dice scores on a subset of the
     segmentation labels, by providing another label list here. Can be a sequence, a 1d numpy array, or the path to a

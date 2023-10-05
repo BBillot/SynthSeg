@@ -283,7 +283,7 @@ def get_list_labels(label_list=None, labels_dir=None, save_label_list=None, FS_s
 
 
 def load_array_if_path(var, load_as_numpy=True):
-    """If var is a string and load_as_numpy is True, this function loads the array writen at the path indicated by var.
+    """If var is a string and load_as_numpy is True, this function loads the array written at the path indicated by var.
     Otherwise it simply returns var as it is."""
     if (isinstance(var, str)) & load_as_numpy:
         assert os.path.isfile(var), 'No such path: %s' % var

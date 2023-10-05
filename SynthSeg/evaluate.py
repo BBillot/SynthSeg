@@ -238,13 +238,13 @@ def evaluation(gt_dir,
     :param compute_score_whole_structure: (optional) whether to also compute the selected scores for the whole segmented
     structure (i.e. scores are computed for a single structure obtained by regrouping all non-zero values). If True, the
     resulting scores are added as an extra row to the result matrices. Default is False.
-    :param path_dice: path where the resulting Dice will be writen as numpy array.
+    :param path_dice: path where the resulting Dice will be written as numpy array.
     Default is None, where the array is not saved.
-    :param path_hausdorff: path where the resulting Hausdorff distances will be writen as numpy array (only if
+    :param path_hausdorff: path where the resulting Hausdorff distances will be written as numpy array (only if
     compute_distances is True). Default is None, where the array is not saved.
     :param path_hausdorff_99: same as for path_hausdorff but for the 99th percentile of the boundary distance.
     :param path_hausdorff_95: same as for path_hausdorff but for the 95th percentile of the boundary distance.
-    :param path_mean_distance: path where the resulting mean distances will be writen as numpy array (only if
+    :param path_mean_distance: path where the resulting mean distances will be written as numpy array (only if
     compute_distances is True). Default is None, where the array is not saved.
     :param crop_margin_around_gt: (optional) margin by which to crop around the gt volumes, in order to compute the
     scores more efficiently. If 0, no cropping is performed.
