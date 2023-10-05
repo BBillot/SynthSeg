@@ -69,7 +69,7 @@ def predict(path_images,
     :param path_images: path of the images to segment. Can be the path to a directory or the path to a single image.
     :param path_segmentations: path where segmentations will be written.
     Should be a dir, if path_images is a dir, and a file if path_images is a file.
-    :param path_model: path ot the trained model.
+    :param path_model: path of the trained model.
     :param labels_segmentation: List of labels for which to compute Dice scores. It should be the same list as the
     segmentation_labels used in training.
     :param n_neutral_labels: (optional) if the label maps contain some right/left specific labels and if test-time
