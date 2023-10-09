@@ -81,7 +81,15 @@ def training(opts: TrainingOptions) -> tf.keras.callbacks.History:
                 name="unet",
             )
         else:
-            unet_model = segmentation_model.unet(input_shape, opts.n_labels)
+            unet_model = segmentation_model.unet(
+                input_shape=input_shape,
+                n_labels=opts.n_labels,
+                unet_feat_count=opts.unet_feat_count,
+                conv_size=opts.conv_size,
+                n_levels=opts.n_levels,
+                nb_conv_per_level=opts.nb_conv_per_level,
+                activation=opts.activation,
+            )
 
         # pre-training with weighted L2, input is fit to the softmax rather than the probabilities
         if opts.wl2_epochs > 0:
