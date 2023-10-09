@@ -1,10 +1,24 @@
+from typing import Tuple, List
+from pathlib import Path
+
 import pytest
 import tensorflow as tf
 import numpy as np
-import random
 
+from SynthSeg.brain_generator import BrainGenerator, read_tfrecords
 from . import TestData
 from SynthSeg.model_inputs import build_model_inputs
+from dataclasses import dataclass
+
+
+@dataclass
+class TestTFRecord:
+    path: Path
+    shape: Tuple[int, int, int, int]
+    n_labels: int
+    label_maps: List[str]
+    target_res: int
+    dataset: tf.data.Dataset
 
 
 @pytest.fixture(scope="session")
@@ -40,3 +54,21 @@ def get_model_inputs():
         mix_prior_and_random=False,
     )
     return next(model_inputs_generator)
+
+
+@pytest.fixture(scope="session")
+def tfrecord(tmp_path_factory) -> TestTFRecord:
+    """
+    Returns:
+        A TestTFRecord instance that contains information about its generation process.
+    """
+    tf.keras.utils.set_random_seed(43)
+
+    label_map_files = TestData.get_label_maps()
+
+    brain_generator = BrainGenerator(label_map_files[0], target_res=8, batchsize=2)
+    tfrecord_path = tmp_path_factory.mktemp("tfrecords") / "test.tfrecord"
+    brain_generator.generate_tfrecord(tfrecord_path)
+    dataset = read_tfrecords([tfrecord_path])
+
+    return TestTFRecord(tfrecord_path, (32, 32, 32, 1), 53, label_map_files, 8, dataset)
