@@ -4,9 +4,6 @@ import pytest
 
 from SynthSeg.training_options import TrainingOptions
 from SynthSeg.training_with_tfrecords import training
-from SynthSeg.brain_generator import BrainGenerator
-
-from . import TestData
 
 
 @pytest.mark.parametrize(
@@ -40,7 +37,7 @@ from . import TestData
     ids=["wl2", "dice", "dice_after_wl2"],
 )
 def test_training(
-    tmp_path, wl2_epochs, dice_epochs, mean, std, exact, files
+    tmp_path, tfrecord, wl2_epochs, dice_epochs, mean, std, exact, files
 ):
     """
     Tests the equivalence with the original training via `mean` and `std`
@@ -48,24 +45,15 @@ def test_training(
     """
     tf.keras.utils.set_random_seed(43)
 
-    label_map_files = TestData.get_label_maps()
-
-    brain_generator = BrainGenerator(label_map_files[0], target_res=8, batchsize=2)
-
-    tfrecord = tmp_path / "train.tfrecord"
-    brain_generator.generate_tfrecord(tfrecord)
-
     opts = TrainingOptions(
-        labels_dir=label_map_files[0],  # only needed for the experiment below
-        target_res=8,  # only needed for the experiment below
         model_dir=str(tmp_path / "output"),
         wl2_epochs=wl2_epochs,
         dice_epochs=dice_epochs,
-        steps_per_epoch=2,
+        steps_per_epoch=None,
         batchsize=1,
-        tfrecords_dir=str(tmp_path),
-        input_shape=32,
-        n_labels=53,
+        tfrecords_dir=str(tfrecord.path),
+        input_shape=list(tfrecord.shape),
+        n_labels=tfrecord.n_labels,
     )
 
     results = training(opts)
@@ -76,10 +64,22 @@ def test_training(
     np.testing.assert_allclose(results.history["loss"][0], exact)
     assert all([f in output_files for f in files])
 
-    # Experiment:
+    # Experiment (remove the tfrecord fixture):
     # from SynthSeg.training import training_from_options
+    # from SynthSeg.training_options import TrainingOptions
+    # from . import TestData
+
+    # opts = TrainingOptions(
+    #     labels_dir=TestData.get_label_maps()[0],
+    #     target_res=8,
+    #     model_dir=str(tmp_path / "output"),
+    #     wl2_epochs=wl2_epochs,
+    #     dice_epochs=dice_epochs,
+    #     steps_per_epoch=None,
+    #     batchsize=1,
+    # )
     # losses = np.empty(10)
     # for i in range(10):
     #     results = training_from_options(opts)
-    #     losses[i] = results.history["loss"][0]
+    #     losses[i] = results.history["loss"][-1]
     # print(losses, losses.mean(), losses.std())
