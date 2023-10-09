@@ -1,41 +1,60 @@
-from tensorflow import keras
+import tensorflow as tf
 from typing import Tuple
 
 
-def unet(input_shape: Tuple[int, ...], num_classes):
-    inputs = keras.Input(shape=input_shape)
+def unet(
+    input_shape: Tuple[int, ...],
+    n_labels: int,
+    unet_feat_count: int = 24,
+    conv_size: int = 3,
+    n_levels: int = 5,
+    nb_conv_per_level: int = 2,
+    activation: str = "elu",
+):
+    inputs = tf.keras.Input(shape=input_shape)
 
-    x = keras.layers.Conv3D(32, 3, strides=2, padding="same", activation="relu")(inputs)
-    x = keras.layers.BatchNormalization()(x)
+    skip_connections = []
 
-    for filters in [64, 128, 256, 512]:
-        x = keras.layers.Conv3D(filters, 3, padding="same", activation="relu")(x)
-        x = keras.layers.BatchNormalization()(x)
+    x = inputs
 
-        x = keras.layers.Conv3D(filters, 3, padding="same", activation="relu")(x)
-        x = keras.layers.BatchNormalization()(x)
+    # encoder
+    for level in range(n_levels):
+        lvl_feats = unet_feat_count * 2**level
+        for _ in range(nb_conv_per_level):
+            x = tf.keras.layers.Conv3D(
+                lvl_feats, conv_size, padding="same", activation=activation
+            )(x)
+        x = tf.keras.layers.BatchNormalization()(x)
 
-        x = keras.layers.MaxPooling3D(pool_size=2)(x)
+        if level != n_levels - 1:
+            skip_connections.append(x)
+            x = tf.keras.layers.MaxPooling3D()(x)
 
-    for filters in [512, 256, 128, 64, 32]:
-        x = keras.layers.Conv3DTranspose(filters, 3, padding="same", activation="relu")(
-            x
-        )
-        x = keras.layers.BatchNormalization()(x)
+    # decoder
+    for level in reversed(range(n_levels-1)):
+        x = tf.keras.layers.UpSampling3D()(x)
+        x = tf.keras.layers.Concatenate()([x, skip_connections[level]])
 
-        x = keras.layers.Conv3DTranspose(filters, 3, padding="same", activation="relu")(
-            x
-        )
-        x = keras.layers.BatchNormalization()(x)
+        lvl_feats = unet_feat_count * 2**level
+        for _ in range(nb_conv_per_level):
+            x = tf.keras.layers.Conv3D(
+                lvl_feats, conv_size, padding="same", activation=activation
+            )(x)
 
-        x = keras.layers.UpSampling3D(2)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
 
-    # Add a per-pixel classification layer
-    outputs = keras.layers.Conv3D(
-        num_classes, 3, activation="softmax", padding="same", name="unet_likelihood"
+    # Add a per-pixel likelihood layer
+    x = tf.keras.layers.Conv3D(
+        n_labels,
+        1,
+        activation=None,
+        name="unet_likelihood",
     )(x)
 
+    # Add a per-pixel prediction layer
+    outputs = tf.keras.layers.Softmax()(x)
+
     # Define the model
-    model = keras.Model(inputs, outputs)
+    model = tf.keras.Model(inputs, outputs)
 
     return model
