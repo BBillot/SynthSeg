@@ -51,7 +51,7 @@ def test_training(
         dice_epochs=dice_epochs,
         steps_per_epoch=None,
         batchsize=1,
-        tfrecords_dir=str(tfrecord.path),
+        tfrecords_dir=str(tfrecord.path.parent),
         input_shape=list(tfrecord.shape),
         n_labels=tfrecord.n_labels,
     )
