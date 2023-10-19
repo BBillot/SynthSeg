@@ -144,12 +144,14 @@ def save_volume(volume, aff, header, path, res=None, dtype=None, n_dims=3):
                 aff = np.array([[-1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
         elif aff is None:
             aff = np.eye(4)
-        nifty = nib.Nifti1Image(volume, aff, header)
         if dtype is not None:
             if 'int' in dtype:
                 volume = np.round(volume)
             volume = volume.astype(dtype=dtype)
+            nifty = nib.Nifti1Image(volume, aff, header)
             nifty.set_data_dtype(dtype)
+        else:
+            nifty = nib.Nifti1Image(volume, aff, header)
         if res is not None:
             if n_dims is None:
                 n_dims, _ = get_dims(volume.shape)
