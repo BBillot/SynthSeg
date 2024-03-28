@@ -82,7 +82,7 @@ class RandomSpatialDeformation(Layer):
     :param nonlin_scale: (optional) if nonlin_std is not False, factor between the shapes of the input tensor
     and the shape of the input non-linear tensor.
     :param inter_method: (optional) interpolation method when deforming the input tensor. Can be 'linear', or 'nearest'
-    :param prob: (optional) probability to apply spatial deformation
+    :param prob_deform: (optional) probability to apply spatial deformation
     """
 
     def __init__(self,
@@ -94,7 +94,7 @@ class RandomSpatialDeformation(Layer):
                  nonlin_std=4.,
                  nonlin_scale=.0625,
                  inter_method='linear',
-                 prob=1,
+                 prob_deform=1,
                  **kwargs):
 
         # shape attributes
@@ -117,7 +117,7 @@ class RandomSpatialDeformation(Layer):
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
                                   self.enable_90_rotations
         self.apply_elastic_trans = self.nonlin_std > 0
-        self.prob = prob
+        self.prob = prob_deform
 
         # interpolation methods
         self.inter_method = inter_method
