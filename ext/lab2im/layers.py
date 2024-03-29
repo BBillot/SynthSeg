@@ -117,7 +117,7 @@ class RandomSpatialDeformation(Layer):
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
                                   self.enable_90_rotations
         self.apply_elastic_trans = self.nonlin_std > 0
-        self.prob = prob_deform
+        self.prob_deform = prob_deform
 
         # interpolation methods
         self.inter_method = inter_method
@@ -134,7 +134,7 @@ class RandomSpatialDeformation(Layer):
         config["nonlin_std"] = self.nonlin_std
         config["nonlin_scale"] = self.nonlin_scale
         config["inter_method"] = self.inter_method
-        config["prob"] = self.prob
+        config["prob_deform"] = self.prob_deform
         return config
 
     def build(self, input_shape):
@@ -198,11 +198,11 @@ class RandomSpatialDeformation(Layer):
 
         # apply deformations and return tensors with correct dtype
         if self.apply_affine_trans | self.apply_elastic_trans:
-            if self.prob == 1:
+            if self.prob_deform == 1:
                 inputs = [nrn_layers.SpatialTransformer(m)([v] + list_trans) for (m, v) in
                           zip(self.inter_method, inputs)]
             else:
-                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
+                rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob_deform))
                 inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
                           for (m, v) in zip(self.inter_method, inputs)]
         if self.n_inputs < 2:
