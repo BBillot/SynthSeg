@@ -6,6 +6,7 @@ venv
 .idea
 
 ext/pynd
+ext/statannot
 
 data/labels_classes_priors/generation_classes_2.0.npy
 data/labels_classes_priors/generation_labels_2.0.npy
