@@ -6,6 +6,8 @@ corresponds to the background, then the second map is associated to the left cer
 Please note that the label values follow the FreeSurfer classification. Also, we do not provide any colour scheme,
 as the colour displayed for each structure depends on the used image viewer.
 
+WARNING: if you use the --v1 flag, note that it won't segment the CSF (label 24), since this was introduced in version 2
+
 labels    structures
 0         background
 2         left cerebral white matter
@@ -24,6 +26,7 @@ labels    structures
 17        left hippocampus
 18        left amygdala
 26        left accumbens area
+24        CSF
 28        left ventral DC
 41        right cerebral white matter
 42        right cerebral cortex

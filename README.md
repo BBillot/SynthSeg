@@ -2,8 +2,10 @@
 
 
 In this repository, we present SynthSeg, the first deep learning tool for segmentation of brain scans of
-any contrast and resolution. SynthSeg works out-of-the-box without any retraining, and is also robust to:
-- a wide array of populations: from young and healthy to ageing and diseased,
+any contrast and resolution. SynthSeg works out-of-the-box without any retraining, and is robust to:
+- any contrast
+- any resolution up to 10mm slice spacing
+- a wide array of populations: from young and healthy to ageing and diseased
 - scans with or without preprocessing: bias field correction, skull stripping, normalisation, etc.
 - white matter lesions.
 \
@@ -23,7 +25,7 @@ Medical Image Analysis (2023) \
 Then, we extended it to work on heterogeneous clinical scans, and to perform cortical parcellation and automated 
 quality control.
 
-**Robust machine learning segmentation for large-scale analysisof heterogeneous clinical brain MRI datasets** \
+**Robust machine learning segmentation for large-scale analysis of heterogeneous clinical brain MRI datasets** \
 B. Billot, M. Colin, Y. Cheng, S.E. Arnold, S. Das, J.E. Iglesias \
 PNAS (2023) \
 [ [article](https://www.pnas.org/doi/full/10.1073/pnas.2216399120#bibliography) | [arxiv](https://arxiv.org/abs/2203.01969) | [bibtex](bibtex.bib) ]
@@ -97,8 +99,7 @@ spacing). This can be slower than the other model.
 - `<vol>` (optional) path to a CSV file where the volumes (in mm<sup>3</sup>) of all segmented regions will be saved for all scans 
 (e.g. /path/to/volumes.csv). If `<input>` is a text file, so must be `<vol>`, for which each line is the path to a 
 different CSV file corresponding to one subject only.
-- `<qc>` (optional) path to a CSV file where QC scores will be saved. The same formatting requirements apply as for
-`<vol>`.
+- `<qc>` (optional) path to a CSV file where QC scores will be saved. The same formatting requirements as `<vol>` apply.
 - `<post>` (optional) path where the posteriors, given as soft probability maps, will be saved (same formatting 
 requirements as for `<output>`).
 - `<resample>` (optional) SynthSeg segmentations are always given at 1mm isotropic resolution. Hence, 

@@ -82,7 +82,7 @@ class RandomSpatialDeformation(Layer):
     :param nonlin_scale: (optional) if nonlin_std is not False, factor between the shapes of the input tensor
     and the shape of the input non-linear tensor.
     :param inter_method: (optional) interpolation method when deforming the input tensor. Can be 'linear', or 'nearest'
-    :param prob: (optional) probability to apply spatial deformation
+    :param prob_deform: (optional) probability to apply spatial deformation
     """
 
     def __init__(self,
@@ -94,7 +94,7 @@ class RandomSpatialDeformation(Layer):
                  nonlin_std=4.,
                  nonlin_scale=.0625,
                  inter_method='linear',
-                 prob=1,
+                 prob_deform=1,
                  **kwargs):
 
         # shape attributes
@@ -117,7 +117,7 @@ class RandomSpatialDeformation(Layer):
                                   (self.shearing_bounds is not False) | (self.translation_bounds is not False) | \
                                   self.enable_90_rotations
         self.apply_elastic_trans = self.nonlin_std > 0
-        self.prob = prob
+        self.prob = prob_deform
 
         # interpolation methods
         self.inter_method = inter_method
@@ -205,7 +205,10 @@ class RandomSpatialDeformation(Layer):
                 rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
                 inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
                           for (m, v) in zip(self.inter_method, inputs)]
-        return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        if self.n_inputs < 2:
+            return tf.cast(inputs[0], types[0])
+        else:
+            return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
 
 
 class RandomCrop(Layer):
@@ -410,7 +413,10 @@ class RandomFlip(Layer):
         inputs = tf.map_fn(self._single_flip, [inputs, rand_flip], dtype=tf.float32)
         inputs = tf.split(inputs, self.list_n_channels, axis=-1)
 
-        return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        if self.several_inputs:
+            return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        else:
+            return tf.cast(inputs[0], types[0])
 
     def _single_swap(self, inputs):
         return K.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
@@ -1082,7 +1088,10 @@ class BiasFieldCorruption(Layer):
                 return [tf.math.multiply(bias_field, v) for v in inputs]
             else:
                 rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
-                return [K.switch(rand_trans, tf.math.multiply(bias_field, v), v) for v in inputs]
+                if self.several_inputs:
+                    return [K.switch(rand_trans, tf.math.multiply(bias_field, v), v) for v in inputs]
+                else:
+                    return K.switch(rand_trans, tf.math.multiply(bias_field, inputs[0]), inputs[0])
 
         else:
             return inputs

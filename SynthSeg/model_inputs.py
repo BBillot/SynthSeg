@@ -72,9 +72,6 @@ def build_model_inputs(path_label_maps,
     values for half of these cases, and thus generate images of random contrast.
     """
 
-    # get label info
-    _, _, n_dims, _, _, _ = utils.get_volume_info(path_label_maps[0])
-
     # allocate unique class to each label if generation classes is not given
     if generation_classes is None:
         generation_classes = np.arange(n_labels)
