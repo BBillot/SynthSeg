@@ -205,7 +205,10 @@ class RandomSpatialDeformation(Layer):
                 rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
                 inputs = [K.switch(rand_trans, nrn_layers.SpatialTransformer(m)([v] + list_trans), v)
                           for (m, v) in zip(self.inter_method, inputs)]
-        return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        if self.n_inputs < 2:
+            return tf.cast(inputs[0], types[0])
+        else:
+            return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
 
 
 class RandomCrop(Layer):
@@ -410,7 +413,10 @@ class RandomFlip(Layer):
         inputs = tf.map_fn(self._single_flip, [inputs, rand_flip], dtype=tf.float32)
         inputs = tf.split(inputs, self.list_n_channels, axis=-1)
 
-        return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        if self.several_inputs:
+            return [tf.cast(v, t) for (t, v) in zip(types, inputs)]
+        else:
+            return tf.cast(inputs[0], types[0])
 
     def _single_swap(self, inputs):
         return K.switch(inputs[1], tf.gather(self.swap_lut, inputs[0]), inputs[0])
@@ -1082,7 +1088,10 @@ class BiasFieldCorruption(Layer):
                 return [tf.math.multiply(bias_field, v) for v in inputs]
             else:
                 rand_trans = tf.squeeze(K.less(tf.random.uniform([1], 0, 1), self.prob))
-                return [K.switch(rand_trans, tf.math.multiply(bias_field, v), v) for v in inputs]
+                if self.several_inputs:
+                    return [K.switch(rand_trans, tf.math.multiply(bias_field, v), v) for v in inputs]
+                else:
+                    return K.switch(rand_trans, tf.math.multiply(bias_field, inputs[0]), inputs[0])
 
         else:
             return inputs

@@ -297,7 +297,7 @@ class Resize(Layer):
                 (along last axis) flipped compared to 'ij' indexing
         """
         self.zoom_factor = zoom_factor
-        self.size = size
+        self.size = list(size)
         self.zoom_factor0 = None
         self.size0 = None
         self.interp_method = interp_method
