@@ -25,8 +25,8 @@ labels    structures
 16        brain-stem
 17        left hippocampus
 18        left amygdala
-26        left accumbens area
 24        CSF
+26        left accumbens area
 28        left ventral DC
 41        right cerebral white matter
 42        right cerebral cortex
