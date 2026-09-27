@@ -76,12 +76,12 @@ import csv
 import shutil
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-from keras.models import Model
-from scipy.ndimage.filters import convolve
+from tensorflow.keras import layers as KL
+from tensorflow.keras.models import Model
+from scipy.ndimage import convolve
 from scipy.ndimage import label as scipy_label
 from scipy.interpolate import RegularGridInterpolator
-from scipy.ndimage.morphology import distance_transform_edt, binary_fill_holes
+from scipy.ndimage import distance_transform_edt, binary_fill_holes
 from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
 
 # project imports

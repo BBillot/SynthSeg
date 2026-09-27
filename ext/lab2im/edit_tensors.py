@@ -26,8 +26,8 @@ License.
 # python imports
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-import keras.backend as K
+from tensorflow.keras import layers as KL
+from tensorflow.keras import backend as K
 from itertools import combinations
 
 # project imports

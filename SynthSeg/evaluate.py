@@ -18,7 +18,7 @@ License.
 import os
 import numpy as np
 from scipy.stats import wilcoxon
-from scipy.ndimage.morphology import distance_transform_edt
+from scipy.ndimage import distance_transform_edt
 
 # third-party imports
 from ext.lab2im import utils

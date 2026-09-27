@@ -1,0 +1,6 @@
+tensorflow==2.15.1
+numpy==1.26.4
+scipy==1.17.1
+h5py==3.16.0
+nibabel==5.4.2
+matplotlib==3.11.2

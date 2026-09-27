@@ -17,10 +17,10 @@ from ext.neuron import layers
 # third party
 import numpy as np
 import tensorflow as tf
-import keras
-import keras.layers as KL
-from keras.models import Model
-import keras.backend as K
+from tensorflow import keras
+from tensorflow.keras import layers as KL
+from tensorflow.keras.models import Model
+from tensorflow.keras import backend as K
 
 
 def unet(nb_features,

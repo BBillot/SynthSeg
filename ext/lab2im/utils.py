@@ -64,10 +64,10 @@ import pickle
 import numpy as np
 import nibabel as nib
 import tensorflow as tf
-import keras.layers as KL
-import keras.backend as K
+from tensorflow.keras import layers as KL
+from tensorflow.keras import backend as K
 from datetime import timedelta
-from scipy.ndimage.morphology import distance_transform_edt
+from scipy.ndimage import distance_transform_edt
 
 
 # ---------------------------------------------- loading/saving functions ----------------------------------------------
@@ -332,7 +332,7 @@ def reformat_to_list(var, length=None, load_as_numpy=False, dtype=None):
     if var is None:
         return None
     var = load_array_if_path(var, load_as_numpy=load_as_numpy)
-    if isinstance(var, (int, float, np.int, np.int32, np.int64, np.float, np.float32, np.float64)):
+    if isinstance(var, (int, float, np.integer, np.floating)):
         var = [var]
     elif isinstance(var, tuple):
         var = list(var)
@@ -923,6 +923,15 @@ def build_training_generator(gen, batchsize):
         else:
             target = np.zeros((1, 1))
         yield inputs, target
+
+
+def build_training_dataset(gen, model):
+    """Wrap a training generator (see build_training_generator) into a tf.data.Dataset whose tensors keep the static
+    shapes of the model inputs. Needed with tf.keras, since fit() on a raw generator discards all shape information."""
+    inputs_signature = tuple(tf.TensorSpec(shape=inp.shape, dtype=inp.dtype) for inp in model.inputs)
+    target_signature = tf.TensorSpec(shape=(None, 1), dtype='float32')
+    return tf.data.Dataset.from_generator(lambda: ((tuple(inputs), target) for (inputs, target) in gen),
+                                          output_signature=(inputs_signature, target_signature))
 
 
 def find_closest_number_divisible_by_m(n, m, answer_type='lower'):

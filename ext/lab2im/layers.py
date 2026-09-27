@@ -36,11 +36,11 @@ License.
 
 
 # python imports
-import keras
+from tensorflow import keras
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
-from keras.layers import Layer
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Layer
 
 # project imports
 from ext.lab2im import utils

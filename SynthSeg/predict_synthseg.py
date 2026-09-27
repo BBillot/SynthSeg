@@ -18,11 +18,12 @@ License.
 import os
 import sys
 import traceback
+import itertools
 import numpy as np
 import tensorflow as tf
-import keras.layers as KL
-import keras.backend as K
-from keras.models import Model
+from tensorflow.keras import layers as KL
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Model
 
 # project imports
 from SynthSeg import evaluate
@@ -68,7 +69,8 @@ def predict(path_images,
             list_correct_labels=None,
             compute_distances=False,
             recompute=True,
-            verbose=True):
+            verbose=True,
+            patch_shape=None):
 
     # prepare input/output filepaths
     outputs = prepare_output_files(path_images, path_segmentations, path_posteriors, path_resampled,
@@ -146,6 +148,12 @@ def predict(path_images,
     else:
         min_pad = 128
 
+    # set patch-wise prediction
+    if patch_shape is not None:
+        assert not do_qc, 'patch-wise prediction is not compatible with QC, which needs the whole segmentation at once'
+        patch_shape = utils.reformat_to_list(patch_shape, length=3, dtype='int')
+        patch_shape = [utils.find_closest_number_divisible_by_m(s, 32, 'higher') for s in patch_shape]
+
     # perform segmentation
     if len(path_images) <= 10:
         loop_info = utils.LoopInfo(len(path_images), 1, 'predicting', True)
@@ -170,7 +178,14 @@ def predict(path_images,
 
                 # prediction
                 shape_input = utils.add_axis(np.array(image.shape[1:-1]))
-                if do_parcellation & do_qc:
+                if patch_shape is not None:
+                    post_patches = predict_by_patches(net, image, patch_shape)
+                    if do_parcellation:
+                        post_patch_segmentation, post_patch_parcellation = post_patches
+                    else:
+                        post_patch_segmentation, post_patch_parcellation = post_patches[0], None
+                    qc_score = None
+                elif do_parcellation & do_qc:
                     post_patch_segmentation, post_patch_parcellation, qc_score = net.predict([image, shape_input])
                 elif do_parcellation & (not do_qc):
                     post_patch_segmentation, post_patch_parcellation = net.predict(image)
@@ -684,6 +699,43 @@ def build_model(path_model_segmentation,
         net.load_weights(path_model_qc, by_name=True)
 
     return net
+
+
+def predict_by_patches(net, image, patch_shape, overlap=0.5):
+    """Run net on overlapping patches of image, and blend the predicted patches with a Gaussian window. This bounds the
+    memory needed by the network, so that whole volumes can be segmented on small GPUs.
+    :param net: model whose outputs are all voxel-wise (i.e., no QC branch).
+    :param image: array of shape [1, *volume_shape, n_channels], where volume_shape is divisible by 32.
+    :param patch_shape: list of 3 patch sizes, all divisible by 32. Clipped to the volume shape.
+    :param overlap: fraction of overlap between consecutive patches.
+    :return: a list with one array of shape [1, *volume_shape, n_output_channels] per output of net."""
+
+    # get patch positions, the last patch along each axis being aligned with the end of the volume
+    volume_shape = np.array(image.shape[1:-1])
+    patch_shape = np.minimum(patch_shape, volume_shape)
+    steps = np.maximum(np.round(patch_shape * (1 - overlap)).astype('int'), 1)
+    starts = [sorted(set(range(0, v - p, s)) | {v - p}) for (v, p, s) in zip(volume_shape, patch_shape, steps)]
+
+    # Gaussian window, to down-weight patch borders where predictions have less context
+    grids = np.meshgrid(*[np.arange(p) - (p - 1) / 2 for p in patch_shape], indexing='ij')
+    window = np.exp(-sum(g ** 2 / (2 * (p / 8) ** 2) for (g, p) in zip(grids, patch_shape)))
+    window = np.maximum(window / window.max(), 1e-3).astype('float32')[..., np.newaxis]
+
+    # accumulate weighted predictions
+    outputs = None
+    weights = np.zeros(list(volume_shape) + [1], dtype='float32')
+    for start in itertools.product(*starts):
+        idx = tuple(slice(s, s + p) for (s, p) in zip(start, patch_shape))
+        predictions = net.predict_on_batch(image[(slice(None),) + idx])
+        if not isinstance(predictions, (list, tuple)):
+            predictions = [predictions]
+        if outputs is None:
+            outputs = [np.zeros(list(volume_shape) + [pred.shape[-1]], dtype='float32') for pred in predictions]
+        for output, pred in zip(outputs, predictions):
+            output[idx] += np.asarray(pred)[0] * window
+        weights[idx] += window
+
+    return [output[np.newaxis] / weights[np.newaxis] for output in outputs]
 
 
 def postprocess(post_patch_seg, post_patch_parc, shape, pad_idx, crop_idx,

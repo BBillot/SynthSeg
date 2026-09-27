@@ -43,6 +43,9 @@ parser.add_argument("--qc", help="(optional) Path to output CSV file with qc sco
 parser.add_argument("--post", help="(optional) Posteriors output(s). Must be a folder if --i designates a folder.")
 parser.add_argument("--resample", help="(optional) Resampled image(s). Must be a folder if --i designates a folder.")
 parser.add_argument("--crop", nargs='+', type=int, help="(optional) Size of 3D patches to analyse. Default is 192.")
+parser.add_argument("--patch", nargs='+', type=int, help="(optional) Predict on overlapping patches of this size "
+                    "(rounded up to a multiple of 32) to reduce memory use, e.g. 128 on GPUs with 6GB. Not compatible "
+                    "with --qc.")
 parser.add_argument("--threads", type=int, default=1, help="(optional) Number of cores to be used. Default is 1.")
 parser.add_argument("--cpu", action="store_true", help="(optional) Enforce running with CPU rather than GPU.")
 parser.add_argument("--v1", action="store_true", help="(optional) Use SynthSeg 1.0 (updated 25/06/22).")
@@ -132,5 +135,6 @@ predict(path_images=args['i'],
         path_qc_scores=args['qc'],
         names_qc=args['names_qc_labels'],
         cropping=args['crop'],
+        patch_shape=args['patch'],
         topology_classes=args['topology_classes'],
         ct=args['ct'])

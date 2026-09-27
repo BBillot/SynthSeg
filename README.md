@@ -83,7 +83,7 @@ See [here](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg) on how to use it.
 
 Once all the python packages are installed (see below), you can simply test SynthSeg on your own data with:
 ```
-python ./scripts/commands/SynthSeg_predict.py --i <input> --o <output> [--parc --robust --ct --vol <vol> --qc <qc> --post <post> --resample <resample>]
+python ./scripts/commands/SynthSeg_predict.py --i <input> --o <output> [--parc --robust --ct --vol <vol> --qc <qc> --post <post> --resample <resample> --patch <size>]
 ```
 
 
@@ -114,6 +114,12 @@ the runtime when using the CPU version.
 Images are cropped around their centre, and their segmentations are given at the original size. It can be given as a 
 single (i.e., `--crop 160`), or several integers (i.e, `--crop 160 128 192`, ordered in RAS coordinates). By default the
 whole image is processed. Use this flag for faster analysis or to fit in your GPU.
+- `--patch`: (optional) to predict on overlapping patches of a given size instead of the whole image at once, which 
+bounds the memory used by the network (e.g., `--patch 128` segments full-size scans on a 6GB GPU). Unlike `--crop`, 
+the whole image is still segmented: patches overlap by 50%, and their predictions are blended with a Gaussian window 
+that down-weights patch borders. Sizes are rounded up to a multiple of 32, and can be given as one or several integers 
+(as for `--crop`). Results are very close to whole-image prediction, although small central structures can differ by a 
+few percent in volume, since each patch sees less context. This flag is not compatible with `--qc`.
 - `--fast`: (optional) to disable some operations for faster prediction (twice as fast, but slightly less accurate). 
 This doesn't apply when the --robust flag is used.
 - `--v1`: (optional) to run the first version of SynthSeg (SynthSeg 1.0, updated 29/06/2022).
@@ -134,32 +140,21 @@ corresponding values. This table also details the order in which the posteriors 
 
 1. Clone this repository.
 
-2. Create a virtual environment (i.e., with pip or conda) and install all the required packages. \
-These depend on your python version, and here we list the requirements for Python 3.6 
-([requirements_3.6](requirements_python3.6.txt)) and Python 3.8 (see [requirements_3.8](requirements_python3.8.txt)).
-The choice is yours, but in each case, please stick to the exact package versions.\
-A first solution to install the dependencies, if you use pip, is to run setup.py (with and activated virtual 
-environment): `python setup.py install`. Otherwise, we also give here the minimal commands to install the required 
-packages using pip/conda for Python 3.6/3.8.
+2. Create a virtual environment with Python 3.9, 3.10 or 3.11 (i.e., with pip or conda), and install the required
+packages listed in [requirements.txt](requirements.txt). This version of SynthSeg runs on TensorFlow 2.15 (with its
+bundled `tf.keras`), and no longer supports the older TensorFlow 2.0/2.2 + Keras 2.3.1 setups.
 
 ```
-# Conda, Python 3.6:
-conda create -n synthseg_36 python=3.6 tensorflow-gpu=2.0.0 keras=2.3.1 h5py==2.10.0 nibabel matplotlib -c anaconda -c conda-forge
+# Conda + pip, CPU only:
+conda create -n synthseg python=3.11
+conda activate synthseg
+pip install -r requirements.txt
 
-# Conda, Python 3.8:
-conda create -n synthseg_38 python=3.8 tensorflow-gpu=2.2.0 keras=2.3.1 nibabel matplotlib -c anaconda -c conda-forge
-
-# Pip, Python 3.6:
-pip install tensorflow-gpu==2.0.0 keras==2.3.1 nibabel==3.2.2 matplotlib==3.3.4
-
-# Pip, Python 3.8:
-pip install tensorflow-gpu==2.2.0 keras==2.3.1 protobuf==3.20.3 numpy==1.23.5 nibabel==5.0.1 matplotlib==3.6.2
+# To run on an NVIDIA GPU (Linux), install TensorFlow with its bundled CUDA 12 / cuDNN libraries instead:
+pip install -r requirements.txt "tensorflow[and-cuda]==2.15.1"
 ```
 
 3. Go to this link [UCL dropbox](https://liveuclac-my.sharepoint.com/:f:/g/personal/rmappmb_ucl_ac_uk/EtlNnulBSUtAvOP6S99KcAIBYzze7jTPsmFk2_iHqKDjEw?e=rBP0RO), and download the missing models. Then simply copy them to [models](models).
-
-4. If you wish to run on the GPU, you will also need to install Cuda (10.0 for Python 3.6, 10.1 for Python 3.8), and 
-CUDNN (7.6.5 for both). Note that if you used conda, these were already automatically installed.
 
 That's it ! You're now ready to use SynthSeg ! :tada:
 
