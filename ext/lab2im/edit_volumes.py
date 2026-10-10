@@ -637,7 +637,7 @@ def align_volume_to_ref(volume, aff, aff_ref=None, return_aff=False, n_dims=None
     for i in range(n_dims):
         if ras_axes_flo[i] != ras_axes_ref[i]:
             new_volume = np.swapaxes(new_volume, ras_axes_flo[i], ras_axes_ref[i])
-            swapped_axis_idx = np.where(ras_axes_flo == ras_axes_ref[i])
+            swapped_axis_idx = np.where(ras_axes_flo == ras_axes_ref[i])[0][0]
             ras_axes_flo[swapped_axis_idx], ras_axes_flo[i] = ras_axes_flo[i], ras_axes_flo[swapped_axis_idx]
 
     # align directions
