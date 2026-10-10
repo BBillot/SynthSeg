@@ -576,7 +576,7 @@ def get_flip_indices(labels_segmentation, n_neutral_labels):
     lr_indices = np.zeros_like(lr_corresp_unique)
     for i in range(lr_corresp_unique.shape[0]):
         for j, lab in enumerate(lr_corresp_unique[i]):
-            lr_indices[i, j] = np.where(labels_segmentation == lab)[0]
+            lr_indices[i, j] = np.where(labels_segmentation == lab)[0][0]
 
     # build 1d vector to swap LR corresponding labels taking into account neutral labels
     flip_indices = np.zeros_like(labels_segmentation)
@@ -584,9 +584,9 @@ def get_flip_indices(labels_segmentation, n_neutral_labels):
         if labels_segmentation[i] in neutral_labels:
             flip_indices[i] = i
         elif labels_segmentation[i] in left:
-            flip_indices[i] = lr_indices[1, np.where(lr_corresp_unique[0, :] == labels_segmentation[i])]
+            flip_indices[i] = lr_indices[1, np.where(lr_corresp_unique[0, :] == labels_segmentation[i])[0][0]]
         else:
-            flip_indices[i] = lr_indices[0, np.where(lr_corresp_unique[1, :] == labels_segmentation[i])]
+            flip_indices[i] = lr_indices[0, np.where(lr_corresp_unique[1, :] == labels_segmentation[i])[0][0]]
 
     return labels_segmentation, flip_indices, unique_idx
 
